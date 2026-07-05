@@ -162,30 +162,16 @@ AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']
 
 # CONFIGURACION PARA EL ENVIO DE LOS CORREOS (Gmail)
 import os
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'ipp.uptag01@gmail.com'
+EMAIL_HOST_PASSWORD = 'nhzpmybbkvxcdsrl'
 
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'IPP-IUTAG <noreply@ipp-iutag.com>')
+DEFAULT_FROM_EMAIL = 'IPP - IUTAG <ipp.uptag01@gmail.com>'
 
-# Para activar el envio SMTP real en producción, crear un archivo .bat en la raíz:
 
-# ==== PRODUCCION: crear archivo smtp_config.bat ====
-# @echo off
-# set EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-# set EMAIL_HOST=smtp.gmail.com
-# set EMAIL_PORT=587
-# set EMAIL_USE_TLS=True
-# set EMAIL_HOST_USER=tu-correo@gmail.com
-# set EMAIL_HOST_PASSWORD=tu-contraseña-aplicacion
-# set DEFAULT_FROM_EMAIL=IPP-IUTAG <noreply@ipp-iutag.com>
-# python manage.py runserver
-# =================================================
-
-# O crear variables de entorno del sistema con esos mismos nombres.
 
 # PARA CUANDO PASA MUCHO TIEMPO Y NO HAY ACTIVIDAD EN LA PAGINA
 SESSION_COOKIE_AGE = 600 # 10 minutos (600 segundos)
