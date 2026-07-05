@@ -69,7 +69,6 @@ urlpatterns = [
 
     # Selección de Roles
     path('home/', views.landing_page, name='home'),
-    # path('seleccionar-rol/', views.landing_page, name='seleccionar_rol'),
 
     # Perfil de Usuario
     path('perfil/', views.perfil_usuario, name='perfil_usuario'),
