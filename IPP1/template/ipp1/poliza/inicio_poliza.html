@@ -1,0 +1,148 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Póliza{% endblock %}
+{% block title %}Póliza - IPP{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark">Módulo de Póliza</h2>
+        <p class="text-muted">Administración de planes de salud, pólizas, gastos y familiares.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-house-door me-1"></i>Volver al Menú
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-primary shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="card-title text-gray">Total Pólizas</h6>
+                <span class="fs-2 fw-bold text-primary">{{ total_polizas }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="card-title text-gray">Activas</h6>
+                <span class="fs-2 fw-bold text-success">{{ activas }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-danger shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="card-title text-gray">Inactivas</h6>
+                <span class="fs-2 fw-bold text-danger">{{ inactivas }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-primary shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="card-title text-gray">Total Gastos</h6>
+                <span class="fs-2 fw-bold text-primary">${{ total_gastos|floatformat:2 }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-1">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-file-earmark-text fs-2 text-gray me-3"></i>
+                        <h5 class="card-title text-primary mb-0">Gestión de Pólizas</h5>
+                    </div>
+                    <p class="card-text text-muted">Listado, creación y administración de pólizas por paciente.</p>
+                </div>
+                <a href="{% url 'poliza_menu' %}" class="btn btn-outline-primary mt-3">Administrar Pólizas</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-1">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-plus-circle fs-2 text-gray me-3"></i>
+                        <h5 class="card-title text-primary mb-0">Nueva Póliza</h5>
+                    </div>
+                    <p class="card-text text-muted">Crear una nueva póliza para un paciente afiliado.</p>
+                </div>
+                <a href="{% url 'poliza_crear' %}" class="btn btn-outline-primary mt-3">Crear Póliza</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-1">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-bar-chart-line fs-2 text-gray me-3"></i>
+                        <h5 class="card-title text-primary mb-0">Gastos por Paciente</h5>
+                    </div>
+                    <p class="card-text text-muted">Desglose detallado de gastos por paciente (Lic. Laudy).</p>
+                </div>
+                <a href="{% url 'gastos_por_paciente' %}" class="btn btn-outline-primary mt-3">Ver Gastos</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-1">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-grid-3x3-gap fs-2 text-gray me-3"></i>
+                        <h5 class="card-title text-primary mb-0">Resumen de Afiliados</h5>
+                    </div>
+                    <p class="card-text text-muted">Visualización cruzada de gastos por afiliado.</p>
+                </div>
+                <a href="{% url 'resumen_afiliados' %}" class="btn btn-outline-primary mt-3">Ver Resumen</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-1">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-file-earmark-spreadsheet fs-2 text-gray me-3"></i>
+                        <h5 class="card-title text-primary mb-0">Extraer Documentos</h5>
+                    </div>
+                    <p class="card-text text-muted">Exportar Excel completo con todos los gastos registrados.</p>
+                </div>
+                <a href="{% url 'exportar_gastos_excel' %}" class="btn btn-outline-primary mt-3">Exportar Excel</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if planes %}
+<div class="card shadow-sm mb-5">
+    <div class="card-header bg-white fw-bold">Planes de Salud Disponibles</div>
+    <div class="card-body">
+        <div class="row g-3">
+            {% for plan in planes %}
+            <div class="col-md-4">
+                <div class="card border-primary h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-shield-check text-primary fs-1 mb-2"></i>
+                        <h5 class="fw-bold">{{ plan.nombre }}</h5>
+                        <p class="text-muted small">{{ plan.descripcion|default:"Sin descripción" }}</p>
+                        <span class="badge bg-primary fs-6">${{ plan.costo_mensual|floatformat:2 }}/mes</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

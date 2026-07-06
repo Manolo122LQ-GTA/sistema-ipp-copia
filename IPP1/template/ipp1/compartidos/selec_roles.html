@@ -1,0 +1,78 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ titulo }}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'icon/LOGO_IPP_IUTAG.svg' %}">
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}">
+    <link rel="stylesheet" href="{% static 'css/uiverse.css' %}">
+</head>
+<body class="bg-light" style="font-family: Verdana, Geneva, Tahoma, sans-serif;">
+    {% if messages %}
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+        {% for message in messages %}
+        <div class="modern-{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}success{% endif %}-message mb-2">
+            <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+            <div class="icon-wrapper">
+                <i class="bi bi-{% if message.tags == 'error' %}x-circle{% elif message.tags == 'warning' %}exclamation-triangle{% elif message.tags == 'info' %}info-circle{% else %}check-circle{% endif %}-fill success-icon"></i>
+            </div>
+            <div class="text-wrapper">
+                <div class="msg-title">
+                    {% if message.tags == 'error' %}Error{% elif message.tags == 'warning' %}Atención{% elif message.tags == 'info' %}Información{% else %}Operación Correcta{% endif %}
+                </div>
+                <div class="msg-message">{{ message }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="container py-5 text-center">
+        <h2 class="mb-0 fw-bold">Selecciona el Rol de Trabajo</h2>
+        <p class="text-muted">Selecciona tu área de trabajo para configurar tus accesos.</p>
+        
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-10">
+                <div class="row g-4">
+                    <div class="col-md-3">
+                        <a href="{% if es_secretaria %}{% url 'secretaria' %}{% else %}#{% endif %}" 
+                           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none {% if not es_secretaria %}disabled{% endif %}"
+                           {% if not es_secretaria %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+                            <i class="bi bi-person-badge fs-1 mb-2"></i><span>Secretaría General</span>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% if puede_entrar_servicio_medico %}{% url 'medico' %}{% else %}#{% endif %}" 
+                           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none {% if not puede_entrar_servicio_medico %}disabled{% endif %}"
+                           {% if not puede_entrar_servicio_medico %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+                            <i class="bi bi-heart-pulse fs-1 mb-2"></i><span>Servicio Médico</span>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% if es_admin %}{% url 'poliza_inicio' %}{% else %}#{% endif %}" 
+                           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none {% if not es_admin %}disabled{% endif %}"
+                           {% if not es_admin %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+                            <i class="bi bi-file-earmark-medical fs-1 mb-2"></i><span>Póliza</span>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% if es_admin %}{% url 'inicio_admin' %}{% else %}#{% endif %}" 
+                           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none {% if not es_admin %}disabled{% endif %}"
+                           {% if not es_admin %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+                            <i class="bi bi-briefcase fs-1 mb-2"></i><span>Administración</span>
+                        </a>
+                    </div>        
+                </div>
+            </div>
+        </div>
+
+        <form action="{% url 'logout' %}" method="post" class="mt-5">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary px-4 py-2 shadow-sm">
+                <i class="bi bi-box-arrow-left me-2"></i>Cerrar Sesión
+            </button>
+        </form>
+    </div>
+</body>
+</html>

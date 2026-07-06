@@ -1,0 +1,55 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Editar Paciente{% endblock %}
+{% block title %}Editar Paciente - IPP{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
+
+<div class="card shadow">
+<div class="card-body">
+<h2 class="fw-bold mb-4 text-primary text-center">Editar Paciente</h2>
+<p class="text-muted text-center">{{ paciente.nombre }} {{ paciente.apellido }} ({{ paciente.cedula }})</p>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Nombre</label>
+            {{ form.nombre }}
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Apellido</label>
+            {{ form.apellido }}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Cédula</label>
+            {{ form.cedula }}
+        </div>
+        <div class="col-md-2">
+            <label class="form-label fw-semibold">Código</label>
+            {{ form.codigo_telefono }}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Teléfono</label>
+            {{ form.numero_telefono }}
+        </div>
+        <div class="col-3">
+            <label class="form-label fw-semibold">Dirección</label>
+            {{ form.direccion }}
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Fecha de Nacimiento</label>
+            {{ form.fecha_nacimiento }}
+        </div>
+    </div>
+    <div class="d-flex justify-content-center gap-2 mt-4">
+        <button type="submit" class="btn btn-primary px-3">Guardar Cambios</button>
+        {% if "Secretaria" in user.groups.all|join:"," %}
+            <a href="{% url 'registrar_paciente' %}" class="btn btn-outline-secondary px-3">Cancelar</a>
+        {% else %}
+            <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-secondary px-3">Cancelar</a>
+        {% endif %}
+    </div>
+</form>
+</div>
+</div>
+{% endblock %}

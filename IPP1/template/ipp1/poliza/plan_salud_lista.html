@@ -1,0 +1,76 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Planes de Salud{% endblock %}
+{% block title %}Planes de Salud - IPP{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
+
+<div class="mt-2">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark"><i class="bi bi-heart-pulse me-2"></i>Planes de Salud</h2>
+            <p class="text-muted">Gestión de planes de salud disponibles.</p>
+        </div>
+        <a href="{% url 'poliza_menu' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white py-3"><h5 class="mb-0 fw-bold"><i class="bi bi-plus-circle me-1"></i>Nuevo Plan</h5></div>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-success w-100"><i class="bi bi-save me-1"></i>Crear Plan</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white py-3"><h5 class="mb-0 fw-bold"><i class="bi bi-list me-1"></i>Planes Registrados</h5></div>
+                <div class="card-body">
+                    {% if planes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Costo Mensual</th>
+                                    <th>Consultas/Año</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for plan in planes %}
+                                <tr>
+                                    <td><strong>{{ plan.nombre }}</strong></td>
+                                    <td>${{ plan.costo_mensual|floatformat:2 }}</td>
+                                    <td>{{ plan.consultas_maximas_anuales|default:"Ilimitadas" }}</td>
+                                    <td>
+                                        <a href="{% url 'plan_salud_editar' plan.id %}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                                        <a href="{% url 'plan_salud_eliminar' plan.id %}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar este plan?')"><i class="bi bi-trash"></i></a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No hay planes de salud registrados.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

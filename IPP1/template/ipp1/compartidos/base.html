@@ -1,0 +1,157 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema IPP{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'icon/LOGO_IPP_IUTAG.svg' %}">
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}">
+    <link rel="stylesheet" href="{% static 'css/uiverse.css' %}?v=3">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'home' %}">{% block navbar_brand %}Sistema IPP{% endblock %}</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if user.is_authenticated %}
+                        {% if user.is_superuser %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'registrar_paciente' %}">Registrar Pacientes</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'medico' %}">Servicio Médico</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'inicio_admin' %}">Administración</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'poliza_inicio' %}">Póliza</a></li>
+                        {% elif "Secretaria" in user.groups.all|join:"," %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'secretaria' %}">Panel</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'registrar_paciente' %}">Registrar Pacientes</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'crear_solicitud' %}">Solicitar Cita</a></li>
+                        {% elif "Medico" in user.groups.all|join:"," %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'medico_panel' %}">Panel</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'citas_recibidas_medico' %}">Citas</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'consulta_historial_medico' %}">Historial</a></li>
+                        {% elif "Odontologo" in user.groups.all|join:"," %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'odontologo' %}">Panel</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'citas_odonto' %}">Citas</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'historial_odonto' %}">Historial</a></li>
+                        {% elif "Especialista" in user.groups.all|join:"," %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'especialista' %}">Panel</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'citas_especialista' %}">Citas</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'costos_especialista' %}">Costos</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'medicamentos_especialista' %}">Medicamentos</a></li>
+                        {% elif "Laboratorio" in user.groups.all|join:"," %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'laboratorio' %}">Panel</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'registrar_laboratorio' %}">Registrar</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'solicitudes_pendientes_laboratorio' %}">Pendientes</a></li>
+                        {% elif "Administracion" in user.groups.all|join:"," %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'inicio_admin' %}">Panel</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'menu_admin' %}">Usuarios</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'saldos_admin' %}">Saldos</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'reporte_admin' %}">Reportes</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'facturas_lista' %}">Facturación</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'poliza_inicio' %}">Póliza</a></li>
+                        {% else %}
+                            <li class="nav-item"><span class="nav-link text-warning">Rol no asignado</span></li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav align-items-center">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-bell fs-5"></i>
+                                {% if notificaciones_count > 0 %}
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: .6rem;">
+                                        {{ notificaciones_count }}
+                                    </span>
+                                {% endif %}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 300px;">
+                                <li><h6 class="dropdown-header">Notificaciones</h6></li>
+                                {% for notif in notificaciones_no_leidas|slice:":5" %}
+                                    <li>
+                                        <a class="dropdown-item small" href="{% if notif.url %}{{ notif.url }}{% else %}#{% endif %}">
+                                            <form method="post" action="{% url 'marcar_notificacion' notif.id %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-link text-decoration-none p-0 float-end" title="Marcar leída">
+                                                    <i class="bi bi-check-circle text-muted"></i>
+                                                </button>
+                                            </form>
+                                            {{ notif.mensaje }}
+                                            <br><small class="text-muted">{{ notif.fecha_creacion|timesince }}</small>
+                                        </a>
+                                    </li>
+                                {% empty %}
+                                    <li><span class="dropdown-item-text small text-muted">No hay notificaciones</span></li>
+                                {% endfor %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-center small text-primary" href="{% url 'perfil_usuario' %}">Ver todas</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'perfil_usuario' %}">
+                                <i class="bi bi-person-circle me-1"></i>{{ user.username }}
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <form method="post" action="{% url 'logout' %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-link nav-link" style="display: inline; cursor: pointer;">Cerrar Sesión</button>
+                            </form>
+                        </li>
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
+                        {# Portal Paciente eliminado #}
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    {# Toast flotante de mensajes #}
+    {% if messages %}
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+        {% for message in messages %}
+        <div class="modern-{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}success{% endif %}-message mb-2">
+            <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+            <div class="icon-wrapper">
+                <i class="bi bi-{% if message.tags == 'error' %}x-circle{% elif message.tags == 'warning' %}exclamation-triangle{% elif message.tags == 'info' %}info-circle{% else %}check-circle{% endif %}-fill success-icon"></i>
+            </div>
+            <div class="text-wrapper">
+                <div class="msg-title">
+                    {% if message.tags == 'error' %}Error{% elif message.tags == 'warning' %}Atención{% elif message.tags == 'info' %}Información{% else %}Operación Correcta{% endif %}
+                </div>
+                <div class="msg-message">{{ message }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="container mt-4">
+        {% block content %}
+        {% endblock %}
+    </div>
+<script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+
+<script>
+(function() {
+    var current = window.location.href;
+    window.history.pushState(null, null, current);
+    window.addEventListener('popstate', function(e) {
+        window.history.pushState(null, null, current);
+    });
+})();
+</script>
+
+{% if user.is_authenticated %}
+    {% include 'ipp1/compartidos/sesion.html' %}
+{% endif %}
+
+
+</body>
+</html>

@@ -1,0 +1,98 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block title %}Calendario de Citas - IPP{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-calendar-range me-2"></i>Calendario de Citas</h2>
+        <p class="text-muted">Citas agendadas por fecha.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'medico_panel' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Volver
+        </a>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+            <span class="badge bg-primary text-white px-3 py-2">En Espera</span>
+            <span class="badge bg-success px-3 py-2">Atendido</span>
+            <span class="badge bg-danger px-3 py-2">Cancelado</span>
+        </div>
+    </div>
+</div>
+
+{% if citas_por_fecha %}
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead class="table-primary text-center">
+                <tr>
+                    <th style="width: 15%;">Hora</th>
+                    <th style="width: 20%;">Paciente</th>
+                    <th style="width: 18%;">Especialista</th>
+                    <th style="width: 10%;">Estado</th>
+                    <th style="width: 27%;">Motivo</th>
+                    <th style="width: 10%;">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for grupo in citas_por_fecha %}
+                    <tr class="table-secondary">
+                        <td colspan="6" class="fw-bold">
+                            <i class="bi bi-calendar-event me-2"></i>{{ grupo.fecha|date:"l d \d\e F \d\e Y"|capfirst }}
+                            <span class="badge bg-dark ms-2">{{ grupo.citas|length }} cita(s)</span>
+                        </td>
+                    </tr>
+                    {% for cita in grupo.citas %}
+                    <tr>
+                        <td class="text-center">{{ cita.hora_cita|time:"H:i" }}</td>
+                        <td>
+                            <a href="{% url 'detalle_paciente' cita.paciente.id %}" class="text-decoration-none fw-semibold">
+                                {{ cita.paciente.nombre }} {{ cita.paciente.apellido }}
+                            </a>
+                            <br><small class="text-muted">{{ cita.paciente.cedula }}</small>
+                        </td>
+                        <td>{{ cita.especialista.get_full_name|default:cita.especialista.username }}</td>
+                        <td class="text-center">
+                            {% if cita.estado == 'Atendido' %}
+                                <span class="badge bg-success">Atendido</span>
+                            {% elif cita.estado == 'Cancelado' %}
+                                <span class="badge bg-danger">Cancelado</span>
+                            {% else %}
+                                <span class="badge bg-primary text-white">En Espera</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ cita.motivo_consulta|default:"-"|truncatechars:50 }}</small></td>
+                        <td class="text-center">
+                            {% if cita.estado == 'En Espera' %}
+                            <form method="post" action="{% url 'atender_cita' cita.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-success btn-sm" title="Atender">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'cancelar_cita' cita.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Cancelar">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-calendar-x fs-1 d-block mb-3 text-secondary"></i>
+        <h5>No hay citas registradas</h5>
+    </div>
+{% endif %}
+{% endblock %}

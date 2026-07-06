@@ -1,0 +1,41 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Facturación{% endblock %}
+{% block title %}Registrar Pago - IPP{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-credit-card me-2"></i>Registrar Pago</h2>
+        <p class="text-muted">Factura {{ factura.numero_factura }} — {{ factura.paciente_nombre }}</p>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="mb-4 p-3 bg-light rounded">
+            <p class="mb-1"><strong>Factura:</strong> {{ factura.numero_factura }}</p>
+            <p class="mb-1"><strong>Paciente:</strong> {{ factura.paciente_nombre }} ({{ factura.paciente_cedula }})</p>
+            <p class="mb-1"><strong>Total:</strong> <span class="fw-bold text-success">${{ factura.total|floatformat:2 }}</span></p>
+            <p class="mb-0"><strong>Emisión:</strong> {{ factura.fecha_emision|date:"d/m/Y H:i" }}</p>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Método de Pago</label>
+                <select name="metodo_pago" class="form-control" required>
+                    <option value="">-- Seleccione --</option>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Tarjeta Débito">Tarjeta Débito</option>
+                    <option value="Tarjeta Crédito">Tarjeta Crédito</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Otro">Otro</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Confirmar Pago</button>
+            <a href="{% url 'factura_detalle' factura.id %}" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

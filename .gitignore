@@ -1,0 +1,28 @@
+# Base de datos
+db.sqlite3
+*.sqlite
+
+# Datos exportados / temporales
+exports/
+datos.json
+*.log
+
+# Python compilado
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Entorno virtual
+venv/
+.env
+*.egg-info/
+.virtualenv/
+
+# Sistema
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

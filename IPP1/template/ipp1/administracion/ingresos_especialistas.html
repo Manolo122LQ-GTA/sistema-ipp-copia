@@ -1,0 +1,88 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Administración{% endblock %}
+{% block title %}Ingresos por Especialista - IPP{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-bar-chart-line me-2"></i>Ingresos por Especialista</h2>
+        <p class="text-muted">Distribución de ingresos generados por cada médico/especialista.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Volver Atrás
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    {% for esp, totals in especialidad_totales.items %}
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100" style="border-left: 4px solid #2c6e9c;">
+            <div class="card-body text-center">
+                <h6 class="fw-bold text-primary">{{ esp }}</h6>
+                <div class="d-flex justify-content-around small">
+                    <div><span class="badge bg-primary">{{ totals.total_citas }}</span> citas</div>
+                    <div><strong class="text-success">${{ totals.total_medico|floatformat:2 }}</strong></div>
+                    <div><strong class="text-info">${{ totals.total_admin|floatformat:2 }}</strong></div>
+                </div>
+                <small class="text-muted">{{ totals.doctores }} médico(s)</small>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100" style="border-left: 4px solid #d4a017;">
+            <div class="card-body text-center">
+                <h6 class="fw-bold" style="color: #d4a017;">Gran Total</h6>
+                <span class="fs-4 fw-bold" style="color: #d4a017;">${{ gran_total|floatformat:2 }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-person-badge me-2"></i>Detalle por Especialista</h5>
+        <span class="badge bg-light text-primary fs-6">{{ ingresos|length }} registro(s)</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Especialista</th>
+                        <th>Especialidad</th>
+                        <th>Citas Atendidas</th>
+                        <th>Total Cobrado</th>
+                        <th>Porción Médico</th>
+                        <th>Porción Admin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in ingresos %}
+                    <tr>
+                        <th scope="row">{{ forloop.counter }}</th>
+                        <td class="fw-semibold">{{ item.especialista__first_name|default:item.especialista__username }} {{ item.especialista__last_name }}</td>
+                        <td><span class="badge bg-secondary">{{ item.especialidad }}</span></td>
+                        <td><span class="badge bg-primary">{{ item.total_citas }}</span></td>
+                        <td class="fw-bold">${{ item.total_cobrado|floatformat:2 }}</td>
+                        <td class="text-success fw-semibold">${{ item.total_medico|floatformat:2 }}</td>
+                        <td class="text-info fw-semibold">${{ item.total_admin|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-search fs-1 d-block mb-2 text-secondary"></i>
+                            No hay citas atendidas registradas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

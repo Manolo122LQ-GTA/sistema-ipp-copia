@@ -1,0 +1,153 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Secretaría{% endblock %}
+{% block title %}Registro de Pacientes - IPP{% endblock %}
+{% block content %}
+<style>
+    body { font-family: Verdana, Geneva, Tahoma, sans-serif; }
+</style>
+
+<div class="card shadow">
+<div class="card-body">
+<h2 class="fw-bold mb-4 text-primary text-center">Registro de Pacientes</h2>
+
+<div class="mt-4">
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Nombre</label>
+                {{ form.nombre }}
+                {% if form.nombre.errors %}
+                    <div class="text-danger small mt-1">{{ form.nombre.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Apellido</label>
+                {{ form.apellido }}
+                {% if form.apellido.errors %}
+                    <div class="text-danger small mt-1">{{ form.apellido.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Cédula</label>
+                {{ form.cedula }}
+                {% if form.cedula.errors %}
+                    <div class="text-danger small mt-1">{{ form.cedula.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold">Código</label>
+                {{ form.codigo_telefono }}
+                {% if form.codigo_telefono.errors %}
+                    <div class="text-danger small mt-1">{{ form.codigo_telefono.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Teléfono</label>
+                {{ form.numero_telefono }}
+                {% if form.numero_telefono.errors %}
+                    <div class="text-danger small mt-1">{{ form.numero_telefono.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-3">
+                <label class="form-label fw-semibold">Dirección</label>
+                {{ form.direccion }}
+                {% if form.direccion.errors %}
+                    <div class="text-danger small mt-1">{{ form.direccion.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Fecha de Nacimiento</label>
+                {{ form.fecha_nacimiento }}
+                {% if form.fecha_nacimiento.errors %}
+                    <div class="text-danger small mt-1">{{ form.fecha_nacimiento.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="d-flex justify-content-center gap-2 mt-4">
+            <button type="submit" class="btn btn-outline-primary px-3">Guardar Paciente</button>
+            <a href="{% url 'secretaria' %}" class="btn btn-outline-danger px-3">Volver al Menu</a>
+        </div>
+    </form>
+</div>
+
+<div class="card shadow mt-4">
+    <div class="table-responsive p-3">
+        <div class="d-flex justify-content-between align-items-center px-2 mb-3">
+            <h2 class="fw-bold h5 text-secondary mb-0">Pacientes Recientes</h2>
+            <form method="get" class="d-flex gap-2">
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar por nombre, cédula o código..." value="{{ q }}" style="min-width: 250px;">
+                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i></button>
+                {% if q %}<a href="{% url 'registrar_paciente' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg"></i></a>{% endif %}
+            </form>
+        </div>
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Nombre Completo</th>
+                    <th>Cédula</th>
+                    <th>Teléfono</th>
+                    <th>Dirección</th>
+                    <th>Fecha Registro</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for paciente in pacientes %}
+                <tr>                          
+                    <td>{{ paciente.nombre }} {{ paciente.apellido }}</td>  
+                    <td>{{ paciente.cedula }}</td>                           
+                    <td>{{ paciente.telefono|default:"-" }}</td>                            
+                    <td>{{ paciente.direccion|default:"-" }}</td>
+                    <td>{{ paciente.fecha_registro|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-info btn-sm" title="Ver detalle">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="{% url 'editar_paciente' paciente.id %}" class="btn btn-outline-success btn-sm" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="post" action="{% url 'eliminar_paciente' paciente.id %}" class="d-inline" onsubmit="return confirm('¿Eliminar a {{ paciente.nombre }} {{ paciente.apellido }}? Esta acción no se puede deshacer.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No hay pacientes registrados aún.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if pacientes.paginator.num_pages > 1 %}
+        <nav>
+            <ul class="pagination justify-content-center mb-0">
+                {% if pacientes.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page=1">&laquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ pacientes.previous_page_number }}">&lsaquo;</a></li>
+                {% endif %}
+
+                {% for num in pacientes.paginator.page_range %}
+                    <li class="page-item {% if num == pacientes.number %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                {% endfor %}
+
+                {% if pacientes.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ pacientes.next_page_number }}">&rsaquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ pacientes.paginator.num_pages }}">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    </div>
+</div>
+</div>
+</div>
+
+{% endblock %}

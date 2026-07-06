@@ -1,0 +1,38 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuenta Bloqueada - IPP</title>
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/uiverse.css' %}?v=3" rel="stylesheet">
+</head>
+<body class="bg-light d-flex align-items-center" style="min-height: 100vh;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow-lg border-0 text-center" style="border-radius: 16px;">
+                    <div class="card-body p-5">
+                        <div class="mb-4">
+                            <i class="bi bi-shield-lock-fill text-danger" style="font-size: 4rem;"></i>
+                        </div>
+                        <h2 class="fw-bold text-danger mb-3">Cuenta Bloqueada</h2>
+                        <p class="text-muted mb-4">
+                            Demasiados intentos de inicio de sesión fallidos.
+                            Su cuenta ha sido bloqueada temporalmente por <strong>30 minutos</strong>.
+                        </p>
+                        <div class="alert alert-warning">
+                            <i class="bi bi-clock me-2"></i>
+                            Intente nuevamente después de 30 minutos o contacte al administrador del sistema.
+                        </div>
+                        <a href="{% url 'login' %}" class="btn btn-primary mt-3">
+                            <i class="bi bi-arrow-left me-1"></i>Volver al inicio de sesión
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

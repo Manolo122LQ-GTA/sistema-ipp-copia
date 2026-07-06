@@ -1,0 +1,113 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Laboratorio{% endblock %}
+{% block title %}Solicitudes Pendientes - IPP{% endblock %}
+{% block content %}
+<style>
+    body { font-family: Verdana, Geneva, Tahoma, sans-serif; }
+</style>
+
+<div class="mt-2">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-dark"><i class="bi bi-hourglass-split me-2"></i>Solicitudes Pendientes</h2>
+            <p class="text-muted">Gestione y procese las solicitudes de laboratorio pendientes.</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{% url 'laboratorio' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="bi bi-house-door me-1"></i>Volver al Panel
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-5" style="border-radius: 10px; overflow: hidden;">
+        <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Exámenes Pendientes de Procesar</h5>
+            <span class="badge bg-dark text-white fs-6">{{ solicitudes.count }} pendiente(s)</span>
+        </div>
+        <div class="card-body p-0">
+            {% if solicitudes %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-secondary fw-semibold">
+                            <tr>
+                                <th class="ps-4">#</th>
+                                <th>Paciente</th>
+                                <th>Examen</th>
+                                <th>Fecha Solicitud</th>
+                                <th class="text-center pe-4">Procesar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for solicitud in solicitudes %}
+                            <tr>
+                                <th scope="row" class="ps-4">{{ forloop.counter }}</th>
+                                <td class="fw-semibold">{{ solicitud.paciente.nombre }} {{ solicitud.paciente.apellido }}</td>
+                                <td>{{ solicitud.prueba_laboratorio }}</td>
+                                <td>{{ solicitud.fecha_solicitud|date:"d/m/Y" }}</td>
+                                <td class="text-center pe-4">
+                                    <button type="button" class="btn btn-sm btn-outline-warning px-3" data-bs-toggle="modal" data-bs-target="#procesarModal{{ solicitud.id }}">
+                                        <i class="bi bi-flask me-1"></i>Procesar
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-search fs-1 d-block mb-2 text-secondary"></i>
+                    No se encontraron registros para mostrar.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% for solicitud in solicitudes %}
+<div class="modal fade" id="procesarModal{{ solicitud.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'solicitudes_pendientes_laboratorio' %}">
+                {% csrf_token %}
+                <input type="hidden" name="solicitud_id" value="{{ solicitud.id }}">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="bi bi-flask me-2"></i>Procesar Examen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Paciente</label>
+                            <input type="text" class="form-control" value="{{ solicitud.paciente.nombre }} {{ solicitud.paciente.apellido }}" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Examen Solicitado</label>
+                            <input type="text" class="form-control" value="{{ solicitud.prueba_laboratorio }}" readonly>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Resultado del Examen</label>
+                        <textarea name="resultado" class="form-control" rows="4" placeholder="Describa los resultados obtenidos..."></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Costo</label>
+                            <input type="number" name="costo" class="form-control" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Bioanalista</label>
+                            <input type="text" name="bioanalista" class="form-control" placeholder="Nombre del bioanalista">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning"><i class="bi bi-check-circle me-1"></i>Guardar y Procesar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,153 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Administración{% endblock %}
+{% block title %}Estatus y Saldos - IPP{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark">Estatus y Saldos de Salud</h2>
+        <p class="text-muted">Consulta de pacientes registrados, su estatus de afiliación y saldo disponible.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Volver Atrás
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-primary shadow-sm">
+            <div class="card-body text-center">
+                <h5 class="card-title text-gray">Total Pacientes</h5>
+                <span class="fs-2 fw-bold text-primary">{{ pacientes|length }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-success shadow-sm">
+            <div class="card-body text-center">
+                <h5 class="card-title text-gray">Afiliados</h5>
+                <span class="fs-2 fw-bold text-success">{{ total_afiliados }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-primary shadow-sm">
+            <div class="card-body text-center">
+                <h5 class="card-title text-gray">Comunidad</h5>
+                <span class="fs-2 fw-bold text-primary">{{ total_comunidad }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="GET" class="mb-4">
+    <div class="input-group">
+        <input type="text" name="q" class="form-control" placeholder="Buscar por nombre, apellido o cédula..." value="{{ query }}">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Buscar</button>
+        {% if query %}
+            <a href="{% url 'saldos_admin' %}" class="btn btn-outline-secondary">Limpiar</a>
+        {% endif %}
+    </div>
+</form>
+
+<div class="mb-3 d-flex gap-2 flex-wrap">
+    <a href="{% url 'importar_pacientes_excel' %}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-upload me-1"></i>Importar Excel
+    </a>
+    <a href="{% url 'gastos_por_paciente' %}" class="btn btn-outline-info btn-sm">
+        <i class="bi bi-bar-chart-line me-1"></i>Gastos por Paciente
+    </a>
+    <a href="{% url 'exportar_pacientes_csv' %}?q={{ query|urlencode }}" class="btn btn-outline-success btn-sm">
+        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Exportar CSV
+    </a>
+    <a href="{% url 'exportar_pacientes_excel' %}?q={{ query|urlencode }}" class="btn btn-success btn-sm">
+        <i class="bi bi-file-earmark-excel me-1"></i>Excel
+    </a>
+    <button type="button" class="btn btn-warning btn-sm" id="btnExportarSeleccionados" onclick="exportarSeleccionados()" disabled>
+        <i class="bi bi-download me-1"></i>Exportar Seleccionados (<span id="seleccionadosCount">0</span>)
+    </button>
+</div>
+
+
+
+<div class="card shadow-sm mb-5" style="border-radius: 10px; overflow: hidden;">
+    <div class="card-header bg-primary text-white py-3"><h5 class="mb-0 fw-bold"><i class="bi bi-people-fill me-2"></i>Listado de Pacientes</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40px;"><input type="checkbox" id="checkTodos" onclick="toggleTodos(this)"></th>
+                        <th>#</th>
+                        <th class="d-none d-md-table-cell">Código</th>
+                        <th>Nombre Completo</th>
+                        <th class="d-none d-md-table-cell">Cédula</th>
+                        <th>Estatus</th>
+                        <th class="d-none d-md-table-cell">Saldo</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for paciente in pacientes %}
+                    <tr>
+                        <td><input type="checkbox" class="checkPaciente" value="{{ paciente.id }}" onchange="actualizarSeleccion()"></td>
+                        <th scope="row">{{ forloop.counter }}</th>
+                        <td class="d-none d-md-table-cell"><span class="text-muted small">{{ paciente.codigo_afiliado|default:"—" }}</span></td>
+                        <td>
+                            <div class="fw-bold">{{ paciente.nombre }} {{ paciente.apellido }}</div>
+                            <small class="text-muted d-block d-md-none">{{ paciente.cedula }}</small>
+                            <small class="text-muted d-none d-md-inline">{{ paciente.telefono|default:"-" }}</small>
+                        </td>
+                        <td class="d-none d-md-table-cell">{{ paciente.cedula }}</td>
+                        <td>
+                            {% if paciente.status_afiliado == 'Afiliado' %}
+                                <span class="badge bg-success">Afiliado</span>
+                            {% else %}
+                                <span class="badge bg-primary text-white">Comunidad</span>
+                            {% endif %}
+                        </td>
+                        <td class="d-none d-md-table-cell">
+                            <span class="fw-bold {% if paciente.saldo_plan_salud > 0 %}text-success{% else %}text-muted{% endif %}">
+                                ${{ paciente.saldo_plan_salud|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-info btn-sm" title="Ver detalle">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="bi bi-search fs-1 d-block mb-2 text-secondary"></i>
+                            No se encontraron registros para mostrar.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+function toggleTodos(source) {
+    document.querySelectorAll('.checkPaciente').forEach(cb => cb.checked = source.checked);
+    actualizarSeleccion();
+}
+function actualizarSeleccion() {
+    var checks = document.querySelectorAll('.checkPaciente:checked');
+    var count = checks.length;
+    document.getElementById('seleccionadosCount').textContent = count;
+    document.getElementById('btnExportarSeleccionados').disabled = count === 0;
+}
+function exportarSeleccionados() {
+    var checks = document.querySelectorAll('.checkPaciente:checked');
+    var ids = Array.from(checks).map(cb => cb.value).join(',');
+    if (ids) window.location.href = "{% url 'exportar_pacientes_seleccionados' %}?ids=" + ids;
+}
+</script>
+{% endblock %}

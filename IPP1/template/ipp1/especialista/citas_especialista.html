@@ -1,0 +1,68 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Especialista{% endblock %}
+{% block title %}Citas de Especialista - IPP{% endblock %}
+{% block content %}
+<style>
+    body { font-family: Verdana, Geneva, Tahoma, sans-serif; }
+</style>
+
+<div class="mt-2">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-dark"><i class="bi bi-clipboard2-pulse me-2"></i>Chequeo de Citas</h2>
+            <p class="text-muted">Pacientes asignados para evaluación especializada.</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{% url 'especialista' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="bi bi-arrow-left me-1"></i>Volver Atrás
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-1" style="border-radius: 10px; overflow: hidden;">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-people-fill me-2"></i>Citas en Espera</h5>
+            <span class="badge bg-light text-primary fs-6 shadow-sm">{{ citas.count }} en cola</span>
+        </div>
+        <div class="card-body p-0">
+            {% if citas %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light text-secondary fw-semibold">
+                            <tr>
+                                <th class="ps-4">Hora</th>
+                                <th>Paciente</th>
+                                <th>Cédula</th>
+                                <th>Motivo</th>
+                                <th class="text-center pe-4">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cita in citas %}
+                                <tr>
+                                    <td class="ps-4"><strong class="text-danger">{{ cita.hora_cita|time:"H:i" }}</strong></td>
+                                    <td class="fw-semibold">{{ cita.paciente.nombre }} {{ cita.paciente.apellido }}
+                                        {% if cita.lab_pendientes_count > 0 %}
+                                            <span class="badge bg-warning text-dark ms-1" title="Laboratorios pendientes">🔬 {{ cita.lab_pendientes_count }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge bg-secondary">{{ cita.paciente.cedula }}</span></td>
+                                    <td class="small">{{ cita.motivo_consulta|default:"Especialidad" }}</td>
+                                    <td class="text-center pe-4">
+                                        <form method="POST" action="{% url 'atender_cita' cita.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-success btn-sm shadow-sm">Atender</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5 text-muted">No tienes pacientes asignados en espera por ahora.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

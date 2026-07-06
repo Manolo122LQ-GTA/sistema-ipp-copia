@@ -1,0 +1,260 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Estado de Póliza{% endblock %}
+{% block title %}Estado de Póliza - {{ paciente.nombre }} {{ paciente.apellido }}{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-shield-check me-2"></i>Estado de Póliza</h2>
+        <p class="text-muted">{{ paciente.nombre }} {{ paciente.apellido }} — {{ paciente.cedula }}
+            <span class="badge bg-secondary ms-2">{{ paciente.status_afiliado }}</span>
+            <span class="badge bg-info ms-1">{{ paciente.get_categoria_afiliado_display }}</span>
+        </p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        {% if "Administracion" in user.groups.all|join:"," or user.is_superuser %}
+            <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-secondary">
+        {% elif "Secretaria" in user.groups.all|join:"," %}
+            <a href="{% url 'registrar_paciente' %}" class="btn btn-outline-secondary">
+        {% else %}
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+        {% endif %}
+            <i class="bi bi-arrow-left me-1"></i>Volver
+        </a>
+    </div>
+</div>
+
+{% if poliza %}
+<div class="card shadow-sm mb-4" style="border-radius: 12px; overflow: hidden; border: 1px solid #17a2b8;">
+    <div class="card-header bg-info text-dark py-3 d-flex align-items-center">
+        <i class="bi bi-shield-check fs-4 me-2"></i>
+        <h5 class="mb-0">Póliza: {{ poliza.plan.nombre|default:"Sin Plan" }}</h5>
+        <span class="ms-auto">
+            {% if poliza.estado == 'Activo' %}
+                <span class="badge bg-success fs-6">Activo</span>
+            {% else %}
+                <span class="badge bg-danger fs-6">Inactivo</span>
+            {% endif %}
+        </span>
+    </div>
+    <div class="card-body">
+        <div class="row g-4">
+            <div class="col-md-3">
+                <small class="text-muted d-block">Plan</small>
+                <span class="fw-semibold">{{ poliza.plan.nombre|default:"-" }}</span>
+            </div>
+            <div class="col-md-2">
+                <small class="text-muted d-block">Inicio</small>
+                <span class="fw-semibold">{{ poliza.fecha_inicio|date:"d/m/Y" }}</span>
+            </div>
+            <div class="col-md-2">
+                <small class="text-muted d-block">Vencimiento</small>
+                <span class="fw-semibold">{{ poliza.fecha_vencimiento|date:"d/m/Y"|default:"-" }}</span>
+            </div>
+            <div class="col-md-2">
+                <small class="text-muted d-block">Saldo Restante</small>
+                <span class="fw-bold fs-5 text-success">${{ poliza.saldo_restante|floatformat:2 }}</span>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted d-block">Familiares</small>
+                <span class="fw-semibold">{{ poliza.familiares.count }} / 12 registrados</span>
+            </div>
+        </div>
+
+        {% if poliza.plan and poliza.plan.consultas_maximas_anuales > 0 %}
+        <hr>
+        <div class="row">
+            <div class="col-md-6">
+                {% with usadas=poliza.consultas_usadas_anuales max_consultas=poliza.plan.consultas_maximas_anuales %}
+                <small class="text-muted">Consultas usadas este año: <strong>{{ usadas }}</strong> de <strong>{{ max_consultas }}</strong></small>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar {% if usadas >= max_consultas %}bg-danger{% elif usadas >= max_consultas|add:"-1" %}bg-warning{% else %}bg-success{% endif %}"
+                         role="progressbar"
+                         style="width: {% widthratio usadas max_consultas 100 %}%">
+                    </div>
+                </div>
+                {% if usadas >= max_consultas %}
+                    <span class="badge bg-danger mt-1">Consultas agotadas</span>
+                {% else %}
+                    <span class="badge bg-success mt-1">{{ poliza.consultas_restantes }} consulta(s) restante(s)</span>
+                {% endif %}
+                {% endwith %}
+            </div>
+            <div class="col-md-6">
+                <small class="text-muted">Total gastado en póliza: <strong class="text-danger">${{ total_gastado|floatformat:2 }}</strong></small>
+                <div class="progress" style="height: 8px;">
+                    {% with denominador=poliza.saldo_restante|add:total_gastado %}
+                    {% if denominador > 0 %}
+                    <div class="progress-bar bg-warning" role="progressbar"
+                         style="width: {% widthratio total_gastado denominador 100 %}%">
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-light fw-bold"><i class="bi bi-people me-2"></i>Familiares</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light"><tr><th>Nombre</th><th>Cédula</th><th>Parentesco</th></tr></thead>
+                    <tbody>
+                        {% for f in poliza.familiares.all %}
+                        <tr>
+                            <td>{{ f.nombre }} {{ f.apellido }}</td>
+                            <td><span class="badge bg-primary">{{ f.cedula }}</span></td>
+                            <td>{{ f.parentesco }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center py-3 text-muted">Sin familiares.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-light fw-bold"><i class="bi bi-cash-stack me-2"></i>Últimos Gastos</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light"><tr><th>Fecha</th><th>Concepto</th><th>Beneficiario</th><th class="text-end">Monto</th></tr></thead>
+                    <tbody>
+                        {% for g in gastos_recientes %}
+                        <tr>
+                            <td>{{ g.fecha|date:"d/m/Y" }}</td>
+                            <td>{{ g.concepto }}</td>
+                            <td>{% if g.beneficiario %}{{ g.beneficiario.nombre }} {{ g.beneficiario.apellido }}{% else %}<span class="text-muted">Titular</span>{% endif %}</td>
+                            <td class="text-end fw-bold text-danger">${{ g.monto|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center py-3 text-muted">Sin gastos.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-warning text-dark fw-bold">
+        <i class="bi bi-pie-chart me-2"></i>Desglose de Gastos por Miembro
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            {% for item in gastos_por_familiar %}
+            <div class="col-md-4">
+                <div class="card border-0 bg-light h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-person fs-2 text-primary mb-2"></i>
+                        <h6 class="fw-bold">
+                            {% if item.familiar %}
+                                {{ item.familiar.nombre }} {{ item.familiar.apellido }}
+                                <small class="d-block text-muted">{{ item.familiar.parentesco }}</small>
+                            {% else %}
+                                Titular ({{ paciente.nombre }} {{ paciente.apellido }})
+                            {% endif %}
+                        </h6>
+                        <span class="badge bg-info fs-6">{{ item.cantidad }} gasto(s)</span>
+                        <div class="mt-2 fw-bold text-danger">${{ item.total|floatformat:2 }}</div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center text-muted py-3">No hay gastos desglosados por miembro.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar-check me-2"></i>Solicitudes de Servicio</span>
+        <span class="badge bg-light text-dark fs-6">{{ solicitudes|length }} registro(s)</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr><th>Fecha</th><th>Hora</th><th>Especialista</th><th>Motivo</th><th>Estado</th><th>Costo</th></tr>
+            </thead>
+            <tbody>
+                {% for s in solicitudes %}
+                <tr>
+                    <td>{{ s.fecha_cita|date:"d/m/Y" }}</td>
+                    <td>{{ s.hora_cita|time:"H:i" }}</td>
+                    <td>{{ s.especialista.get_full_name|default:s.especialista.username }}</td>
+                    <td>{{ s.motivo_consulta|truncatewords:8|default:"-" }}</td>
+                    <td>
+                        {% if s.estado == 'Atendido' %}<span class="badge bg-success">Atendido</span>
+                        {% elif s.estado == 'Cancelado' %}<span class="badge bg-danger">Cancelado</span>
+                        {% else %}<span class="badge bg-warning text-dark">En Espera</span>{% endif %}
+                    </td>
+                    <td>${{ s.costo_consulta|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center py-4 text-muted">No hay solicitudes de servicio registradas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if user.is_superuser or "Administracion" in user.groups.all|join:"," %}
+<div class="text-end">
+    <a href="{% url 'poliza_detalle' poliza.id %}" class="btn btn-primary">
+        <i class="bi bi-arrow-right me-1"></i>Ir a Gestión Completa de Póliza
+    </a>
+</div>
+{% endif %}
+
+{% else %}
+<div class="card shadow-sm mb-4">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-search fs-1 d-block mb-3 text-muted"></i>
+        <h5 class="text-muted">Este paciente no tiene una póliza activa</h5>
+        <p class="text-muted">Status: <span class="badge bg-secondary">{{ paciente.status_afiliado }}</span>
+        Categoría: <span class="badge bg-info">{{ paciente.get_categoria_afiliado_display }}</span></p>
+    </div>
+</div>
+{% endif %}
+
+{% if solicitudes %}
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar-check me-2"></i>Solicitudes de Servicio</span>
+        <span class="badge bg-light text-dark fs-6">{{ solicitudes|length }} registro(s)</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr><th>Fecha</th><th>Hora</th><th>Especialista</th><th>Motivo</th><th>Estado</th><th>Costo</th></tr>
+            </thead>
+            <tbody>
+                {% for s in solicitudes %}
+                <tr>
+                    <td>{{ s.fecha_cita|date:"d/m/Y" }}</td>
+                    <td>{{ s.hora_cita|time:"H:i" }}</td>
+                    <td>{{ s.especialista.get_full_name|default:s.especialista.username }}</td>
+                    <td>{{ s.motivo_consulta|truncatewords:8|default:"-" }}</td>
+                    <td>
+                        {% if s.estado == 'Atendido' %}<span class="badge bg-success">Atendido</span>
+                        {% elif s.estado == 'Cancelado' %}<span class="badge bg-danger">Cancelado</span>
+                        {% else %}<span class="badge bg-warning text-dark">En Espera</span>{% endif %}
+                    </td>
+                    <td>${{ s.costo_consulta|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

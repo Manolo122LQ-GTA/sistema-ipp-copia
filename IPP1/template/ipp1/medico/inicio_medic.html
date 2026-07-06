@@ -1,0 +1,85 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Servicio Médico{% endblock %}
+{% block title %}Panel de Médico - IPP{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark">Panel de Médico</h2>
+        <p class="text-muted">Bienvenido al panel de atención primaria y triaje.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-house-door me-1"></i>Volver al Menú
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-1">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-calendar-check fs-2 text-gray me-3"></i>
+                        <h5 class="card-title text-primary mb-0">Citas Recibidas</h5>
+                    </div>
+                    <p class="card-text text-muted">Consulte la lista de pacientes agendados por Secretaría para su evaluación hoy.</p>
+                </div>
+                <a href="{% url 'citas_recibidas_medico' %}" class="btn btn-outline-primary mt-3">Ver Pacientes en Espera</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-1">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-calendar-range fs-2 text-gray me-3"></i>
+                        <h5 class="card-title text-primary mb-0">Calendario</h5>
+                    </div>
+                    <p class="card-text text-muted">Vista cronológica de todas las citas agendadas.</p>
+                </div>
+                <a href="{% url 'calendario_citas' %}" class="btn btn-outline-primary">Ver Calendario</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-1">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-card-checklist fs-2 text-gray me-3"></i>
+                        <h5 class="card-title text-primary mb-0">Historial Médico</h5>
+                    </div>
+                    <p class="card-text text-muted">Búsqueda de expedientes, diagnósticos previos y antecedentes de pacientes.</p>
+                </div>
+                <a href="{% url 'consulta_historial_medico' %}" class="btn btn-outline-primary">Consultar Historial</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-1">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-flask fs-2 text-gray me-3"></i>
+                        <h5 class="card-title text-primary mb-0">Laboratorios Pendientes</h5>
+                    </div>
+                    <p class="card-text text-muted">Exámenes de laboratorio pendientes por procesar.</p>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mt-3">
+                    <span class="badge bg-warning text-dark fs-5 px-3 py-2">
+                        {% if pendientes_lab > 0 %}{{ pendientes_lab }} pendiente(s){% else %}Ninguno{% endif %}
+                    </span>
+                    <a href="{% url 'solicitudes_pendientes_laboratorio' %}" class="btn btn-outline-warning">Ver Laboratorios</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Recetas{% endblock %}
+{% block title %}Nueva Receta - IPP{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-capsule me-2"></i>Nueva Receta</h2>
+        <p class="text-muted">Prescribir medicamento — {{ cita.paciente.nombre }} {{ cita.paciente.apellido }}</p>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="mb-4 p-3 bg-light rounded">
+            <p class="mb-1"><strong>Cita #{{ cita.id }}</strong> — {{ cita.fecha_cita|date:"d/m/Y" }} a las {{ cita.hora_cita|time:"H:i" }}</p>
+            <p class="mb-1"><strong>Paciente:</strong> {{ cita.paciente.nombre }} {{ cita.paciente.apellido }} ({{ cita.paciente.cedula }})</p>
+            <p class="mb-0"><strong>Motivo:</strong> {{ cita.motivo_consulta|default:"—" }}</p>
+            <a href="{% url 'detalle_paciente' cita.paciente.id %}" class="btn btn-sm btn-outline-info mt-2">
+                <i class="bi bi-person-lines-fill me-1"></i>Ver ficha completa del paciente
+            </a>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Medicamento</label>
+                    {{ form.medicamento }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Cantidad</label>
+                    {{ form.cantidad }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Dosis</label>
+                    {{ form.dosis }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Duración</label>
+                    {{ form.duracion }}
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label fw-semibold">Indicaciones</label>
+                    {{ form.indicaciones }}
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar Receta</button>
+                {% if "Medico" in user.groups.all|join:"," %}
+                    <a href="{% url 'citas_recibidas_medico' %}" class="btn btn-outline-secondary">Cancelar</a>
+                {% elif "Odontologo" in user.groups.all|join:"," %}
+                    <a href="{% url 'citas_odonto' %}" class="btn btn-outline-secondary">Cancelar</a>
+                {% elif "Especialista" in user.groups.all|join:"," %}
+                    <a href="{% url 'citas_especialista' %}" class="btn btn-outline-secondary">Cancelar</a>
+                {% else %}
+                    <a href="{% url 'reporte_admin' %}" class="btn btn-outline-secondary">Cancelar</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if laboratorios_pendientes %}
+<div class="card shadow-sm mb-4 border-warning">
+    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-flask me-2"></i>Resultados de Laboratorio</h5>
+        <span class="badge bg-dark text-white fs-6">{{ laboratorios_pendientes|length }} examen(es)</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Prueba</th>
+                        <th>Resultado</th>
+                        <th>Bioanalista</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lab in laboratorios_pendientes %}
+                    <tr>
+                        <td>{{ lab.fecha_solicitud|date:"d/m/Y" }}</td>
+                        <td>{{ lab.prueba_laboratorio }}</td>
+                        <td>{{ lab.resultado|default:"<em class='text-muted'>Pendiente</em>" }}</td>
+                        <td>{{ lab.bioanalista|default:"—" }}</td>
+                        <td>
+                            {% if lab.estado == 'Procesado' %}
+                                <span class="badge bg-success">Procesado</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

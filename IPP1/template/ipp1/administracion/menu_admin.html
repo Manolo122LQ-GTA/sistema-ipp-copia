@@ -1,0 +1,87 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Administración{% endblock %}
+{% block title %}Menú de Administración - IPP{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark">Menú de Administración</h2>
+        <p class="text-muted">Aquí podrás Gestionar los Roles del Personal.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Volver Atrás
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-5">
+    <div class="fw-bold card-header bg-white">Gestión de Personal y Roles</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Usuario / Correo</th>
+                        <th scope="col">Rol Actual</th>
+                        <th scope="col">Estado de Actividad</th>
+                        <th scope="col">Asignar Nuevo Rol</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for usuario in usuarios %}
+                    <tr>
+                        <th scope="row">{{ usuario.id }}</th>
+                        <td>
+                            <div class="fw-bold">{{ usuario.username }}</div>
+                            <small class="text-muted">{{ usuario.email }}</small>
+                        </td>
+                        <td>
+                            {% for group in usuario.groups.all %}
+                                <span class="badge bg-info text-dark">{{ group.name }}</span>
+                            {% empty %}
+                                <span class="badge bg-secondary">Sin Acceso</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if usuario.is_active %}
+                                <span class="badge bg-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactivo</span>
+                            {% endif %}
+                            <form method="POST" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="usuario_id" value="{{ usuario.id }}">
+                                <input type="hidden" name="toggle_status" value="1">
+                                <button type="submit" class="btn btn-sm btn-link p-0 ms-1 text-decoration-none" title="Alternar Estado de Acceso">
+                                    <i class="bi bi-power text-secondary"></i>
+                                </button>
+                            </form>
+                        </td>
+                        <td>
+                            <form method="POST" class="d-flex gap-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="usuario_id" value="{{ usuario.id }}">
+                                <select name="rol_nombre" class="form-select form-select-sm" style="max-width: 200px;">
+                                    <option value="">-- Quitar Roles --</option>
+                                    {% for grupo in grupos %}
+                                        <option value="{{ grupo.name }}">{{ grupo.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">No hay otros usuarios registrados en el sistema.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

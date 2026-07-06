@@ -1,0 +1,90 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% load static %}
+{% block navbar_brand %}Sistema IPP - Secretaría{% endblock %}
+{% block title %}Crear Solicitud - IPP{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8 mx-auto text-center">
+        <h2 class="fw-bold text-primary mb-4">Crear Solicitud de Servicio</h2>
+        <p class="text-muted mb-5">Complete el formulario para solicitar un servicio para un paciente registrado.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow p-3 p-md-4" style="border-radius: 15px;">
+
+            <form method="post" action="{% url 'crear_solicitud' %}">
+                {% csrf_token %}
+
+                <!-- Encabezado de Fecha -->
+                <div class="text-end mb-4">
+                    <label class="form-label text-muted small">Ciudad y Fecha</label>
+                    <input type="text" class="form-control text-end d-inline-block w-auto" placeholder="Ej. Coro, 25 de Junio de 2024">
+                </div>
+
+                <!-- Datos del Formulario Django -->
+                <div class="row g-3 mb-4 p-4 bg-light rounded border">
+                    <h6 class="text-secondary text-uppercase fw-bold border-bottom pb-2 mb-3">Datos de la Cita</h6>
+
+                    {% for field in form %}
+                        {% if field.name == 'motivo_consulta' %}
+                            <div class="col-12 mb-3">
+                                <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="text-danger small mt-1">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="text-danger small mt-1">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <!-- Destinatario -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-secondary">Destinatario</label>
+                    <input type="text" class="form-control mb-1" placeholder="Ej. Ciudadano Director del Hospital">
+                    <span class="d-block fw-bold text-dark">Su Despacho.</span>
+                </div>
+
+                <!-- Asunto -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center border-bottom pb-2">
+                        <label class="form-label fw-bold text-uppercase text-danger mb-0 me-3">Asunto:</label>
+                        <input type="text" class="form-control border-0 fw-bold" placeholder="Ej. Solicitud de Servicio para Paciente">
+                    </div>
+                </div>
+
+                <!-- Cuerpo -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-secondary text-uppercase small">Cuerpo de la Solicitud</label>
+                    <textarea class="form-control" rows="6" placeholder="Redacte los detalles de la solicitud aquí..."></textarea>
+                </div>
+
+                <!-- Firma -->
+                <div class="mb-5 pt-3">
+                    <p class="fw-bold text-secondary mb-0">Atentamente,</p>
+                    <p class="text-muted small">Secretaría General IPP</p>
+                </div>
+
+                <!-- Acciones -->
+                <div class="border-top pt-4 text-center">
+                    <button type="submit" class="btn btn-outline-primary px-3 shadow-sm">
+                        <i class="bi bi-check-circle me-2"></i>Generar Solicitud
+                    </button>
+                    <a href="{% url 'secretaria' %}" class="btn btn-outline-danger px-3 ms-2 shadow-sm">Cancelar</a>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

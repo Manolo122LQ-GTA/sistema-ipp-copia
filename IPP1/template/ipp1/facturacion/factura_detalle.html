@@ -1,0 +1,80 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Facturación{% endblock %}
+{% block title %}Factura {{ factura.numero_factura }} - IPP{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }
+@media print { .no-print { display: none !important; } }
+</style>
+
+<div class="no-print row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-receipt me-2"></i>Factura {{ factura.numero_factura }}</h2>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <button class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer me-1"></i>Imprimir</button>
+        {% if not factura.pagada %}
+            {% if user.is_superuser or "Administracion" in user.groups.all|join:"," %}
+            <a href="{% url 'marcar_factura_pagada' factura.id %}" class="btn btn-success"><i class="bi bi-credit-card me-1"></i>Registrar Pago</a>
+            {% endif %}
+        {% endif %}
+        {% if factura.pagada %}
+            <a href="{% url 'recibo_factura' factura.id %}" class="btn btn-outline-info"><i class="bi bi-receipt me-1"></i>Recibo</a>
+        {% endif %}
+        <a href="{% url 'facturas_lista' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-4">
+        <div class="row mb-4">
+            <div class="col-6">
+                <h4 class="fw-bold text-primary">IPP-IUTAG</h4>
+                <p class="text-muted small mb-0">Sistema de Gestión de Pacientes</p>
+            </div>
+            <div class="col-6 text-end">
+                <h5 class="fw-bold">FACTURA</h5>
+                <p class="mb-0"><strong>N°:</strong> {{ factura.numero_factura }}</p>
+                <p class="mb-0"><strong>Fecha:</strong> {{ factura.fecha_emision|date:"d/m/Y H:i" }}</p>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="row mb-4">
+            <div class="col-6">
+                <h6 class="fw-bold">Paciente</h6>
+                <p class="mb-0">{{ factura.paciente_nombre }}</p>
+                <p class="mb-0">C.I: {{ factura.paciente_cedula }}</p>
+            </div>
+            <div class="col-6">
+                <h6 class="fw-bold">Especialista</h6>
+                <p class="mb-0">{{ factura.especialista_nombre }}</p>
+            </div>
+        </div>
+
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr><th>Descripción</th><th class="text-end">Monto</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ factura.descripcion|default:"Consulta médica" }}</td>
+                    <td class="text-end">${{ factura.subtotal|floatformat:2 }}</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr><td class="fw-bold">Subtotal</td><td class="text-end">${{ factura.subtotal|floatformat:2 }}</td></tr>
+                <tr><td class="fw-bold">IVA</td><td class="text-end">${{ factura.iva|floatformat:2 }}</td></tr>
+                <tr class="table-active"><td class="fw-bold fs-5">TOTAL</td><td class="text-end fw-bold fs-5">${{ factura.total|floatformat:2 }}</td></tr>
+            </tfoot>
+        </table>
+
+        <div class="text-center mt-4">
+            <p class="mb-0"><strong>Estado:</strong>
+                {% if factura.pagada %}<span class="badge bg-success fs-6">Pagada</span>
+                {% else %}<span class="badge bg-warning text-dark fs-6">Pendiente</span>{% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

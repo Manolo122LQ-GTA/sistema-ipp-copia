@@ -1,0 +1,67 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Laboratorio{% endblock %}
+{% block title %}Registrar Solicitud de Laboratorio - IPP{% endblock %}
+{% block content %}
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-flask me-2"></i>Registrar Solicitud de Laboratorio</h2>
+        <p class="text-muted">Complete los datos para enviar una nueva solicitud de análisis clínico.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'laboratorio' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Volver al Panel
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 mx-auto" style="max-width: 750px; border-radius: 15px;">
+    <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
+        <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Datos de la Solicitud</h5>
+    </div>
+    <div class="card-body p-4">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="row g-4">
+                <div class="col-md-8">
+                    <label for="{{ form.paciente.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-person me-1"></i>Paciente
+                    </label>
+                    {{ form.paciente }}
+                    {% if form.paciente.errors %}
+                        <div class="text-danger small mt-1">{{ form.paciente.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-4">
+                    <label for="{{ form.fecha_solicitud.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-calendar me-1"></i>Fecha de Solicitud
+                    </label>
+                    {{ form.fecha_solicitud }}
+                    {% if form.fecha_solicitud.errors %}
+                        <div class="text-danger small mt-1">{{ form.fecha_solicitud.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-12">
+                    <label for="{{ form.prueba_laboratorio.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-clipboard2-pulse me-1"></i>Prueba / Análisis Solicitado
+                    </label>
+                    {{ form.prueba_laboratorio }}
+                    {% if form.prueba_laboratorio.errors %}
+                        <div class="text-danger small mt-1">{{ form.prueba_laboratorio.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">Especifique el tipo de examen de laboratorio requerido.</div>
+                </div>
+            </div>
+
+            <div class="border-top mt-4 pt-4 text-center">
+                <button type="submit" class="btn btn-outline-primary px-4 shadow-sm">
+                    <i class="bi bi-floppy me-2"></i>Guardar Solicitud
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

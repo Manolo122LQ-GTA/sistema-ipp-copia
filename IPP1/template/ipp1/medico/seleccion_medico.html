@@ -1,0 +1,49 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Servicio Médico{% endblock %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark">Servicio Médico</h2>
+        <p class="text-muted">Selecciona tu área de "Servicio Médico" para configurar tus accesos.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-house-door me-1"></i>Volver al Menú
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 justify-content-center">
+    <div class="col-md-3">
+        <a href="{% if es_medico_real %}{% url 'medico_panel' %}{% else %}#{% endif %}"
+           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none {% if not es_medico_real %}disabled{% endif %}"
+           {% if not es_medico_real %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+            <i class="bi bi-hospital fs-1 mb-2"></i><span>Medicina General</span>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% if es_especialista %}{% url 'especialista' %}{% else %}#{% endif %}"
+           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none {% if not es_especialista %}disabled{% endif %}"
+           {% if not es_especialista %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+            <i class="bi bi-shield-check fs-1 mb-2"></i><span>Especialista</span>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% if es_laboratorio %}{% url 'laboratorio' %}{% else %}#{% endif %}"
+           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none {% if not es_laboratorio %}disabled{% endif %}"
+           {% if not es_laboratorio %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+            <i class="bi bi-hospital fs-1 mb-2"></i><span>Laboratorio</span>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% if es_odontologo %}{% url 'odontologo' %}{% else %}#{% endif %}"
+           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none {% if not es_odontologo %}disabled{% endif %}"
+           {% if not es_odontologo %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+            <i class="bi bi-heart-pulse fs-1 mb-2"></i><span>Odontologo</span>
+        </a>
+    </div>
+</div>
+{% endblock %}
