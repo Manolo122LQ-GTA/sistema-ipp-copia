@@ -69,13 +69,13 @@
                             {% if cita.estado == 'En Espera' %}
                             <form method="post" action="{% url 'atender_cita' cita.id %}" class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-outline-success btn-sm" title="Atender">
+                                <button type="submit" class="btn btn-outline-success btn-sm uiverse-btn" title="Atender">
                                     <i class="bi bi-check-lg"></i>
                                 </button>
                             </form>
                             <form method="post" action="{% url 'cancelar_cita' cita.id %}" class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Cancelar">
+                                <button type="submit" class="btn btn-outline-danger btn-sm uiverse-btn" title="Cancelar">
                                     <i class="bi bi-x-lg"></i>
                                 </button>
                             </form>

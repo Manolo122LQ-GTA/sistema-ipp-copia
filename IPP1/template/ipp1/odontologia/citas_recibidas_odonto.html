@@ -10,7 +10,7 @@
             <p class="text-muted">Visualiza los pacientes que estan en espera de atención.</p>
         </div>
         <div class="col-md-4 text-md-end">
-            <a href="{% url 'odontologo' %}" class="btn btn-outline-secondary">
+            <a href="{% url 'odontologo' %}" class="btn btn-outline-secondary uiverse-btn">
                 <i class="bi bi-house-door me-1"></i>Volver al Menú
             </a>
         </div>
@@ -60,13 +60,13 @@
                                 <div class="btn-group" role="group">
                                     <form method="POST" action="{% url 'atender_cita' cita.id %}" style="display:inline;">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-primary px-3">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary px-3 uiverse-btn">
                                             <i class="bi bi-heart-pulse me-1"></i>Atender
                                         </button>
                                     </form>
                                     <form method="POST" action="{% url 'cancelar_cita' cita.id %}" style="display:inline;">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-danger px-3">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger px-3 uiverse-btn">
                                             <i class="bi bi-x-circle me-1"></i>Cancelar
                                         </button>
                                     </form>

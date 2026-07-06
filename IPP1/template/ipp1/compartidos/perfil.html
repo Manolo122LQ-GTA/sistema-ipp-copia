@@ -17,25 +17,25 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Usuario</label>
-                        <input type="text" class="form-control" value="{{ user.username }}" disabled>
+                        <input type="text" class="form-control uiverse-input" value="{{ user.username }}" disabled>
                     </div>
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label for="id_first_name" class="form-label fw-semibold">Nombre</label>
-                            <input type="text" name="first_name" id="id_first_name" class="form-control" value="{{ form.first_name.value|default:user.first_name }}" maxlength="30">
+                            <input type="text" name="first_name" id="id_first_name" class="form-control uiverse-input" value="{{ form.first_name.value|default:user.first_name }}" maxlength="30">
                             {% if form.first_name.errors %}<div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>{% endif %}
                         </div>
                         <div class="col-md-6">
                             <label for="id_last_name" class="form-label fw-semibold">Apellido</label>
-                            <input type="text" name="last_name" id="id_last_name" class="form-control" value="{{ form.last_name.value|default:user.last_name }}" maxlength="150">
+                            <input type="text" name="last_name" id="id_last_name" class="form-control uiverse-input" value="{{ form.last_name.value|default:user.last_name }}" maxlength="150">
                             {% if form.last_name.errors %}<div class="text-danger small mt-1">{{ form.last_name.errors.0 }}</div>{% endif %}
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label for="id_email" class="form-label fw-semibold">Correo electrónico</label>
-                        <input type="email" name="email" id="id_email" class="form-control" value="{{ form.email.value|default:user.email }}" maxlength="254">
+                        <input type="email" name="email" id="id_email" class="form-control uiverse-input" value="{{ form.email.value|default:user.email }}" maxlength="254">
                         {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>{% endif %}
                     </div>
 
@@ -56,26 +56,26 @@
 
                     <div class="mb-3">
                         <label for="id_old_password" class="form-label fw-semibold">Contraseña actual</label>
-                        <input type="password" name="old_password" id="id_old_password" class="form-control">
+                        <input type="password" name="old_password" id="id_old_password" class="form-control uiverse-input">
                         {% if password_form.old_password.errors %}<div class="text-danger small mt-1">{{ password_form.old_password.errors.0 }}</div>{% endif %}
                     </div>
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label for="id_new_password1" class="form-label fw-semibold">Nueva contraseña</label>
-                            <input type="password" name="new_password1" id="id_new_password1" class="form-control">
+                            <input type="password" name="new_password1" id="id_new_password1" class="form-control uiverse-input">
                             {% if password_form.new_password1.errors %}<div class="text-danger small mt-1">{{ password_form.new_password1.errors.0 }}</div>{% endif %}
                         </div>
                         <div class="col-md-6">
                             <label for="id_new_password2" class="form-label fw-semibold">Confirmar contraseña</label>
-                            <input type="password" name="new_password2" id="id_new_password2" class="form-control">
+                            <input type="password" name="new_password2" id="id_new_password2" class="form-control uiverse-input">
                             {% if password_form.new_password2.errors %}<div class="text-danger small mt-1">{{ password_form.new_password2.errors.0 }}</div>{% endif %}
                         </div>
                     </div>
 
                     <div class="d-flex justify-content-between mt-4">
                         <a href="{% url 'home' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
-                        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-floppy me-1"></i>Guardar Cambios</button>
+                        <button type="submit" class="btn btn-primary px-4 uiverse-btn"><i class="bi bi-floppy me-1"></i>Guardar Cambios</button>
                     </div>
                 </form>
             </div>

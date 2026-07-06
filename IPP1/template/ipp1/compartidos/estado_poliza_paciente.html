@@ -100,7 +100,7 @@
 
 <div class="row g-3 mb-4">
     <div class="col-md-6">
-        <div class="card shadow-sm h-100">
+        <div class="card shadow-sm h-100 uiverse-card">
             <div class="card-header bg-light fw-bold"><i class="bi bi-people me-2"></i>Familiares</div>
             <div class="card-body p-0">
                 <table class="table table-hover mb-0">
@@ -121,7 +121,7 @@
         </div>
     </div>
     <div class="col-md-6">
-        <div class="card shadow-sm h-100">
+        <div class="card shadow-sm h-100 uiverse-card">
             <div class="card-header bg-light fw-bold"><i class="bi bi-cash-stack me-2"></i>Últimos Gastos</div>
             <div class="card-body p-0">
                 <table class="table table-hover mb-0">
@@ -209,7 +209,7 @@
 
 {% if user.is_superuser or "Administracion" in user.groups.all|join:"," %}
 <div class="text-end">
-    <a href="{% url 'poliza_detalle' poliza.id %}" class="btn btn-primary">
+    <a href="{% url 'poliza_detalle' poliza.id %}" class="btn btn-primary uiverse-btn">
         <i class="bi bi-arrow-right me-1"></i>Ir a Gestión Completa de Póliza
     </a>
 </div>

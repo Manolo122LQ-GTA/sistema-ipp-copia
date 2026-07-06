@@ -11,9 +11,9 @@
     </div>
     <div class="col-md-4 text-md-end">
         {% if "Administracion" in user.groups.all|join:"," or user.is_superuser %}
-            <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary">
+            <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary uiverse-btn">
         {% else %}
-            <a href="{% url 'poliza_inicio' %}" class="btn btn-outline-secondary">
+            <a href="{% url 'poliza_inicio' %}" class="btn btn-outline-secondary uiverse-btn">
         {% endif %}
             <i class="bi bi-arrow-left me-1"></i>Volver
         </a>
@@ -73,7 +73,7 @@
                 {% endif %}
 
                 <div class="mt-2">
-                    <a href="{% url 'detalle_paciente' d.paciente.id %}" class="btn btn-sm btn-outline-primary w-100">
+                    <a href="{% url 'detalle_paciente' d.paciente.id %}" class="btn btn-sm btn-outline-primary w-100 uiverse-btn">
                         <i class="bi bi-eye me-1"></i>Ver Detalle
                     </a>
                 </div>

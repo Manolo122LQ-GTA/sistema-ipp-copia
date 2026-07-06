@@ -10,7 +10,7 @@
         <p class="text-muted">Bienvenido al panel de atención primaria y triaje.</p>
     </div>
     <div class="col-md-4 text-md-end">
-        <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary uiverse-btn">
             <i class="bi bi-house-door me-1"></i>Volver al Menú
         </a>
     </div>
@@ -18,7 +18,7 @@
 
 <div class="row g-4 mb-5">
     <div class="col-md-6">
-        <div class="card h-100 shadow-sm border-1">
+        <div class="card h-100 shadow-sm border-1 uiverse-card">
             <div class="card-body d-flex flex-column justify-content-between">
                 <div>
                     <div class="d-flex align-items-center mb-3">
@@ -27,13 +27,13 @@
                     </div>
                     <p class="card-text text-muted">Consulte la lista de pacientes agendados por Secretaría para su evaluación hoy.</p>
                 </div>
-                <a href="{% url 'citas_recibidas_medico' %}" class="btn btn-outline-primary mt-3">Ver Pacientes en Espera</a>
+                <a href="{% url 'citas_recibidas_medico' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Ver Pacientes en Espera</a>
             </div>
         </div>
     </div>
 
     <div class="col-md-6">
-        <div class="card h-100 shadow-sm border-1">
+        <div class="card h-100 shadow-sm border-1 uiverse-card">
             <div class="card-body d-flex flex-column justify-content-between">
                 <div>
                     <div class="d-flex align-items-center mb-3">
@@ -42,13 +42,13 @@
                     </div>
                     <p class="card-text text-muted">Vista cronológica de todas las citas agendadas.</p>
                 </div>
-                <a href="{% url 'calendario_citas' %}" class="btn btn-outline-primary">Ver Calendario</a>
+                <a href="{% url 'calendario_citas' %}" class="btn btn-outline-primary uiverse-btn">Ver Calendario</a>
             </div>
         </div>
     </div>
 
     <div class="col-md-6">
-        <div class="card h-100 shadow-sm border-1">
+        <div class="card h-100 shadow-sm border-1 uiverse-card">
             <div class="card-body d-flex flex-column justify-content-between">
                 <div>
                     <div class="d-flex align-items-center mb-3">
@@ -57,13 +57,13 @@
                     </div>
                     <p class="card-text text-muted">Búsqueda de expedientes, diagnósticos previos y antecedentes de pacientes.</p>
                 </div>
-                <a href="{% url 'consulta_historial_medico' %}" class="btn btn-outline-primary">Consultar Historial</a>
+                <a href="{% url 'consulta_historial_medico' %}" class="btn btn-outline-primary uiverse-btn">Consultar Historial</a>
             </div>
         </div>
     </div>
 
     <div class="col-md-6">
-        <div class="card h-100 shadow-sm border-1">
+        <div class="card h-100 shadow-sm border-1 uiverse-card">
             <div class="card-body d-flex flex-column justify-content-between">
                 <div>
                     <div class="d-flex align-items-center mb-3">
@@ -76,7 +76,7 @@
                     <span class="badge bg-info text-dark fs-5 px-3 py-2">
                         {% if pendientes_lab > 0 %}{{ pendientes_lab }} pendiente(s){% else %}Ninguno{% endif %}
                     </span>
-                    <a href="{% url 'solicitudes_pendientes_laboratorio' %}" class="btn btn-outline-info">Ver Laboratorios</a>
+                    <a href="{% url 'solicitudes_pendientes_laboratorio' %}" class="btn btn-outline-info uiverse-btn">Ver Laboratorios</a>
                 </div>
             </div>
         </div>

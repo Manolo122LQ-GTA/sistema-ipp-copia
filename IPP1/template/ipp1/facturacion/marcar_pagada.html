@@ -24,7 +24,7 @@
             {% csrf_token %}
             <div class="mb-3">
                 <label class="form-label fw-semibold">Método de Pago</label>
-                <select name="metodo_pago" class="form-control" required>
+                <select name="metodo_pago" class="uiverse-input form-control" required>
                     <option value="">-- Seleccione --</option>
                     <option value="Efectivo">Efectivo</option>
                     <option value="Tarjeta Débito">Tarjeta Débito</option>
@@ -33,8 +33,8 @@
                     <option value="Otro">Otro</option>
                 </select>
             </div>
-            <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Confirmar Pago</button>
-            <a href="{% url 'factura_detalle' factura.id %}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="uiverse-btn btn btn-success"><i class="bi bi-check-lg me-1"></i>Confirmar Pago</button>
+            <a href="{% url 'factura_detalle' factura.id %}" class="uiverse-btn btn btn-outline-secondary">Cancelar</a>
         </form>
     </div>
 </div>

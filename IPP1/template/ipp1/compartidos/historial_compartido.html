@@ -18,8 +18,8 @@
             <form method="GET" action="{% url search_url_name %}">
                 <div class="input-group shadow-sm">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" name="q" class="form-control border-start-0" placeholder="Buscar por Cédula o Nombre..." value="{{ request.GET.q }}">
-                    <button class="btn btn-primary" type="submit">Buscar</button>
+                    <input type="text" name="q" class="form-control border-start-0 uiverse-input" placeholder="Buscar por Cédula o Nombre..." value="{{ request.GET.q }}">
+                    <button class="btn btn-primary uiverse-btn" type="submit">Buscar</button>
                 </div>
             </form>
         </div>

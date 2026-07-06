@@ -42,7 +42,7 @@
         </div>
     </div>
     <div class="d-flex justify-content-center gap-2 mt-4">
-        <button type="submit" class="btn btn-primary px-3">Guardar Cambios</button>
+        <button type="submit" class="btn btn-primary px-3 uiverse-btn">Guardar Cambios</button>
         {% if "Secretaria" in user.groups.all|join:"," %}
             <a href="{% url 'registrar_paciente' %}" class="btn btn-outline-secondary px-3">Cancelar</a>
         {% else %}

@@ -11,13 +11,13 @@
     </div>
     <div class="col-md-4 text-md-end">
         <div class="d-flex gap-2 justify-content-end flex-wrap">
-            <a href="{% url 'exportar_reporte_excel' %}" class="btn btn-success btn-sm">
+            <a href="{% url 'exportar_reporte_excel' %}" class="btn btn-success btn-sm uiverse-btn">
                 <i class="bi bi-file-earmark-excel me-1"></i>Excel
             </a>
-            <a href="{% url 'exportar_reporte_csv' %}" class="btn btn-outline-success btn-sm">
+            <a href="{% url 'exportar_reporte_csv' %}" class="btn btn-outline-success btn-sm uiverse-btn">
                 <i class="bi bi-file-earmark-spreadsheet me-1"></i>CSV
             </a>
-            <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary">
+            <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary uiverse-btn">
                 <i class="bi bi-arrow-left me-1"></i>Volver Atrás
             </a>
         </div>
@@ -215,7 +215,7 @@
                         <td class="text-info fw-semibold">${{ cita.monto_medico|floatformat:2 }}</td>
                         <td class="text-secondary fw-semibold">${{ cita.monto_admin|floatformat:2 }}</td>
                         <td>
-                            <a href="{% url 'receta_crear' cita.id %}" class="btn btn-sm btn-outline-primary" title="Recetar">
+                            <a href="{% url 'receta_crear' cita.id %}" class="btn btn-sm btn-outline-primary uiverse-btn" title="Recetar">
                                 <i class="bi bi-capsule"></i>
                             </a>
                         </td>

@@ -10,7 +10,7 @@
         <p class="text-muted">Consulta de pacientes registrados, su estatus de afiliación y saldo disponible.</p>
     </div>
     <div class="col-md-4 text-md-end">
-        <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary uiverse-btn">
             <i class="bi bi-arrow-left me-1"></i>Volver Atrás
         </a>
     </div>
@@ -45,23 +45,23 @@
 
 <form method="GET" class="mb-4">
     <div class="input-group">
-        <input type="text" name="q" class="form-control" placeholder="Buscar por nombre, apellido o cédula..." value="{{ query }}">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Buscar</button>
+        <input type="text" name="q" class="form-control uiverse-input" placeholder="Buscar por nombre, apellido o cédula..." value="{{ query }}">
+        <button type="submit" class="btn btn-primary uiverse-btn"><i class="bi bi-search"></i> Buscar</button>
         {% if query %}
-            <a href="{% url 'saldos_admin' %}" class="btn btn-outline-secondary">Limpiar</a>
+            <a href="{% url 'saldos_admin' %}" class="btn btn-outline-secondary uiverse-btn">Limpiar</a>
         {% endif %}
     </div>
 </form>
 
 <div class="mb-3 d-flex gap-2 flex-wrap">
-    <a href="{% url 'importar_pacientes_excel' %}" class="btn btn-outline-primary btn-sm">
+    <a href="{% url 'importar_pacientes_excel' %}" class="btn btn-outline-primary btn-sm uiverse-btn">
         <i class="bi bi-upload me-1"></i>Importar Excel
     </a>
-    <a href="{% url 'gastos_por_paciente' %}" class="btn btn-outline-info btn-sm">
+    <a href="{% url 'gastos_por_paciente' %}" class="btn btn-outline-info btn-sm uiverse-btn">
         <i class="bi bi-bar-chart-line me-1"></i>Gastos por Paciente
     </a>
     <div class="btn-group">
-        <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+        <button type="button" class="btn btn-success btn-sm dropdown-toggle uiverse-btn" data-bs-toggle="dropdown">
             <i class="bi bi-download me-1"></i>Exportar
         </button>
         <ul class="dropdown-menu">
@@ -117,7 +117,7 @@
                             </span>
                         </td>
                         <td>
-                            <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-info btn-sm" title="Ver detalle">
+                            <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-info btn-sm uiverse-btn" title="Ver detalle">
                                 <i class="bi bi-eye"></i>
                             </a>
                         </td>

@@ -10,7 +10,7 @@
         <p class="text-muted">Aquí podrás Gestionar los Roles del Personal.</p>
     </div>
     <div class="col-md-4 text-md-end">
-        <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary uiverse-btn">
             <i class="bi bi-arrow-left me-1"></i>Volver Atrás
         </a>
     </div>
@@ -64,13 +64,13 @@
                             <form method="POST" class="d-flex gap-2">
                                 {% csrf_token %}
                                 <input type="hidden" name="usuario_id" value="{{ usuario.id }}">
-                                <select name="rol_nombre" class="form-select form-select-sm" style="max-width: 200px;">
+                                <select name="rol_nombre" class="form-select form-select-sm uiverse-input" style="max-width: 200px;">
                                     <option value="">-- Quitar Roles --</option>
                                     {% for grupo in grupos %}
                                         <option value="{{ grupo.name }}">{{ grupo.name }}</option>
                                     {% endfor %}
                                 </select>
-                                <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+                                <button type="submit" class="btn btn-primary btn-sm uiverse-btn">Guardar</button>
                             </form>
                         </td>
                     </tr>

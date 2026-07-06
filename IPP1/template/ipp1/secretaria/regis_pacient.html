@@ -6,82 +6,87 @@
     body { font-family: Verdana, Geneva, Tahoma, sans-serif; }
 </style>
 
-<div class="uiverse-card shadow">
-<div class="card-body">
-<h2 class="fw-bold mb-4 text-primary text-center">Registro de Pacientes</h2>
-
-<div class="mt-4">
-    <form method="post">
-        {% csrf_token %}
-        <div class="row g-3">
-            <div class="col-md-3">
-                <label class="form-label fw-semibold">Nombre</label>
-                {{ form.nombre }}
-                {% if form.nombre.errors %}
-                    <div class="text-danger small mt-1">{{ form.nombre.errors }}</div>
-                {% endif %}
+<div class="uiverse-card shadow-sm">
+    <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
+        <h2 class="fw-bold mb-0"><i class="bi bi-person-plus me-2"></i>Registro de Pacientes</h2>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Nombre</label>
+                    {{ form.nombre }}
+                    {% if form.nombre.errors %}
+                        <div class="text-danger small mt-1">{{ form.nombre.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Apellido</label>
+                    {{ form.apellido }}
+                    {% if form.apellido.errors %}
+                        <div class="text-danger small mt-1">{{ form.apellido.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Cédula</label>
+                    {{ form.cedula }}
+                    {% if form.cedula.errors %}
+                        <div class="text-danger small mt-1">{{ form.cedula.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Código</label>
+                    {{ form.codigo_telefono }}
+                    {% if form.codigo_telefono.errors %}
+                        <div class="text-danger small mt-1">{{ form.codigo_telefono.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Teléfono</label>
+                    {{ form.numero_telefono }}
+                    {% if form.numero_telefono.errors %}
+                        <div class="text-danger small mt-1">{{ form.numero_telefono.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Dirección</label>
+                    {{ form.direccion }}
+                    {% if form.direccion.errors %}
+                        <div class="text-danger small mt-1">{{ form.direccion.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Fecha de Nacimiento</label>
+                    {{ form.fecha_nacimiento }}
+                    {% if form.fecha_nacimiento.errors %}
+                        <div class="text-danger small mt-1">{{ form.fecha_nacimiento.errors }}</div>
+                    {% endif %}
+                </div>
             </div>
-            <div class="col-md-3">
-                <label class="form-label fw-semibold">Apellido</label>
-                {{ form.apellido }}
-                {% if form.apellido.errors %}
-                    <div class="text-danger small mt-1">{{ form.apellido.errors }}</div>
-                {% endif %}
+            <div class="d-flex justify-content-center gap-2 mt-4">
+                <button type="submit" class="uiverse-btn btn btn-outline-primary px-4 shadow-sm">
+                    <i class="bi bi-floppy me-2"></i>Guardar Paciente
+                </button>
+                <a href="{% url 'secretaria' %}" class="uiverse-btn btn btn-outline-danger px-4 shadow-sm">
+                    <i class="bi bi-arrow-left me-1"></i>Volver al Menú
+                </a>
             </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Cédula</label>
-                {{ form.cedula }}
-                {% if form.cedula.errors %}
-                    <div class="text-danger small mt-1">{{ form.cedula.errors }}</div>
-                {% endif %}
-            </div>
-            <div class="col-md-2">
-                <label class="form-label fw-semibold">Código</label>
-                {{ form.codigo_telefono }}
-                {% if form.codigo_telefono.errors %}
-                    <div class="text-danger small mt-1">{{ form.codigo_telefono.errors }}</div>
-                {% endif %}
-            </div>
-            <div class="col-md-4">
-                <label class="form-label fw-semibold">Teléfono</label>
-                {{ form.numero_telefono }}
-                {% if form.numero_telefono.errors %}
-                    <div class="text-danger small mt-1">{{ form.numero_telefono.errors }}</div>
-                {% endif %}
-            </div>
-            <div class="col-3">
-                <label class="form-label fw-semibold">Dirección</label>
-                {{ form.direccion }}
-                {% if form.direccion.errors %}
-                    <div class="text-danger small mt-1">{{ form.direccion.errors }}</div>
-                {% endif %}
-            </div>
-            <div class="col-md-3">
-                <label class="form-label fw-semibold">Fecha de Nacimiento</label>
-                {{ form.fecha_nacimiento }}
-                {% if form.fecha_nacimiento.errors %}
-                    <div class="text-danger small mt-1">{{ form.fecha_nacimiento.errors }}</div>
-                {% endif %}
-            </div>
-        </div>
-        <div class="d-flex justify-content-center gap-2 mt-4">
-            <button type="submit" class="btn btn-outline-primary px-3">Guardar Paciente</button>
-            <a href="{% url 'secretaria' %}" class="btn btn-outline-danger px-3">Volver al Menu</a>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
 
 <div class="uiverse-card shadow mt-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3" style="border-radius: 15px 15px 0 0;">
+        <h5 class="fw-bold mb-0"><i class="bi bi-people me-2"></i>Pacientes Recientes</h5>
+        <form method="get" class="d-flex gap-2">
+            <input type="text" name="q" class="uiverse-input form-control form-control-sm" placeholder="Buscar por nombre, cédula o código..." value="{{ q }}" style="min-width: 200px;">
+            <button type="submit" class="uiverse-btn btn btn-sm btn-light"><i class="bi bi-search"></i></button>
+            {% if q %}<a href="{% url 'registrar_paciente' %}" class="uiverse-btn btn btn-sm btn-outline-light"><i class="bi bi-x-lg"></i></a>{% endif %}
+        </form>
+    </div>
     <div class="table-responsive p-3">
-        <div class="d-flex justify-content-between align-items-center px-2 mb-3">
-            <h2 class="fw-bold h5 text-secondary mb-0">Pacientes Recientes</h2>
-            <form method="get" class="d-flex gap-2">
-                <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar por nombre, cédula o código..." value="{{ q }}" style="min-width: 250px;">
-                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i></button>
-                {% if q %}<a href="{% url 'registrar_paciente' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg"></i></a>{% endif %}
-            </form>
-        </div>
-        <table class="table table-hover align-middle">
+        <table class="table table-hover table-primary align-middle">
             <thead class="table-light">
                 <tr>
                     <th>Nombre Completo</th>
@@ -146,8 +151,6 @@
         {% endif %}
 
     </div>
-</div>
-</div>
 </div>
 
 {% endblock %}

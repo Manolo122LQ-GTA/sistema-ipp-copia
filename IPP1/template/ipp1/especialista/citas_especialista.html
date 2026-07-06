@@ -13,7 +13,7 @@
             <p class="text-muted">Pacientes asignados para evaluación especializada.</p>
         </div>
         <div class="col-md-4 text-md-end">
-            <a href="{% url 'especialista' %}" class="btn btn-outline-secondary shadow-sm">
+            <a href="{% url 'especialista' %}" class="btn btn-outline-secondary shadow-sm uiverse-btn">
                 <i class="bi bi-arrow-left me-1"></i>Volver Atrás
             </a>
         </div>
@@ -51,7 +51,7 @@
                                     <td class="text-center pe-4">
                                         <form method="POST" action="{% url 'atender_cita' cita.id %}" style="display:inline;">
                                             {% csrf_token %}
-                                            <button type="submit" class="btn btn-success btn-sm shadow-sm">Atender</button>
+                                            <button type="submit" class="btn btn-success btn-sm shadow-sm uiverse-btn">Atender</button>
                                         </form>
                                     </td>
                                 </tr>

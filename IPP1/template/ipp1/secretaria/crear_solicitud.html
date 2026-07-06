@@ -20,7 +20,7 @@
                 <!-- Encabezado de Fecha -->
                 <div class="text-end mb-4">
                     <label class="form-label text-muted small">Ciudad y Fecha</label>
-                    <input type="text" class="form-control text-end d-inline-block w-auto" placeholder="Ej. Coro, 25 de Junio de 2024">
+                    <input type="text" class="uiverse-input form-control text-end d-inline-block w-auto" placeholder="Ej. Coro, 25 de Junio de 2024">
                 </div>
 
                 <!-- Datos del Formulario Django -->
@@ -51,7 +51,7 @@
                 <!-- Destinatario -->
                 <div class="mb-4">
                     <label class="form-label fw-bold text-secondary">Destinatario</label>
-                    <input type="text" class="form-control mb-1" placeholder="Ej. Ciudadano Director del Hospital">
+                    <input type="text" class="uiverse-input form-control mb-1" placeholder="Ej. Ciudadano Director del Hospital">
                     <span class="d-block fw-bold text-dark">Su Despacho.</span>
                 </div>
 
@@ -59,14 +59,14 @@
                 <div class="mb-4">
                     <div class="d-flex align-items-center border-bottom pb-2">
                         <label class="form-label fw-bold text-uppercase text-danger mb-0 me-3">Asunto:</label>
-                        <input type="text" class="form-control border-0 fw-bold" placeholder="Ej. Solicitud de Servicio para Paciente">
+                        <input type="text" class="uiverse-input form-control border-0 fw-bold" placeholder="Ej. Solicitud de Servicio para Paciente">
                     </div>
                 </div>
 
                 <!-- Cuerpo -->
                 <div class="mb-4">
                     <label class="form-label fw-bold text-secondary text-uppercase small">Cuerpo de la Solicitud</label>
-                    <textarea class="form-control" rows="6" placeholder="Redacte los detalles de la solicitud aquí..."></textarea>
+                    <textarea class="uiverse-input form-control" rows="6" placeholder="Redacte los detalles de la solicitud aquí..."></textarea>
                 </div>
 
                 <!-- Firma -->
@@ -77,7 +77,7 @@
 
                 <!-- Acciones -->
                 <div class="border-top pt-4 text-center">
-                    <button type="submit" class="btn btn-outline-primary px-3 shadow-sm">
+                    <button type="submit" class="btn uiverse-btn btn-outline-primary px-3 shadow-sm">
                         <i class="bi bi-check-circle me-2"></i>Generar Solicitud
                     </button>
                     <a href="{% url 'secretaria' %}" class="btn btn-outline-danger px-3 ms-2 shadow-sm">Cancelar</a>

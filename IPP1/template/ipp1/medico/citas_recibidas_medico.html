@@ -17,7 +17,7 @@
             <p class="text-muted">Medicina General - Lista de pacientes en espera para evaluación médica.</p>
         </div>
         <div class="col-md-4 text-md-end">
-            <a href="{% url 'medico_panel' %}" class="btn btn-outline-secondary shadow-sm">
+            <a href="{% url 'medico_panel' %}" class="btn btn-outline-secondary shadow-sm uiverse-btn">
                 <i class="bi bi-arrow-left me-1"></i>Volver Atrás</a>
         </div>
     </div>
@@ -55,7 +55,7 @@
                                     <td class="text-center pe-4">
                                         <form method="POST" action="{% url 'atender_cita' cita.id %}" style="display:inline;">
                                             {% csrf_token %}
-                                            <button type="submit" class="btn btn-success btn-sm px-3 shadow-sm">
+                                            <button type="submit" class="btn btn-success btn-sm px-3 shadow-sm uiverse-btn">
                                                 <i class="bi bi-stethoscope me-1"></i>Atender
                                             </button>
                                         </form>

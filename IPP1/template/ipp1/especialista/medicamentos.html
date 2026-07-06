@@ -11,7 +11,7 @@
             <p class="text-muted">Inventario de medicamentos disponibles.</p>
         </div>
         <div class="col-md-4 text-md-end">
-            <a href="{% url 'especialista' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver Atrás</a>
+            <a href="{% url 'especialista' %}" class="btn btn-outline-secondary uiverse-btn"><i class="bi bi-arrow-left me-1"></i>Volver Atrás</a>
         </div>
     </div>
 
@@ -44,12 +44,12 @@
                         <td><span class="text-muted small">{{ m.lote|default:"—" }}</span></td>
                         <td>{% if m.fecha_vencimiento %}{{ m.fecha_vencimiento|date:"d/m/Y" }}{% else %}—{% endif %}</td>
                         <td class="text-center">
-                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEditar{{ m.id }}" title="Editar"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-primary uiverse-btn" data-bs-toggle="modal" data-bs-target="#modalEditar{{ m.id }}" title="Editar"><i class="bi bi-pencil"></i></button>
                             <form method="POST" style="display:inline;">
                                 {% csrf_token %}
                                 <input type="hidden" name="accion" value="eliminar">
                                 <input type="hidden" name="medicamento_id" value="{{ m.id }}">
-                                <button class="btn btn-sm btn-outline-danger" title="Desactivar" onclick="return confirm('¿Desactivar este medicamento?')"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-sm btn-outline-danger uiverse-btn" title="Desactivar" onclick="return confirm('¿Desactivar este medicamento?')"><i class="bi bi-trash"></i></button>
                             </form>
                         </td>
                     </tr>
@@ -73,16 +73,16 @@
                 <input type="hidden" name="medicamento_id" value="{{ m.id }}">
                 <div class="modal-header bg-warning text-white"><h5 class="modal-title">Editar Medicamento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <div class="mb-3"><label class="form-label">Nombre</label><input type="text" name="nombre" class="form-control" value="{{ m.nombre }}" required></div>
-                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control" rows="2">{{ m.descripcion|default:"" }}</textarea></div>
+                    <div class="mb-3"><label class="form-label">Nombre</label><input type="text" name="nombre" class="form-control uiverse-input" value="{{ m.nombre }}" required></div>
+                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control uiverse-input" rows="2">{{ m.descripcion|default:"" }}</textarea></div>
                     <div class="row g-3 mb-3">
-                        <div class="col-md-4"><label class="form-label">Stock</label><input type="number" name="cantidad_stock" class="form-control" value="{{ m.cantidad_stock }}"></div>
-                        <div class="col-md-4"><label class="form-label">Precio ($)</label><input type="number" name="precio" class="form-control" step="0.01" value="{{ m.precio }}" required></div>
-                        <div class="col-md-4"><label class="form-label">Lote</label><input type="text" name="lote" class="form-control" value="{{ m.lote|default:"" }}"></div>
+                        <div class="col-md-4"><label class="form-label">Stock</label><input type="number" name="cantidad_stock" class="form-control uiverse-input" value="{{ m.cantidad_stock }}"></div>
+                        <div class="col-md-4"><label class="form-label">Precio ($)</label><input type="number" name="precio" class="form-control uiverse-input" step="0.01" value="{{ m.precio }}" required></div>
+                        <div class="col-md-4"><label class="form-label">Lote</label><input type="text" name="lote" class="form-control uiverse-input" value="{{ m.lote|default:"" }}"></div>
                     </div>
-                    <div class="mb-3"><label class="form-label">Fecha de Vencimiento</label><input type="date" name="fecha_vencimiento" class="form-control" value="{{ m.fecha_vencimiento|date:'Y-m-d' }}"></div>
+                    <div class="mb-3"><label class="form-label">Fecha de Vencimiento</label><input type="date" name="fecha_vencimiento" class="form-control uiverse-input" value="{{ m.fecha_vencimiento|date:'Y-m-d' }}"></div>
                 </div>
-                <div class="modal-footer"><button type="submit" class="btn btn-warning">Guardar Cambios</button></div>
+                <div class="modal-footer"><button type="submit" class="btn btn-warning uiverse-btn">Guardar Cambios</button></div>
             </form>
         </div></div>
     </div>
@@ -95,16 +95,16 @@
                 <input type="hidden" name="accion" value="crear">
                 <div class="modal-header bg-success text-white"><h5 class="modal-title">Nuevo Medicamento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <div class="mb-3"><label class="form-label">Nombre</label><input type="text" name="nombre" class="form-control" required></div>
-                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control" rows="2"></textarea></div>
+                    <div class="mb-3"><label class="form-label">Nombre</label><input type="text" name="nombre" class="form-control uiverse-input" required></div>
+                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control uiverse-input" rows="2"></textarea></div>
                     <div class="row g-3 mb-3">
-                        <div class="col-md-4"><label class="form-label">Stock</label><input type="number" name="cantidad_stock" class="form-control" value="0"></div>
-                        <div class="col-md-4"><label class="form-label">Precio ($)</label><input type="number" name="precio" class="form-control" step="0.01" required></div>
-                        <div class="col-md-4"><label class="form-label">Lote</label><input type="text" name="lote" class="form-control"></div>
+                        <div class="col-md-4"><label class="form-label">Stock</label><input type="number" name="cantidad_stock" class="form-control uiverse-input" value="0"></div>
+                        <div class="col-md-4"><label class="form-label">Precio ($)</label><input type="number" name="precio" class="form-control uiverse-input" step="0.01" required></div>
+                        <div class="col-md-4"><label class="form-label">Lote</label><input type="text" name="lote" class="form-control uiverse-input"></div>
                     </div>
-                    <div class="mb-3"><label class="form-label">Fecha de Vencimiento</label><input type="date" name="fecha_vencimiento" class="form-control"></div>
+                    <div class="mb-3"><label class="form-label">Fecha de Vencimiento</label><input type="date" name="fecha_vencimiento" class="form-control uiverse-input"></div>
                 </div>
-                <div class="modal-footer"><button type="submit" class="btn btn-success">Crear Medicamento</button></div>
+                <div class="modal-footer"><button type="submit" class="btn btn-success uiverse-btn">Crear Medicamento</button></div>
             </form>
         </div></div>
     </div>

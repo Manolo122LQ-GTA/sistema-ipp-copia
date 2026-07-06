@@ -13,7 +13,7 @@
             <p class="text-muted">Gestione y procese las solicitudes de laboratorio pendientes.</p>
         </div>
         <div class="col-md-4 text-md-end">
-            <a href="{% url 'laboratorio' %}" class="btn btn-outline-secondary shadow-sm">
+            <a href="{% url 'laboratorio' %}" class="uiverse-btn btn btn-outline-secondary shadow-sm">
                 <i class="bi bi-house-door me-1"></i>Volver al Panel
             </a>
         </div>
@@ -45,7 +45,7 @@
                                 <td>{{ solicitud.prueba_laboratorio }}</td>
                                 <td>{{ solicitud.fecha_solicitud|date:"d/m/Y" }}</td>
                                 <td class="text-center pe-4">
-                                    <button type="button" class="btn btn-sm btn-outline-warning px-3" data-bs-toggle="modal" data-bs-target="#procesarModal{{ solicitud.id }}">
+                                    <button type="button" class="uiverse-btn btn btn-sm btn-outline-warning px-3" data-bs-toggle="modal" data-bs-target="#procesarModal{{ solicitud.id }}">
                                         <i class="bi bi-flask me-1"></i>Procesar
                                     </button>
                                 </td>
@@ -79,31 +79,31 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Paciente</label>
-                            <input type="text" class="form-control" value="{{ solicitud.paciente.nombre }} {{ solicitud.paciente.apellido }}" readonly>
+                            <input type="text" class="uiverse-input form-control" value="{{ solicitud.paciente.nombre }} {{ solicitud.paciente.apellido }}" readonly>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Examen Solicitado</label>
-                            <input type="text" class="form-control" value="{{ solicitud.prueba_laboratorio }}" readonly>
+                            <input type="text" class="uiverse-input form-control" value="{{ solicitud.prueba_laboratorio }}" readonly>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Resultado del Examen</label>
-                        <textarea name="resultado" class="form-control" rows="4" placeholder="Describa los resultados obtenidos..."></textarea>
+                        <textarea name="resultado" class="uiverse-input form-control" rows="4" placeholder="Describa los resultados obtenidos..."></textarea>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Costo</label>
-                            <input type="number" name="costo" class="form-control" step="0.01" min="0" placeholder="0.00">
+                            <input type="number" name="costo" class="uiverse-input form-control" step="0.01" min="0" placeholder="0.00">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Bioanalista</label>
-                            <input type="text" name="bioanalista" class="form-control" placeholder="Nombre del bioanalista">
+                            <input type="text" name="bioanalista" class="uiverse-input form-control" placeholder="Nombre del bioanalista">
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-warning"><i class="bi bi-check-circle me-1"></i>Guardar y Procesar</button>
+                    <button type="button" class="uiverse-btn btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="uiverse-btn btn btn-warning"><i class="bi bi-check-circle me-1"></i>Guardar y Procesar</button>
                 </div>
             </form>
         </div>

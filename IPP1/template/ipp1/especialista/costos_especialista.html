@@ -11,7 +11,7 @@
             <p class="text-muted">Tarifario de servicios especializados.</p>
         </div>
         <div class="col-md-4 text-md-end">
-            <a href="{% url 'especialista' %}" class="btn btn-outline-secondary">
+            <a href="{% url 'especialista' %}" class="btn btn-outline-secondary uiverse-btn">
                 <i class="bi bi-arrow-left me-1"></i>Volver Atrás
             </a>
         </div>
@@ -20,7 +20,7 @@
     <div class="uiverse-card shadow-sm mb-4">
         <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center py-3">
             <span><i class="bi bi-list me-2"></i>Tarifas por Especialidad</span>
-            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalCrear">
+            <button class="btn btn-light btn-sm uiverse-btn" data-bs-toggle="modal" data-bs-target="#modalCrear">
                 <i class="bi bi-plus-circle me-1"></i>Nueva Tarifa
             </button>
         </div>
@@ -37,12 +37,12 @@
                         <td class="fw-semibold">{{ t.porcentaje_medico|floatformat:0 }}%</td>
                         <td><span class="text-muted small">{{ t.descripcion|default:"—" }}</span></td>
                         <td class="text-center">
-                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEditar{{ t.id }}" title="Editar"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-primary uiverse-btn" data-bs-toggle="modal" data-bs-target="#modalEditar{{ t.id }}" title="Editar"><i class="bi bi-pencil"></i></button>
                             <form method="POST" style="display:inline;">
                                 {% csrf_token %}
                                 <input type="hidden" name="accion" value="eliminar">
                                 <input type="hidden" name="tarifa_id" value="{{ t.id }}">
-                                <button class="btn btn-sm btn-outline-danger" title="Desactivar" onclick="return confirm('¿Desactivar esta tarifa?')"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-sm btn-outline-danger uiverse-btn" title="Desactivar" onclick="return confirm('¿Desactivar esta tarifa?')"><i class="bi bi-trash"></i></button>
                             </form>
                         </td>
                     </tr>
@@ -66,12 +66,12 @@
                 <input type="hidden" name="tarifa_id" value="{{ t.id }}">
                 <div class="modal-header bg-primary text-white"><h5 class="fw-bold modal-title">Editar Tarifa</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <div class="mb-3"><label class="form-label">Especialidad</label><input type="text" name="especialidad" class="form-control" value="{{ t.especialidad }}" required></div>
-                    <div class="mb-3"><label class="form-label">Costo Consulta ($)</label><input type="number" name="costo_consulta" class="form-control" step="0.01" value="{{ t.costo_consulta }}" required></div>
-                    <div class="mb-3"><label class="form-label">% Médico</label><input type="number" name="porcentaje_medico" class="form-control" step="0.01" value="{{ t.porcentaje_medico }}" required></div>
-                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control" rows="3">{{ t.descripcion|default:"" }}</textarea></div>
+                    <div class="mb-3"><label class="form-label">Especialidad</label><input type="text" name="especialidad" class="form-control uiverse-input" value="{{ t.especialidad }}" required></div>
+                    <div class="mb-3"><label class="form-label">Costo Consulta ($)</label><input type="number" name="costo_consulta" class="form-control uiverse-input" step="0.01" value="{{ t.costo_consulta }}" required></div>
+                    <div class="mb-3"><label class="form-label">% Médico</label><input type="number" name="porcentaje_medico" class="form-control uiverse-input" step="0.01" value="{{ t.porcentaje_medico }}" required></div>
+                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control uiverse-input" rows="3">{{ t.descripcion|default:"" }}</textarea></div>
                 </div>
-                <div class="modal-footer"><button type="submit" class="btn btn-outline-primary">Guardar Cambios</button></div>
+                <div class="modal-footer"><button type="submit" class="btn btn-outline-primary uiverse-btn">Guardar Cambios</button></div>
             </form>
         </div></div>
     </div>
@@ -84,12 +84,12 @@
                 <input type="hidden" name="accion" value="crear">
                 <div class="modal-header bg-primary text-white"><h5 class="fw-bold modal-title">Nueva Tarifa</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <div class="mb-3"><label class="form-label">Especialidad</label><input type="text" name="especialidad" class="form-control" required></div>
-                    <div class="mb-3"><label class="form-label">Costo Consulta ($)</label><input type="number" name="costo_consulta" class="form-control" step="0.01" required></div>
-                    <div class="mb-3"><label class="form-label">% Médico</label><input type="number" name="porcentaje_medico" class="form-control" step="0.01" value="50.00" required></div>
-                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control" rows="3"></textarea></div>
+                    <div class="mb-3"><label class="form-label">Especialidad</label><input type="text" name="especialidad" class="form-control uiverse-input" required></div>
+                    <div class="mb-3"><label class="form-label">Costo Consulta ($)</label><input type="number" name="costo_consulta" class="form-control uiverse-input" step="0.01" required></div>
+                    <div class="mb-3"><label class="form-label">% Médico</label><input type="number" name="porcentaje_medico" class="form-control uiverse-input" step="0.01" value="50.00" required></div>
+                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control uiverse-input" rows="3"></textarea></div>
                 </div>
-                <div class="modal-footer"><button type="submit" class="btn btn-outline-primary">Crear Tarifa</button></div>
+                <div class="modal-footer"><button type="submit" class="btn btn-outline-primary uiverse-btn">Crear Tarifa</button></div>
             </form>
         </div></div>
     </div>

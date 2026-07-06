@@ -17,7 +17,7 @@
             <p class="mb-1"><strong>Cita #{{ cita.id }}</strong> — {{ cita.fecha_cita|date:"d/m/Y" }} a las {{ cita.hora_cita|time:"H:i" }}</p>
             <p class="mb-1"><strong>Paciente:</strong> {{ cita.paciente.nombre }} {{ cita.paciente.apellido }} ({{ cita.paciente.cedula }})</p>
             <p class="mb-0"><strong>Motivo:</strong> {{ cita.motivo_consulta|default:"—" }}</p>
-            <a href="{% url 'detalle_paciente' cita.paciente.id %}" class="btn btn-sm btn-outline-info mt-2">
+            <a href="{% url 'detalle_paciente' cita.paciente.id %}" class="btn btn-sm btn-outline-info mt-2 uiverse-btn">
                 <i class="bi bi-person-lines-fill me-1"></i>Ver ficha completa del paciente
             </a>
         </div>
@@ -47,15 +47,15 @@
                 </div>
             </div>
             <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar Receta</button>
+                <button type="submit" class="btn btn-primary uiverse-btn"><i class="bi bi-check-lg me-1"></i>Guardar Receta</button>
                 {% if "Medico" in user.groups.all|join:"," %}
-                    <a href="{% url 'citas_recibidas_medico' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <a href="{% url 'citas_recibidas_medico' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a>
                 {% elif "Odontologo" in user.groups.all|join:"," %}
-                    <a href="{% url 'citas_odonto' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <a href="{% url 'citas_odonto' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a>
                 {% elif "Especialista" in user.groups.all|join:"," %}
-                    <a href="{% url 'citas_especialista' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <a href="{% url 'citas_especialista' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a>
                 {% else %}
-                    <a href="{% url 'reporte_admin' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <a href="{% url 'reporte_admin' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a>
                 {% endif %}
             </div>
         </form>

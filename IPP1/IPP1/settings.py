@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'rqu_tZBUfltSzW2i-oMV3j__lFO1kwlXEfcirbeE8fK4y1P7iLldnogQbXDEdzzgjYM'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 # PARA COLOCAR EL IP DE HOSTING
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
@@ -146,7 +146,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
