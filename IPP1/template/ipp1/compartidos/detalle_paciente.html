@@ -16,19 +16,13 @@
                 <i class="bi bi-pencil me-1"></i>Editar
             </a>
         {% endif %}
-        {% if user.is_superuser or "Secretaria" in user.groups.all|join:"," %}
-            <a href="{% url 'registrar_paciente' %}" class="btn btn-outline-secondary">
-        {% elif "Administracion" in user.groups.all|join:"," %}
-            <a href="{% url 'saldos_admin' %}" class="btn btn-outline-secondary">
-        {% else %}
-            <a href="{% url 'home' %}" class="btn btn-outline-secondary">
-        {% endif %}
+        <a href="javascript:history.back()" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Volver
         </a>
     </div>
 </div>
 
-<div class="card shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+<div class="uiverse-card shadow-sm mb-4">
     <div class="card-header bg-primary text-white py-3 d-flex align-items-center">
         <i class="bi bi-info-circle fs-4 me-2"></i>
         <h5 class="mb-0">Información del Paciente</h5>
@@ -119,7 +113,7 @@
 </div>
 
 {% if poliza_activa %}
-<div class="card shadow-sm mb-4" style="border-radius: 12px; overflow: hidden; border: 1px solid #17a2b8;">
+<div class="uiverse-card shadow-sm mb-4" style="border: 1px solid #17a2b8;">
     <div class="card-header bg-info text-dark py-3 d-flex align-items-center">
         <i class="bi bi-shield-check fs-4 me-2"></i>
         <h5 class="mb-0">Póliza Activa</h5>
@@ -210,7 +204,7 @@
 </div>
 {% endif %}
 
-<div class="card shadow-sm mb-4" style="border-radius: 12px;">
+<div class="uiverse-card shadow-sm mb-4">
     <div class="card-header bg-success text-white py-3 d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Historial de Citas</h5>
         <div class="d-flex gap-2 align-items-center">
@@ -282,7 +276,7 @@
     </div>
 </div>
 
-<div class="card shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+<div class="uiverse-card shadow-sm mb-4">
     <div class="card-header bg-warning text-dark py-3 d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bi bi-flask me-2"></i>Solicitudes de Laboratorio</h5>
         <span class="badge bg-dark text-white fs-6">{{ laboratorios|length }} solicitud(es)</span>
@@ -330,7 +324,7 @@
     </div>
 </div>
 
-<div class="card shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+<div class="uiverse-card shadow-sm mb-4">
     <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #6f42c1; color: #fff;">
         <h5 class="mb-0"><i class="bi bi-capsule me-2"></i>Recetas / Prescripciones</h5>
         <span class="badge bg-light text-dark fs-6">{{ recetas|length }} receta(s)</span>

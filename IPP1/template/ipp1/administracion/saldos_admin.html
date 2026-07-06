@@ -60,20 +60,22 @@
     <a href="{% url 'gastos_por_paciente' %}" class="btn btn-outline-info btn-sm">
         <i class="bi bi-bar-chart-line me-1"></i>Gastos por Paciente
     </a>
-    <a href="{% url 'exportar_pacientes_csv' %}?q={{ query|urlencode }}" class="btn btn-outline-success btn-sm">
-        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Exportar CSV
-    </a>
-    <a href="{% url 'exportar_pacientes_excel' %}?q={{ query|urlencode }}" class="btn btn-success btn-sm">
-        <i class="bi bi-file-earmark-excel me-1"></i>Excel
-    </a>
-    <button type="button" class="btn btn-warning btn-sm" id="btnExportarSeleccionados" onclick="exportarSeleccionados()" disabled>
-        <i class="bi bi-download me-1"></i>Exportar Seleccionados (<span id="seleccionadosCount">0</span>)
-    </button>
+    <div class="btn-group">
+        <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="bi bi-download me-1"></i>Exportar
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{% url 'exportar_pacientes_csv' %}?q={{ query|urlencode }}"><i class="bi bi-file-earmark-spreadsheet me-2"></i>CSV</a></li>
+            <li><a class="dropdown-item" href="{% url 'exportar_pacientes_excel' %}?q={{ query|urlencode }}"><i class="bi bi-file-earmark-excel me-2"></i>Excel</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><button class="dropdown-item" onclick="exportarSeleccionados()" id="btnExportarSeleccionados" disabled><i class="bi bi-check-square me-2"></i>Seleccionados (<span id="seleccionadosCount">0</span>)</button></li>
+        </ul>
+    </div>
 </div>
 
 
 
-<div class="card shadow-sm mb-5" style="border-radius: 10px; overflow: hidden;">
+<div class="uiverse-card shadow-sm mb-5">
     <div class="card-header bg-primary text-white py-3"><h5 class="mb-0 fw-bold"><i class="bi bi-people-fill me-2"></i>Listado de Pacientes</h5></div>
     <div class="card-body p-0">
         <div class="table-responsive">

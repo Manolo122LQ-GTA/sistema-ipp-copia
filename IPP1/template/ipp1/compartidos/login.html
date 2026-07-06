@@ -31,6 +31,11 @@
     </style>
 </head>
 <body>
+    <div class="container text-center py-4">
+        <div class="d-inline-block bg-white bg-opacity-10 rounded-3 px-4 py-2 mb-3" style="backdrop-filter: blur(4px);">
+            <span class="text-white fw-bold" style="letter-spacing: 2px; font-size: 13px;">SISTEMA IPP — IUTAG</span>
+        </div>
+    </div>
     <div class="main-content position-relative">
         {% if messages %}
         <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050;">
@@ -55,7 +60,7 @@
             <form class="form" method="POST">
                 {% csrf_token %}
                 <i class="bi bi-hospital text-primary" style="font-size: 3rem;"></i>
-                <span class="title">IPP-IUTAG Inicio de Sesión</span>
+                <span class="title">Inicio de Sesión</span>
                 <span class="subtitle">Ingresa tus credenciales para acceder al sistema IPP-IUTAG.</span>
                 <div class="form-container">
                     <input type="text" name="username" class="input" placeholder="Usuario" required>
@@ -71,10 +76,10 @@
         </div>
     </div>
 
-<footer class="py-3 mt-auto bg-light text-center text-muted">
-  <div class="container-fluid">
-    <small>© 2026 IPP-IUTAG. Todos los derechos reservados.</small>
-  </div>
+<footer class="py-3 text-center" style="background: rgba(0,0,0,0.15);">
+    <div class="container-fluid">
+        <small class="text-white text-opacity-75">© 2026 IPP-IUTAG. Todos los derechos reservados.</small>
+    </div>
 </footer>
 
 </body>

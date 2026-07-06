@@ -26,7 +26,7 @@
         </div>
     </div>
 
-    <div class="card shadow-sm mb-5" style="border-radius: 10px; overflow: hidden;">
+    <div class="uiverse-card shadow-sm mb-5">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
             <h5 class="mb-0 fw-bold"><i class="bi bi-list me-2"></i>Todas las Pólizas</h5>
             <span class="badge bg-light text-primary fs-6">{{ polizas.count }} registros</span>
@@ -66,7 +66,7 @@
                             <td>{{ poliza.fecha_inicio|date:"d/m/Y" }}</td>
                              <!-- VER DETALLES -->
                             <td class="text-center">
-                                <a href="{% url 'poliza_detalle' poliza.id %}" class="btn btn-md btn-outline-info" title="Ver detalle">
+                                <a href="{% url 'poliza_detalle' poliza.id %}" class="btn btn-sm btn-outline-info" title="Ver detalle">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 <form method="POST" style="display:inline;">
@@ -74,11 +74,11 @@
                                     <!-- ACTIVAR/DESACTIVAR -->
                                     <input type="hidden" name="poliza_id" value="{{ poliza.id }}">
                                     <!-- ACTIVAR/DESACTIVAR -->
-                                    <button type="submit" name="accion" value="toggle_estado" class="btn btn-md btn-outline-success" title="Activar/Desactivar">
+                                    <button type="submit" name="accion" value="toggle_estado" class="btn btn-sm btn-outline-success" title="Activar/Desactivar">
                                         <i class="bi bi-power"></i>
                                     </button>
                                     <!-- ELIMINAR -->
-                                    <button type="submit" name="accion" value="eliminar" class="btn btn-md btn-outline-danger" title="Eliminar" onclick="return confirm('¿Eliminar esta póliza?')">
+                                    <button type="submit" name="accion" value="eliminar" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return confirm('¿Eliminar esta póliza?')">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
