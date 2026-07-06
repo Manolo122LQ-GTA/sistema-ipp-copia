@@ -110,7 +110,7 @@ def registro(request):
             except ValidationError as e:
                 for error in e.messages:
                     messages.error(request, error)
-                return render(request, 'ipp1/compartidos/registro.html')
+                return render(request, 'ipp1/compartidos/registro.html', {'request': request})
 
             user = User.objects.create_user(
                 username=username, email=email, password=password,

@@ -63,12 +63,12 @@
                 <span class="subtitle">Registra tus datos personales para acceder al sistema.</span>
                 <div class="form-container">
                     <div class="d-flex gap-2" style="width:100%;">
-                        <input type="text" name="name" class="input flex-fill" placeholder="Nombre(s)" required>
-                        <input type="text" name="last_name" class="input flex-fill" placeholder="Apellido(s)" required>
+                        <input type="text" name="name" class="input flex-fill" placeholder="Nombre(s)" required value="{{ request.POST.name }}">
+                        <input type="text" name="last_name" class="input flex-fill" placeholder="Apellido(s)" required value="{{ request.POST.last_name }}">
                     </div>
-                    <input type="text" name="username" class="input" placeholder="Usuario" required>
-                    <input type="password" name="password" class="input" placeholder="Contraseña" required>
-                    <input type="email" name="email" class="input" placeholder="Correo Electrónico" required>
+                    <input type="text" name="username" class="input" placeholder="Usuario" required value="{{ request.POST.username }}">
+                    <input type="password" name="password" class="input" placeholder="Contraseña" maxlength="8" required>
+                    <input type="email" name="email" class="input" placeholder="Correo Electrónico" required value="{{ request.POST.email }}">
                     <select name="rol" class="input" required>
                         <option value="" selected disabled>Selecciona tu Rol</option>
                         <option value="Secretaria">Secretaría General</option>
