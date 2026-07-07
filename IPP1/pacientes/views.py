@@ -16,6 +16,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
+from django.contrib.auth.decorators import login_required
 import csv
 
 # SOLICITUD DE CITA
