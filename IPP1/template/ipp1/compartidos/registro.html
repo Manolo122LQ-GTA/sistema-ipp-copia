@@ -34,7 +34,25 @@
             max-height: calc(100vh - 180px) !important;
             overflow-y: auto !important;
         }
+
+        /* ESTILOS PARA LOS REQUISITOS*/
+        /* Se oculta la lista con animacion */
+        #password-requisitos {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Cuando el usuario hace clic o escribe en el input, muestra la lista que está justo después (+) */
+        #id_password:focus + #password-requisitos {
+            max-height: 120px; /* Altura suficiente para los 5 ítems */
+            opacity: 1;
+            margin-top: 8px !important; /* Espaciado estético al aparecer */
+            margin-bottom: 8px !important;
+        }
     </style>
+
 </head>
 <body>
     <div class="container text-center py-4">
@@ -74,7 +92,14 @@
                         <input type="text" name="last_name" class="input flex-fill" placeholder="Apellido(s)" required value="{{ request.POST.last_name }}">
                     </div>
                     <input type="text" name="username" class="input" placeholder="Usuario" required value="{{ request.POST.username }}">
-                    <input type="password" name="password" class="input" placeholder="Contraseña" maxlength="128" required>
+                    <input type="password" name="password" id="id_password" class="input" placeholder="Contraseña" maxlength="128" required oninput="validarPassword()">
+                    <ul id="password-requisitos" class="text-start small px-3" style="list-style:none; padding:4px 12px; margin:0; font-size:11px;">
+                        <li id="req-long" class="text-muted">✗ Mín. 8 caracteres</li>
+                        <li id="req-mayus" class="text-muted">✗ 1 letra mayúscula</li>
+                        <li id="req-num" class="text-muted">✗ 1 número</li>
+                        <li id="req-symbol" class="text-muted">✗ 1 símbolo</li>
+                        <li id="req-numonly" class="text-muted">✗ No solo números</li>
+                    </ul>
                     <input type="email" name="email" class="input" placeholder="Correo Electrónico" required value="{{ request.POST.email }}">
                     <select name="rol" class="input" required>
                         <option value="" selected disabled>Selecciona tu Rol</option>
@@ -93,6 +118,21 @@
         </div>
     </div>
 
+<script>
+function validarPassword() {
+    var pwd = document.getElementById('id_password').value;
+    var req = function(id, cond) {
+        var el = document.getElementById(id);
+        el.className = cond ? 'text-success' : 'text-danger';
+        el.innerHTML = (cond ? '✓' : '✗') + ' ' + el.innerHTML.substring(2);
+    };
+    req('req-long', pwd.length >= 8);
+    req('req-mayus', /[A-Z]/.test(pwd));
+    req('req-num', /[0-9]/.test(pwd));
+    req('req-symbol', /[^A-Za-z0-9]/.test(pwd));
+    req('req-numonly', !/^[0-9]+$/.test(pwd) || pwd.length === 0);
+}
+</script>
 <footer class="py-3 text-center" style="background: rgba(0,0,0,0.15);">
     <div class="container-fluid">
         <small class="text-white text-opacity-75">© 2026 IPP-IUTAG. Todos los derechos reservados.</small>
