@@ -13,6 +13,7 @@
         html, body {
             height: 100%;
             margin: 0;
+            overflow: hidden;
         }
         body {
             background: #2c6e9c;
@@ -26,7 +27,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 2rem 1rem;
+            padding: 1rem;
+            min-height: 0;
+        }
+        .form-box {
+            max-height: calc(100vh - 180px) !important;
+            overflow-y: auto !important;
         }
     </style>
 </head>
