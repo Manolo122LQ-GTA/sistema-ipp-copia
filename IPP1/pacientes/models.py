@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 class Paciente(models.Model):
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
-    cedula = models.CharField(max_length=10, unique=True)
+    cedula = models.CharField(max_length=8, unique=True)
     telefono = models.CharField(max_length=12, blank=True, null=True)
     direccion = models.TextField(blank=True, null=True)
     fecha_nacimiento = models.DateField()
@@ -30,7 +30,8 @@ class Paciente(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.codigo_afiliado:
-            self.codigo_afiliado = f"IPP-{self.cedula}"
+            cedula_limpia = ''.join(c for c in str(self.cedula) if c.isdigit())
+            self.codigo_afiliado = f"IPP-{cedula_limpia}"
         super().save(*args, **kwargs)
 
 # SOLICITUD-SECRETARIA
@@ -255,6 +256,7 @@ class Medicamento(models.Model):
     class Meta:
         verbose_name = "Medicamento"
         verbose_name_plural = "Medicamentos"
+        unique_together = [('nombre', 'lote')]
 
     def __str__(self):
         return f"{self.nombre} (stock: {self.cantidad_stock})"

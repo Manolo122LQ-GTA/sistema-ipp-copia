@@ -44,6 +44,8 @@ if (-not $python) {
 Write-Host "[2/7] Verificando PostgreSQL..."
 $pgBin = "C:\Program Files\PostgreSQL\16\bin"
 $pgInstalled = Test-Path "$pgBin\psql.exe"
+$pgPassword = Read-Host -Prompt "  Contraseña para PostgreSQL (superuser)" -AsSecureString
+$pgPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($pgPassword))
 if (-not $pgInstalled) {
     Write-Host "  > PostgreSQL no encontrado. Instalando..."
     $pgUrl = "https://get.enterprisedb.com/postgresql/postgresql-16.8-1-windows-x64.exe"
@@ -55,7 +57,7 @@ if (-not $pgInstalled) {
     Start-Process -Wait -FilePath $pgInstaller -ArgumentList @(
         "--unattendedmodeui", "minimal",
         "--mode", "unattended",
-        "--superpassword", "1234",
+        "--superpassword", $pgPasswordPlain,
         "--servicename", "postgresql16",
         "--serverport", "5432"
     )
@@ -76,7 +78,7 @@ if ($svc -and $svc.Status -ne "Running") {
 Write-Host "  OK: Servicio PostgreSQL activo."
 
 Write-Host "  Creando base de datos IPPBD..."
-$env:PGPASSWORD = "1234"
+$env:PGPASSWORD = $pgPasswordPlain
 $exists = & "$pgBin\psql.exe" -U postgres -lqt 2>&1 | Select-String "IPPBD"
 if (-not $exists) {
     & "$pgBin\createdb.exe" -U postgres IPPBD 2>&1 | Out-Null
@@ -111,6 +113,19 @@ if (Test-Path $dataFile) {
     Write-Host "  AVISO: No se encontro datos_iniciales.json. Los datos se migraran manualmente." -ForegroundColor Yellow
 }
 
+# ------- 6.5. CREAR SUPERUSUARIO -------
+Write-Host ""
+$crearSuper = Read-Host "  ¿Desea crear un superusuario para el panel admin? (s/n)"
+if ($crearSuper -eq "s" -or $crearSuper -eq "S") {
+    $adminUser = Read-Host "  Usuario admin (dejar vacio para 'admin')"
+    if (-not $adminUser) { $adminUser = "admin" }
+    $adminEmail = Read-Host "  Email del admin"
+    Write-Host "  Ingrese la contrasena del superusuario:"
+    python manage.py createsuperuser --username $adminUser --email $adminEmail --noinput
+    Write-Host "  AVISO: Asigne la contrasena manualmente con:" -ForegroundColor Yellow
+    Write-Host "    python manage.py changepassword $adminUser" -ForegroundColor Yellow
+}
+
 # ------- 7. ACCESO DIRECTO + FIREWALL -------
 Write-Host "[7/7] Creando acceso directo y configurando firewall..."
 # .bat de inicio
@@ -124,7 +139,7 @@ echo === SISTEMA IPP ===
 echo Iniciando servidor...
 echo Accede en: http://localhost:8000
 echo.
-python manage.py runserver 0.0.0.0:8000
+python manage.py runserver 127.0.0.1:8000
 pause
 "@
 $batPath = "$desktop\Iniciar IPP.bat"

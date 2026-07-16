@@ -89,6 +89,8 @@ def logout_view(request):
     return redirect('login')
 
 # VISTA REGISTRO USUARIO/ROLES
+ROLES_PERMITIDOS_REGISTRO = ['Secretaria', 'Medico', 'Odontologo', 'Laboratorio', 'Especialista']
+
 def registro(request):
     """Vista para el registro de nuevos usuarios del sistema."""
     if request.method == 'POST':
@@ -97,7 +99,7 @@ def registro(request):
         username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()
         password = request.POST.get('password')
-        rol_elegido = request.POST.get('rol')
+        rol_elegido = request.POST.get('rol', '').strip()
 
         if not username or not password:
             messages.error(request, 'El nombre de usuario y la contraseña son obligatorios.')
@@ -118,7 +120,7 @@ def registro(request):
                 first_name=first_name, last_name=last_name
             )
             
-            if rol_elegido:
+            if rol_elegido and rol_elegido in ROLES_PERMITIDOS_REGISTRO:
                 grupo, created = Group.objects.get_or_create(name=rol_elegido)
                 user.groups.add(grupo)
                 messages.success(request, f'Usuario {username} registrado como {rol_elegido}.')
@@ -710,7 +712,7 @@ def ingresos_especialistas(request):
 @login_required
 def poliza_inicio(request):
     """Panel principal del módulo Póliza."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
         messages.error(request, "No tienes permisos para acceder a esta área.")
         return redirect('home')
 
@@ -720,18 +722,21 @@ def poliza_inicio(request):
     total_gastos = GastoPaciente.objects.aggregate(total=Sum('monto'))['total'] or 0
     planes = PlanSalud.objects.all()
 
+    es_secretaria = request.user.groups.filter(name='Secretaria').exists()
+
     return render(request, 'ipp1/poliza/inicio_poliza.html', {
         'total_polizas': total_polizas,
         'activas': activas,
         'inactivas': inactivas,
         'total_gastos': total_gastos,
         'planes': planes,
+        'es_secretaria': es_secretaria,
     })
 
 @login_required
 def poliza_menu(request):
     """Listado y gestión de pólizas."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
         return redirect('home')
 
     query = request.GET.get('q', '').strip()
@@ -758,9 +763,12 @@ def poliza_menu(request):
 
         return redirect('poliza_menu')
 
+    es_secretaria = request.user.groups.filter(name='Secretaria').exists()
+
     return render(request, 'ipp1/poliza/menu_poliza.html', {
         'polizas': polizas,
         'query': query,
+        'es_secretaria': es_secretaria,
     })
 
 @login_required
@@ -782,7 +790,7 @@ def poliza_crear(request):
 @login_required
 def poliza_detalle(request, poliza_id):
     """Detalle de una póliza con gastos y familiares."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
         return redirect('home')
 
     poliza = get_object_or_404(Poliza.objects.select_related('paciente', 'plan'), id=poliza_id)
@@ -791,12 +799,15 @@ def poliza_detalle(request, poliza_id):
     citas = poliza.citas.select_related('especialista').order_by('-fecha_cita', '-hora_cita')
     total_gastado = gastos.aggregate(total=Sum('monto'))['total'] or 0
 
+    es_secretaria = request.user.groups.filter(name='Secretaria').exists()
+
     return render(request, 'ipp1/poliza/detalle_poliza.html', {
         'poliza': poliza,
         'gastos': gastos,
         'familiares': familiares,
         'citas': citas,
         'total_gastado': total_gastado,
+        'es_secretaria': es_secretaria,
     })
 
 @login_required

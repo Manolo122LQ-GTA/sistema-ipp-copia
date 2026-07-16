@@ -6,8 +6,7 @@ let temporizadorInactividad;
 function reiniciarTemporizador() {
     if (temporizadorInactividad) clearTimeout(temporizadorInactividad);
     temporizadorInactividad = setTimeout(() => {
-        alert("Has sido desconectado por inactividad.");
-        document.getElementById('logout-form-inactivity').submit();
+        window.location.href = "{% url 'login' %}?timeout=1";
     }, TIEMPO_INACTIVIDAD);
 }
 

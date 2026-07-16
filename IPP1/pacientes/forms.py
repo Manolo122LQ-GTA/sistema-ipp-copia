@@ -27,7 +27,7 @@ class PacienteForm(forms.ModelForm):
 
     class Meta:
         model = Paciente
-        fields = ['nombre', 'apellido', 'cedula', 'telefono', 'direccion', 'fecha_nacimiento']
+        fields = ['nombre', 'apellido', 'cedula', 'telefono', 'direccion', 'fecha_nacimiento', 'status_afiliado', 'categoria_afiliado']
         widgets = {
             'fecha_nacimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
             'nombre': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ingrese los nombres'}),
@@ -35,6 +35,8 @@ class PacienteForm(forms.ModelForm):
             'cedula': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'V-12.345.678', 'onkeypress': 'return event.charCode >= 48 && event.charCode <= 57', 'inputmode': 'numeric'}),
             'telefono': forms.HiddenInput(),
             'direccion': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ingresa la dirección completa'}),
+            'status_afiliado': forms.Select(attrs={'class': 'form-control uiverse-input'}),
+            'categoria_afiliado': forms.Select(attrs={'class': 'form-control uiverse-input'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -71,7 +73,7 @@ class SolicitudSecretariaForm(forms.ModelForm):
         self.fields['especialista'].queryset = User.objects.filter(
             groups__name__in=['Medico', 'Odontologo', 'Especialista'],
             is_active=True
-        )
+        ).distinct()
 
 # SOLICITUD DE LABORATORIO
 class SolicitudLaboratorioForm(forms.ModelForm):
@@ -150,6 +152,8 @@ class PolizaForm(forms.ModelForm):
         self.fields['paciente'].widget.attrs.update({'class': 'form-control uiverse-input'})
         self.fields['plan'].widget.attrs.update({'class': 'form-control uiverse-input'})
         self.fields['estado'].widget.attrs.update({'class': 'form-control uiverse-input'})
+        if not self.instance.pk:
+            self.fields['saldo_restante'].widget = forms.HiddenInput()
 
 # GASTO DEL PACIENTE
 class GastoPacienteForm(forms.ModelForm):

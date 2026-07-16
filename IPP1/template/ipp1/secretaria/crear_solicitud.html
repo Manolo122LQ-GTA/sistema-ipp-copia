@@ -3,6 +3,11 @@
 {% block navbar_brand %}Sistema IPP - Secretaría{% endblock %}
 {% block title %}Crear Solicitud - IPP{% endblock %}
 {% block content %}
+
+<style>
+    body { font-family: Verdana, Geneva, Tahoma, sans-serif; }
+</style>
+
 <div class="row mb-4">
     <div class="col-md-8 mx-auto text-center">
         <h2 class="fw-bold text-primary mb-4">Crear Solicitud de Servicio</h2>
@@ -18,10 +23,6 @@
                 {% csrf_token %}
 
                 <!-- Encabezado de Fecha -->
-                <div class="text-end mb-4">
-                    <label class="form-label text-muted small">Ciudad y Fecha</label>
-                    <input type="text" class="uiverse-input form-control text-end d-inline-block w-auto" placeholder="Ej. Coro, 25 de Junio de 2024">
-                </div>
 
                 <!-- Datos del Formulario Django -->
                 <div class="row g-3 mb-4 p-4 bg-light rounded border">

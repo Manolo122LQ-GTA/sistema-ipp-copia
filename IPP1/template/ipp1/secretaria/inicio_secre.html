@@ -3,6 +3,11 @@
 {% block title %}Panel de Secretaría - IPP{% endblock %}
 {% block content %}
 
+<style>
+    body { font-family: Verdana, Geneva, Tahoma, sans-serif; }
+    .panel-card { min-height: 180px; }
+</style>
+
 <div class="row mb-4 align-items-center">
     <div class="col-md-8">
         <h2 class="fw-bold text-dark"><i class="bi bi-person-badge me-2"></i>Panel de Secretaría</h2>
@@ -16,8 +21,8 @@
 </div>
 
 <div class="row g-4">
-    <div class="col-md-6">
-        <div class="uiverse-card shadow-sm h-100">
+    <div class="col-md-4">
+        <div class="uiverse-card shadow-sm h-100 panel-card">
             <div class="card-body d-flex flex-column">
                 <div class="d-flex align-items-center mb-3">
                     <i class="bi bi-person-fill-add fs-1 text-primary me-3"></i>
@@ -34,19 +39,37 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="uiverse-card shadow-sm h-100">
+    <div class="col-md-4">
+        <div class="uiverse-card shadow-sm h-100 panel-card">
             <div class="card-body d-flex flex-column">
                 <div class="d-flex align-items-center mb-3">
                     <i class="bi bi-file-earmark-medical fs-1 text-primary me-3"></i>
                     <div>
                         <h5 class="fw-bold mb-1">Solicitud de Servicio</h5>
-                        <p class="text-muted mb-0 small">Solicitar el servicio para los pacientes.</p>
+                        <p class="text-muted mb-0 small">Solicitar el servicio para los pacientes en el sistema.</p>
                     </div>
                 </div>
                 <div class="mt-auto">
                     <a href="{% url 'crear_solicitud' %}" class="uiverse-btn btn btn-outline-primary w-100">
                         <i class="bi bi-pencil-square me-1"></i>Crear Solicitud
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="uiverse-card shadow-sm h-100 panel-card">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-shield-check fs-1 text-primary me-3"></i>
+                    <div>
+                        <h5 class="fw-bold mb-1">Pólizas</h5>
+                        <p class="text-muted mb-0 small">Consultar estado de póliza y cobertura de pacientes.</p>
+                    </div>
+                </div>
+                <div class="mt-auto">
+                    <a href="{% url 'poliza_inicio' %}" class="uiverse-btn btn btn-outline-primary w-100">
+                        <i class="bi bi-eye me-1"></i>Ver Pólizas
                     </a>
                 </div>
             </div>

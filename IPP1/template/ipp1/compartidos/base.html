@@ -30,6 +30,7 @@
                             <li class="nav-item"><a class="nav-link" href="{% url 'secretaria' %}">Panel</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'registrar_paciente' %}">Registrar Pacientes</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'crear_solicitud' %}">Solicitar Cita</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'poliza_inicio' %}">Póliza</a></li>
                         {% elif "Medico" in user.groups.all|join:"," %}
                             <li class="nav-item"><a class="nav-link" href="{% url 'medico_panel' %}">Panel</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'citas_recibidas_medico' %}">Citas</a></li>
@@ -73,18 +74,18 @@
                             <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 300px;">
                                 <li><h6 class="dropdown-header">Notificaciones</h6></li>
                                 {% for notif in notificaciones_no_leidas|slice:":5" %}
-                                    <li>
-                                        <a class="dropdown-item small" href="{% if notif.url %}{{ notif.url }}{% else %}#{% endif %}">
-                                            <form method="post" action="{% url 'marcar_notificacion' notif.id %}" class="d-inline">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-link text-decoration-none p-0 float-end" title="Marcar leída">
-                                                    <i class="bi bi-check-circle text-muted"></i>
-                                                </button>
-                                            </form>
-                                            {{ notif.mensaje }}
+                                    <li><div class="dropdown-item d-flex align-items-start gap-2 py-2">
+                                        <a class="text-decoration-none flex-grow-1 small" href="{% if notif.url %}{{ notif.url }}{% else %}#{% endif %}">
+                                            <span>{{ notif.mensaje }}</span>
                                             <br><small class="text-muted">{{ notif.fecha_creacion|timesince }}</small>
                                         </a>
-                                    </li>
+                                        <form method="post" action="{% url 'marcar_notificacion' notif.id %}" class="flex-shrink-0" onsubmit="cerrarDropdown(event)">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-link text-decoration-none p-0" title="Marcar leída">
+                                                <i class="bi bi-check-circle text-muted fs-6"></i>
+                                            </button>
+                                        </form>
+                                    </div></li>
                                 {% empty %}
                                     <li><span class="dropdown-item-text small text-muted">No hay notificaciones</span></li>
                                 {% endfor %}
@@ -146,6 +147,16 @@
         window.history.pushState(null, null, current);
     });
 })();
+function cerrarDropdown(e) {
+    e.preventDefault();
+    var form = e.target;
+    if (form.tagName !== 'FORM') form = form.closest('form');
+    var dropdown = form.closest('.dropdown-menu');
+    if (dropdown) dropdown.classList.remove('show');
+    var btn = document.querySelector('[data-bs-toggle="dropdown"]');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+    fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value } });
+}
 </script>
 
 {% if user.is_authenticated %}
