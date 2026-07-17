@@ -46,11 +46,7 @@
                                 <tr>
                                     <td class="ps-4"><strong class="text-danger">{{ cita.hora_cita|time:"H:i" }}</strong></td>
                                     <td><span class="badge bg-primary text-white fw-medium">{{ cita.paciente.cedula }}</span></td>
-                                    <td class="fw-semibold">{{ cita.paciente.nombre }} {{ cita.paciente.apellido }}
-                                        {% if cita.lab_pendientes_count > 0 %}
-                                            <span class="badge bg-warning text-dark ms-1" title="Laboratorios pendientes">🔬 {{ cita.lab_pendientes_count }} pend.</span>
-                                        {% endif %}
-                                    </td>
+                                    <td class="fw-semibold">{{ cita.paciente.nombre }} {{ cita.paciente.apellido }}</td>
                                     <td class="text-muted small">{% if cita.especialista %}{{ cita.especialista.get_full_name|default:cita.especialista.username }}{% else %}<em>Sin asignar</em>{% endif %}</td>
                                     <td class="text-center pe-4">
                                         <form method="POST" action="{% url 'atender_cita' cita.id %}" style="display:inline;">

@@ -120,6 +120,22 @@
                             <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-info btn-sm uiverse-btn" title="Ver detalle">
                                 <i class="bi bi-eye"></i>
                             </a>
+                            {% if paciente.activo %}
+                                <form method="post" action="{% url 'toggle_paciente' paciente.id %}" style="display:inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Desactivar">
+                                        <i class="bi bi-person-x"></i>
+                                    </button>
+                                </form>
+                            {% else %}
+                                <form method="post" action="{% url 'toggle_paciente' paciente.id %}" style="display:inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Activar">
+                                        <i class="bi bi-person-check"></i>
+                                    </button>
+                                </form>
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}

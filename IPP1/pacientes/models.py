@@ -1,6 +1,21 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+# PERFIL DE USUARIO
+class PerfilUsuario(models.Model):
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
+    aprobado = models.BooleanField(default=False)
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    fecha_aprobacion = models.DateTimeField(null=True, blank=True)
+    aprobado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='aprobaciones')
+
+    class Meta:
+        verbose_name = "Perfil de Usuario"
+        verbose_name_plural = "Perfiles de Usuario"
+
+    def __str__(self):
+        return f"{self.usuario.username} - {'Aprobado' if self.aprobado else 'Pendiente'}"
+
 # PACIENTE
 class Paciente(models.Model):
     nombre = models.CharField(max_length=100)
@@ -23,6 +38,7 @@ class Paciente(models.Model):
         default='Otro',
         help_text="Categoría específica del afiliado (Docente, Jubilado, Beneficiario, Otro)"
     )
+    activo = models.BooleanField(default=True)
     # usuario = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='paciente', help_text="Usuario vinculado para acceso al portal")
 
     def __str__(self):
@@ -126,7 +142,7 @@ class PlanSalud(models.Model):
     def __str__(self):
         return f"{self.nombre} - ${self.costo_mensual}/mes ({self.consultas_maximas_anuales} consultas/año)"
 
-# poliza
+# POLIZA
 class Poliza(models.Model):
     paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name='polizas')
     plan = models.ForeignKey(PlanSalud, on_delete=models.SET_NULL, null=True, blank=True)
@@ -160,7 +176,7 @@ class Poliza(models.Model):
             return None
         return max(0, self.plan.consultas_maximas_anuales - self.consultas_usadas_anuales())
 
-# gasto paciente
+# GASTO PACIENTE
 class GastoPaciente(models.Model):
     poliza = models.ForeignKey(Poliza, on_delete=models.CASCADE, related_name='gastos')
     concepto = models.CharField(max_length=255)
@@ -176,7 +192,7 @@ class GastoPaciente(models.Model):
     def __str__(self):
         return f"{self.concepto} - ${self.monto} ({self.poliza.paciente})"
 
-# familiar
+# FAMILIAR
 class Familiar(models.Model):
     poliza = models.ForeignKey(Poliza, on_delete=models.CASCADE, related_name='familiares')
     nombre = models.CharField(max_length=100)
@@ -192,7 +208,7 @@ class Familiar(models.Model):
     def __str__(self):
         return f"{self.nombre} {self.apellido} ({self.parentesco})"
 
-# factura
+# FACTURA
 class Factura(models.Model):
     METODO_PAGO_CHOICES = [
         ('Efectivo', 'Efectivo'),
@@ -228,7 +244,7 @@ class Factura(models.Model):
             self.numero_factura = f"FAC-{last + 1:05d}"
         super().save(*args, **kwargs)
 
-# tarifa especialista
+# TARIFAS ESPECIALISTAS
 class TarifaEspecialidad(models.Model):
     especialidad = models.CharField(max_length=100, unique=True)
     costo_consulta = models.DecimalField(max_digits=10, decimal_places=2)
@@ -261,7 +277,7 @@ class Medicamento(models.Model):
     def __str__(self):
         return f"{self.nombre} (stock: {self.cantidad_stock})"
 
-# receta
+# RECETA
 class Receta(models.Model):
     cita = models.ForeignKey('SolicitudSecretaria', on_delete=models.CASCADE, related_name='recetas')
     medicamento = models.ForeignKey(Medicamento, on_delete=models.SET_NULL, null=True, blank=True)
@@ -280,7 +296,7 @@ class Receta(models.Model):
         med = self.medicamento.nombre if self.medicamento else "N/A"
         return f"Receta: {med} para {self.cita.paciente} ({self.cita.fecha_cita})"
 
-# notificacion
+# NOTIFICACION
 class Notificacion(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notificaciones')
     mensaje = models.CharField(max_length=255)
@@ -296,7 +312,7 @@ class Notificacion(models.Model):
     def __str__(self):
         return f"{self.usuario.username}: {self.mensaje[:50]}"
 
-# log actividad
+# LOG ACTIVIDAD
 class LogActividad(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     accion = models.CharField(max_length=255)

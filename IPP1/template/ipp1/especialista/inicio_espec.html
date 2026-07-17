@@ -103,9 +103,7 @@
                     <p class="card-text text-muted">Exámenes de laboratorio pendientes por procesar.</p>
                 </div>
                 <div class="d-flex align-items-center justify-content-between mt-3">
-                    <span class="badge bg-info text-dark fs-5 px-3 py-2">
-                        {% if pendientes_lab > 0 %}{{ pendientes_lab }} pendiente(s){% else %}Ninguno{% endif %}
-                    </span>
+                    <span class="badge bg-info text-dark fs-5 px-3 py-2">Ninguno</span>
                     <a href="{% url 'solicitudes_pendientes_laboratorio' %}" class="btn btn-outline-info uiverse-btn">Ver Laboratorios</a>
                 </div>
             </div>

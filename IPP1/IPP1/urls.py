@@ -16,6 +16,9 @@ urlpatterns = [
     # El registro :v
     path('registro/', views.registro, name='registro'),
 
+    # Aprobación pendiente
+    path('pendiente-aprobacion/', views.pendiente_aprobacion, name='pendiente_aprobacion'),
+
     # Secretaria
     path('secretaria/inicio/', views.secretaria, name='secretaria'),
     path('secretaria/registrar_paciente/', views.registrar_paciente, name='registrar_paciente'),
@@ -54,6 +57,8 @@ urlpatterns = [
     path('administracion/reporte/', views.reporte_admin, name='reporte_admin'),
     path('administracion/logs/', views.ver_logs, name='ver_logs'),
     path('administracion/ingresos/', views.ingresos_especialistas, name='ingresos_especialistas'),
+    path('administracion/usuarios-pendientes/', views.usuarios_pendientes, name='usuarios_pendientes'),
+    path('administracion/aprobar-usuario/<int:user_id>/', views.aprobar_usuario, name='aprobar_usuario'),
 
     # Póliza
     path('poliza/', views.poliza_inicio, name='poliza_inicio'),
@@ -75,7 +80,6 @@ urlpatterns = [
     path('paciente/detalle/<int:paciente_id>/', views.detalle_paciente, name='detalle_paciente'),
     path('calendario/', views.calendario_citas, name='calendario_citas'),
     path('notificacion/marcar/<int:notif_id>/', views.marcar_notificacion, name='marcar_notificacion'),
-
     path('secretaria/solicitud/', views.crear_solicitud_view, name='crear_solicitud'),
 
     # 1 PANTALLA PARA PEDIR EL CORREO
@@ -142,5 +146,6 @@ urlpatterns = [
     # Exportar gastos completos a Excel
     path('exportar/gastos/excel/', views.exportar_gastos_excel, name='exportar_gastos_excel'),
 
-    # Portal de Pacientes (eliminado)
+    #
+    path('paciente/<int:paciente_id>/toggle/', views.toggle_paciente, name='toggle_paciente'),
 ]

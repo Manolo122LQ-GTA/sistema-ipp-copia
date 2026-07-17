@@ -9,14 +9,13 @@ from django.contrib.auth.models import Group, User
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.conf import settings
-from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura
+from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura, PerfilUsuario
 from .forms import PacienteForm, LoginForm, SolicitudSecretariaForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
-from django.contrib.auth.decorators import login_required
 import csv
 
 # SOLICITUD DE CITA
@@ -69,6 +68,10 @@ def login_view(request):
                 messages.error(request, 'El nombre de usuario no existe. Por favor, regístrate.')
                 return render(request, 'ipp1/compartidos/login.html', {'form': form})
 
+            usuario_existente = User.objects.filter(username=usuario).first()
+            if usuario_existente and not usuario_existente.is_active:
+                return redirect('pendiente_aprobacion')
+
             usuario_obj = authenticate(request, username=usuario, password=clave)
             if usuario_obj is not None:
                 login(request, usuario_obj)
@@ -119,6 +122,9 @@ def registro(request):
                 username=username, email=email, password=password,
                 first_name=first_name, last_name=last_name
             )
+            user.is_active = False
+            user.save()
+            PerfilUsuario.objects.create(usuario=user, aprobado=False)
             
             if rol_elegido and rol_elegido in ROLES_PERMITIDOS_REGISTRO:
                 grupo, created = Group.objects.get_or_create(name=rol_elegido)
@@ -130,6 +136,37 @@ def registro(request):
             return redirect('login')
     
     return render(request, 'ipp1/compartidos/registro.html')
+
+# APROBACION PENDIENTE
+def pendiente_aprobacion(request):
+    return render(request, 'ipp1/compartidos/pendiente_aprobacion.html')
+
+@login_required
+def usuarios_pendientes(request):
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        return redirect('home')
+    pendientes = PerfilUsuario.objects.filter(aprobado=False).select_related('usuario', 'usuario__groups')
+    return render(request, 'ipp1/admin/usuarios_pendientes.html', {'pendientes': pendientes})
+
+@login_required
+def aprobar_usuario(request, user_id):
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        return redirect('home')
+    if request.method == 'POST':
+        from django.utils import timezone
+        perfil = get_object_or_404(PerfilUsuario, usuario_id=user_id)
+        accion = request.POST.get('accion')
+        if accion == 'aprobar':
+            perfil.aprobado = True
+            perfil.fecha_aprobacion = timezone.now()
+            perfil.aprobado_por = request.user
+            perfil.save()
+            messages.success(request, f'Usuario {perfil.usuario.username} aprobado correctamente.')
+        elif accion == 'rechazar':
+            username = perfil.usuario.username
+            perfil.usuario.delete()
+            messages.success(request, f'Usuario {username} rechazado y eliminado.')
+    return redirect('usuarios_pendientes')
 
 # PERFIL DE USUARIO
 @login_required
@@ -600,7 +637,7 @@ def saldos_admin(request):
         return redirect('home')
 
     query = request.GET.get('q', '').strip()
-    base = Paciente.objects.all()
+    base = Paciente.objects.filter(activo=True)
     if query:
         base = base.filter(
             Q(nombre__icontains=query) | Q(apellido__icontains=query) | Q(cedula__icontains=query) | Q(codigo_afiliado__icontains=query)
@@ -924,7 +961,7 @@ def registrar_paciente(request):
         messages.error(request, "Acceso denegado.")
         return redirect('home')
     q = request.GET.get('q', '').strip()
-    pacientes_lista = Paciente.objects.all().order_by('-fecha_registro')
+    pacientes_lista = Paciente.objects.filter(activo=True).order_by('-fecha_registro')
     if q:
         pacientes_lista = pacientes_lista.filter(
             Q(nombre__icontains=q) | Q(apellido__icontains=q) | Q(cedula__icontains=q) | Q(codigo_afiliado__icontains=q)
@@ -950,6 +987,9 @@ def registrar_paciente(request):
 @login_required
 def calendario_citas(request):
     user = request.user
+    if not (user.is_superuser or user.groups.filter(name__in=['Administracion', 'Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio']).exists()):
+        messages.error(request, 'No tienes permisos para acceder al calendario.')
+        return redirect('home')
     if user.is_superuser or user.groups.filter(name='Administracion').exists():
         citas = SolicitudSecretaria.objects.all()
     elif user.groups.filter(name='Medico').exists():
@@ -980,6 +1020,9 @@ def calendario_citas(request):
 # DETALLE DE PACIENTE
 @login_required
 def detalle_paciente(request, paciente_id):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio']).exists()):
+        messages.error(request, 'No tienes permisos para ver este paciente.')
+        return redirect('home')
     paciente = get_object_or_404(Paciente, id=paciente_id)
     citas = SolicitudSecretaria.objects.filter(paciente=paciente).order_by('-fecha_cita', '-hora_cita')
     laboratorios = SolicitudLaboratorio.objects.filter(paciente=paciente).order_by('-fecha_solicitud')
@@ -1073,7 +1116,7 @@ def exportar_pacientes_excel(request):
         return redirect('home')
     import openpyxl
     query = request.GET.get('q', '').strip()
-    pacientes = Paciente.objects.all()
+    pacientes = Paciente.objects.filter(activo=True)
     if query:
         pacientes = pacientes.filter(
             Q(nombre__icontains=query) | Q(apellido__icontains=query) | Q(cedula__icontains=query)
@@ -1095,7 +1138,7 @@ def exportar_pacientes_csv(request):
     if not _es_admin(request.user):
         return redirect('home')
     query = request.GET.get('q', '').strip()
-    pacientes = Paciente.objects.all()
+    pacientes = Paciente.objects.filter(activo=True)
     if query:
         pacientes = pacientes.filter(
             Q(nombre__icontains=query) | Q(apellido__icontains=query) | Q(cedula__icontains=query)
@@ -1259,6 +1302,9 @@ def factura_generar(request, cita_id):
 @login_required
 def historia_clinica_print(request, paciente_id):
     """Vista imprimible de la historia clínica del paciente."""
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio']).exists()):
+        messages.error(request, 'No tienes permisos para ver la historia clínica.')
+        return redirect('home')
     paciente = get_object_or_404(Paciente, id=paciente_id)
     citas = SolicitudSecretaria.objects.filter(paciente=paciente).select_related('especialista').order_by('-fecha_cita', '-hora_cita')
     laboratorios = SolicitudLaboratorio.objects.filter(paciente=paciente).order_by('-fecha_solicitud')
@@ -1436,7 +1482,7 @@ def gastos_por_paciente(request):
         return redirect('home')
 
     q = request.GET.get('q', '').strip()
-    pacientes = Paciente.objects.all().order_by('apellido')
+    pacientes = Paciente.objects.filter(activo=True).order_by('apellido')
     if q:
         pacientes = pacientes.filter(
             Q(nombre__icontains=q) | Q(apellido__icontains=q) | Q(cedula__icontains=q)
@@ -1486,7 +1532,7 @@ def resumen_afiliados(request):
             or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
         return redirect('home')
 
-    afiliados = Paciente.objects.filter(status_afiliado='Afiliado').order_by('apellido')
+    afiliados = Paciente.objects.filter(status_afiliado='Afiliado', activo=True).order_by('apellido')
     data = []
     for p in afiliados:
         poliza = Poliza.objects.filter(paciente=p).first()
@@ -1538,7 +1584,7 @@ def exportar_gastos_excel(request):
         cell.alignment = Alignment(horizontal='center')
 
     row = 2
-    for p in Paciente.objects.all().order_by('apellido'):
+    for p in Paciente.objects.filter(activo=True).order_by('apellido'):
         gp = GastoPaciente.objects.filter(poliza__paciente=p).aggregate(total=Sum('monto'))['total'] or 0
         cp = SolicitudSecretaria.objects.filter(
             paciente=p, estado='Atendido', costo_consulta__gt=0
@@ -1635,3 +1681,20 @@ def exportar_pacientes_seleccionados(request):
     response['Content-Disposition'] = 'attachment; filename=pacientes_seleccionados.xlsx'
     wb.save(response)
     return response
+
+# ACTIVAR DESACTIVAR
+@login_required
+def toggle_paciente(request, paciente_id):
+    """Activa o desactiva un paciente."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos.')
+        return redirect('home')
+    
+    paciente = get_object_or_404(Paciente, id=paciente_id)
+    paciente.activo = not paciente.activo
+    paciente.save()
+    
+    estado = "activado" if paciente.activo else "desactivado"
+    _registrar_log(request, f'{"Activó" if paciente.activo else "Desactivó"} paciente {paciente.nombre} {paciente.apellido}', 'Paciente', paciente.id)
+    messages.success(request, f'Paciente {paciente.nombre} {paciente.apellido} ha sido {estado}.')
+    return redirect('saldos_admin')

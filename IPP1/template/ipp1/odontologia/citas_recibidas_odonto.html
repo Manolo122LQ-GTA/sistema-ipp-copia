@@ -40,11 +40,7 @@
                             <td class="ps-4">{{ cita.hora_cita|time:"H:i" }} / {{ cita.fecha_cita|date:"d/m/Y" }}
                                 <small class="d-block text-muted">{{ cita.paciente.fecha_nacimiento|timesince }}</small>
                             </td>
-                            <td class="fw-semibold">{{ cita.paciente.nombre }}
-                                {% if cita.lab_pendientes_count > 0 %}
-                                    <span class="badge bg-warning text-dark ms-1" title="Laboratorios pendientes">🔬 {{ cita.lab_pendientes_count }}</span>
-                                {% endif %}
-                            </td>
+                            <td class="fw-semibold">{{ cita.paciente.nombre }}</td>
                             <td><span class="badge bg-primary text-white fw-medium">{{ cita.paciente.cedula }}</span></td>
                             <td>{{ cita.motivo_consulta }}</td>
                             <td>

@@ -1,0 +1,18 @@
+<form id="logout-form-inactivity" action="{% url 'logout' %}" method="post" style="display:none;">{% csrf_token %}</form>
+<script>
+const TIEMPO_INACTIVIDAD = 600000;
+let temporizadorInactividad;
+
+function reiniciarTemporizador() {
+    if (temporizadorInactividad) clearTimeout(temporizadorInactividad);
+    temporizadorInactividad = setTimeout(() => {
+        window.location.href = "{% url 'login' %}?timeout=1";
+    }, TIEMPO_INACTIVIDAD);
+}
+
+document.addEventListener('mousemove', reiniciarTemporizador);
+document.addEventListener('keypress', reiniciarTemporizador);
+document.addEventListener('click', reiniciarTemporizador);
+document.addEventListener('scroll', reiniciarTemporizador);
+reiniciarTemporizador();
+</script>

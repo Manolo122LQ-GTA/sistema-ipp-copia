@@ -41,11 +41,7 @@
                             {% for cita in citas %}
                                 <tr>
                                     <td class="ps-4"><strong class="text-danger">{{ cita.hora_cita|time:"H:i" }}</strong></td>
-                                    <td class="fw-semibold">{{ cita.paciente.nombre }} {{ cita.paciente.apellido }}
-                                        {% if cita.lab_pendientes_count > 0 %}
-                                            <span class="badge bg-warning text-dark ms-1" title="Laboratorios pendientes">🔬 {{ cita.lab_pendientes_count }}</span>
-                                        {% endif %}
-                                    </td>
+                                    <td class="fw-semibold">{{ cita.paciente.nombre }} {{ cita.paciente.apellido }}</td>
                                     <td><span class="badge bg-secondary">{{ cita.paciente.cedula }}</span></td>
                                     <td class="small">{{ cita.motivo_consulta|default:"Especialidad" }}</td>
                                     <td class="text-center pe-4">

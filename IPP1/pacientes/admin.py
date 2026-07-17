@@ -1,12 +1,19 @@
 from django.contrib import admin
-from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura
+from .models import PerfilUsuario, Paciente, SolicitudSecretaria, SolicitudLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura
 
 # Register your models here.
 
+@admin.register(PerfilUsuario)
+class PerfilUsuarioAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'aprobado', 'fecha_registro', 'fecha_aprobacion', 'aprobado_por')
+    list_filter = ('aprobado',)
+    search_fields = ('usuario__username',)
+
 @admin.register(Paciente)
 class PacienteAdmin(admin.ModelAdmin):
-    list_display = ('codigo_afiliado', 'cedula', 'nombre', 'apellido', 'status_afiliado', 'telefono')
+    list_display = ('codigo_afiliado', 'cedula', 'nombre', 'apellido', 'status_afiliado', 'telefono', 'activo')
     search_fields = ('cedula', 'apellido', 'codigo_afiliado')
+    list_filter = ('status_afiliado', 'activo')
 
 @admin.register(SolicitudSecretaria)
 class SolicitudSecretariaAdmin(admin.ModelAdmin):

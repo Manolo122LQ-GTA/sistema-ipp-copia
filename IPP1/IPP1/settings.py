@@ -101,7 +101,7 @@ WSGI_APPLICATION = 'IPP1.wsgi.application'
 #}
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.db.backends.postgresql', #mysql
         'NAME': os.environ.get('DB_NAME', 'IPPBD'),
         'USER': os.environ.get('DB_USER', 'postgres'),
         'PASSWORD': os.environ.get('DB_PASSWORD', ''),

@@ -1,0 +1,86 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio de Sesión - IPP</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'icon/LOGO_IPP_IUTAG.svg' %}">
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}">
+    <link rel="stylesheet" href="{% static 'css/uiverse.css' %}">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        body {
+        background: #2c6e9c;
+        background: linear-gradient(90deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%);
+        font-family: Verdana, Geneva, Tahoma, sans-serif;
+        display: flex;
+        flex-direction: column;
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container text-center py-4">
+        <div class="d-inline-block bg-white bg-opacity-10 rounded-3 px-4 py-2 mb-3" style="backdrop-filter: blur(4px);">
+            <span class="text-white fw-bold" style="letter-spacing: 2px; font-size: 13px;">SISTEMA IPP — IUTAG</span>
+        </div>
+    </div>
+    <div class="main-content position-relative">
+        {% if messages %}
+        <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+            {% for message in messages %}
+            <div class="modern-{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}success{% endif %}-message mb-2">
+                <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+                <div class="icon-wrapper">
+                    <i class="bi bi-{% if message.tags == 'error' %}x-circle{% elif message.tags == 'warning' %}exclamation-triangle{% elif message.tags == 'info' %}info-circle{% else %}check-circle{% endif %}-fill success-icon"></i>
+                </div>
+                <div class="text-wrapper">
+                    <div class="msg-title">
+                        {% if message.tags == 'error' %}Error{% elif message.tags == 'warning' %}Atención{% elif message.tags == 'info' %}Información{% else %}Operación Correcta{% endif %}
+                    </div>
+                    <div class="msg-message">{{ message }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="form-box">
+            <form class="form" method="POST">
+                {% csrf_token %}
+                <i class="bi bi-hospital text-primary" style="font-size: 3rem;"></i>
+                <span class="title">Inicio de Sesión</span>
+                <span class="subtitle">Ingresa tus credenciales para acceder al sistema IPP-IUTAG.</span>
+                <div class="form-container">
+                    <input type="text" name="username" class="input" placeholder="Usuario" required>
+                    <input type="password" name="password" class="input" placeholder="Contraseña" required>
+                </div>
+                <button type="submit">Iniciar Sesión</button>
+            </form>
+            <div class="form-section">
+                <p>¿No tienes cuenta? <a href="{% url 'registro' %}">Registrarse</a></p>
+                <p style="margin-top:4px;">¿Olvidaste tu contraseña? <a href="{% url 'password_reset' %}">Recuperar</a></p>
+                {# Portal Paciente eliminado #}
+            </div>
+        </div>
+    </div>
+
+<footer class="py-3 text-center" style="background: rgba(0,0,0,0.15);">
+    <div class="container-fluid">
+        <small class="text-white text-opacity-75">© 2026 IPP-IUTAG. Todos los derechos reservados.</small>
+    </div>
+</footer>
+
+</body>
+</html>
