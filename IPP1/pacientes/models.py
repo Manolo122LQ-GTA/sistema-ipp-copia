@@ -155,6 +155,7 @@ class Poliza(models.Model):
     )
     saldo_restante = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    cuota_inicial = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         verbose_name = "Póliza"

@@ -48,6 +48,7 @@
                             <li class="nav-item"><a class="nav-link" href="{% url 'laboratorio' %}">Panel</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'registrar_laboratorio' %}">Registrar</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'solicitudes_pendientes_laboratorio' %}">Pendientes</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'resultados_laboratorio' %}">Resultados</a></li>
                         {% elif "Administracion" in user.groups.all|join:"," %}
                             <li class="nav-item"><a class="nav-link" href="{% url 'inicio_admin' %}">Panel</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'menu_admin' %}">Usuarios</a></li>

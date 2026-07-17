@@ -265,6 +265,7 @@ body { font-family: Verdana, Geneva, Tahoma, sans-serif; }
                             {% endif %}
                         </td>
                         <td>{% if cita.costo_consulta %}${{ cita.costo_consulta|floatformat:2 }}{% else %}—{% endif %}</td>
+                    </tr>
                     {% empty %}
                     <tr>
                         <td colspan="9" class="text-center py-4 text-muted">

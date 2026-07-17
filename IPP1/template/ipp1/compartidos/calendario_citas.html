@@ -54,7 +54,7 @@
                             </a>
                             <br><small class="text-muted">{{ cita.paciente.cedula }}</small>
                         </td>
-                        <td>{{ cita.especialista.get_full_name|default:cita.especialista.username }}</td>
+                        <td>{% if cita.especialista %}{{ cita.especialista.get_full_name|default:cita.especialista.username }}{% else %}Sin asignar{% endif %}</td>
                         <td class="text-center">
                             {% if cita.estado == 'Atendido' %}
                                 <span class="badge bg-success">Atendido</span>

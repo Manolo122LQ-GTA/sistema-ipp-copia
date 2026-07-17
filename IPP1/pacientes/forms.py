@@ -60,6 +60,10 @@ class SolicitudSecretariaForm(forms.ModelForm):
     class Meta:
         model = SolicitudSecretaria
         fields = ['paciente', 'especialista', 'fecha_cita', 'hora_cita', 'motivo_consulta']
+        labels = {
+            'especialista': 'Médico General',
+            'motivo_consulta': 'Motivo de Solicitud',
+        }
         widgets = {
             'fecha_cita': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
             'hora_cita': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control uiverse-input'}),
@@ -140,7 +144,7 @@ class PlanSaludForm(forms.ModelForm):
 class PolizaForm(forms.ModelForm):
     class Meta:
         model = Poliza
-        fields = ['paciente', 'plan', 'fecha_inicio', 'fecha_vencimiento', 'estado', 'saldo_restante']
+        fields = ['paciente', 'plan', 'fecha_inicio', 'fecha_vencimiento', 'estado', 'cuota_inicial', 'saldo_restante']
         widgets = {
             'fecha_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
             'fecha_vencimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
@@ -152,8 +156,11 @@ class PolizaForm(forms.ModelForm):
         self.fields['paciente'].widget.attrs.update({'class': 'form-control uiverse-input'})
         self.fields['plan'].widget.attrs.update({'class': 'form-control uiverse-input'})
         self.fields['estado'].widget.attrs.update({'class': 'form-control uiverse-input'})
+        self.fields['cuota_inicial'].widget.attrs.update({'class': 'form-control uiverse-input', 'step': '0.01'})
         if not self.instance.pk:
             self.fields['saldo_restante'].widget = forms.HiddenInput()
+        else:
+            self.fields['cuota_inicial'].widget = forms.HiddenInput()
 
 # GASTO DEL PACIENTE
 class GastoPacienteForm(forms.ModelForm):

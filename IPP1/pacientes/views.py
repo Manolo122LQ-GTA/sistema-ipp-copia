@@ -56,6 +56,7 @@ def crear_solicitud_view(request):
 def login_view(request):
     """Vista para el inicio de sesión sin redirecciones ciegas en errores."""
     if request.user.is_authenticated:
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
         
     if request.method == 'POST':
@@ -75,6 +76,7 @@ def login_view(request):
             usuario_obj = authenticate(request, username=usuario, password=clave)
             if usuario_obj is not None:
                 login(request, usuario_obj)
+                messages.error(request, 'No tienes permisos para acceder a esta seccion.')
                 return redirect('home')
             else:
                 messages.error(request, 'Contraseña incorrecta.')
@@ -144,6 +146,7 @@ def pendiente_aprobacion(request):
 @login_required
 def usuarios_pendientes(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     pendientes = PerfilUsuario.objects.filter(aprobado=False).select_related('usuario', 'usuario__groups')
     return render(request, 'ipp1/admin/usuarios_pendientes.html', {'pendientes': pendientes})
@@ -151,6 +154,7 @@ def usuarios_pendientes(request):
 @login_required
 def aprobar_usuario(request, user_id):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     if request.method == 'POST':
         from django.utils import timezone
@@ -289,7 +293,7 @@ def citas_recibidas_medico(request):
         messages.warning(request, "Acceso denegado.")
         return redirect('home')
     
-    citas = SolicitudSecretaria.objects.filter(
+    citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
         estado='En Espera',
         especialista__groups__name='Medico'
     ).order_by('fecha_cita', 'hora_cita')
@@ -303,7 +307,7 @@ def consulta_historial_medico(request):
         return redirect('home')
 
     query = request.GET.get('q')
-    base_qs = SolicitudSecretaria.objects.filter(especialista__groups__name='Medico')
+    base_qs = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Medico')
     if query:
         citas = base_qs.filter(
             Q(paciente__nombre__icontains=query) | 
@@ -343,7 +347,7 @@ def citas_recibidas(request):
         messages.warning(request, "No tienes permiso para acceder a esta área.")
         return redirect('home')
     
-    citas = SolicitudSecretaria.objects.filter(
+    citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
         estado='En Espera',
         especialista__groups__name='Odontologo'
     ).order_by('fecha_cita', 'hora_cita')
@@ -357,7 +361,7 @@ def consulta_historial_odonto(request):
         return redirect('home')
 
     query = request.GET.get('q')
-    base_qs = SolicitudSecretaria.objects.filter(especialista__groups__name='Odontologo')
+    base_qs = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Odontologo')
     if query:
         citas = base_qs.filter(
             Q(paciente__nombre__icontains=query) | 
@@ -398,7 +402,7 @@ def citas_especialista(request):
         return redirect('home')
     
     # Filtramos citas asignadas a este usuario y que estén en espera
-    citas = SolicitudSecretaria.objects.filter(especialista=request.user, estado='En Espera').order_by('fecha_cita', 'hora_cita')
+    citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista=request.user, estado='En Espera').order_by('fecha_cita', 'hora_cita')
     return render(request, 'ipp1/especialista/citas_especialista.html', {'citas': citas})
 
 @login_required
@@ -451,6 +455,7 @@ def costos_especialista(request):
 def nueva_cita_especialista(request):
     """Permite al especialista agendar una cita directamente."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Especialista').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     if request.method == 'POST':
         form = SolicitudSecretariaForm(request.POST)
@@ -474,6 +479,7 @@ def nueva_cita_especialista(request):
 def medicamentos_especialista(request):
     """Consulta y gestión de medicamentos/inventario."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Especialista').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
     medicamentos = Medicamento.objects.filter(activo=True).order_by('nombre')
@@ -590,6 +596,7 @@ def inicio_admin(request):
 def menu_admin(request):
     """Menú detallado para asignar roles y especialidades."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
     usuarios = User.objects.all().exclude(is_superuser=True) # Excluimos superusuarios para seguridad
@@ -613,7 +620,7 @@ def menu_admin(request):
         
         if rol_nombre:
             # Agrega el rol sin eliminar los existentes
-            grupo = Group.objects.get(name=rol_nombre)
+            grupo, _ = Group.objects.get_or_create(name=rol_nombre)
             user_to_update.groups.add(grupo)
             _registrar_log(request, f'Asignó rol {rol_nombre} a {user_to_update.username}', 'User', user_to_update.id)
             messages.success(request, f"Rol '{rol_nombre}' asignado a '{user_to_update.username}'.")
@@ -634,6 +641,7 @@ def menu_admin(request):
 def saldos_admin(request):
     """Estatus y Saldos de Salud - lista de pacientes con saldo y afiliación."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
     query = request.GET.get('q', '').strip()
@@ -658,6 +666,7 @@ def saldos_admin(request):
 def reporte_admin(request):
     """Reporte de Consultas y Nómina - citas atendidas y cobros."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
     citas_atendidas = SolicitudSecretaria.objects.filter(estado='Atendido').order_by('-fecha_cita', '-hora_cita')
@@ -687,6 +696,7 @@ def reporte_admin(request):
 @login_required
 def ver_logs(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     logs = LogActividad.objects.all().order_by('-fecha')[:500]
     return render(request, 'ipp1/administracion/logs.html', {'logs': logs})
@@ -695,6 +705,7 @@ def ver_logs(request):
 def ingresos_especialistas(request):
     """Reporte de ingresos generados por cada médico/especialista, agrupado por especialidad."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     ingresos = (SolicitudSecretaria.objects
                 .filter(estado='Atendido', especialista__isnull=False)
@@ -712,7 +723,6 @@ def ingresos_especialistas(request):
         item['total_admin'] = item['total_admin'] or 0
 
     # Determine specialty for each doctor
-    from django.contrib.auth.models import User
     especialidad_map = {}
     for item in ingresos:
         try:
@@ -774,6 +784,7 @@ def poliza_inicio(request):
 def poliza_menu(request):
     """Listado y gestión de pólizas."""
     if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
     query = request.GET.get('q', '').strip()
@@ -812,11 +823,14 @@ def poliza_menu(request):
 def poliza_crear(request):
     """Crear una nueva póliza para un paciente."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     if request.method == 'POST':
         form = PolizaForm(request.POST)
         if form.is_valid():
-            poliza = form.save()
+            poliza = form.save(commit=False)
+            poliza.saldo_restante = poliza.plan.costo_mensual - form.cleaned_data['cuota_inicial']
+            poliza.save()
             _registrar_log(request, f'Creó póliza para {poliza.paciente}', 'Poliza', poliza.id)
             messages.success(request, f"Póliza creada para {poliza.paciente.nombre} {poliza.paciente.apellido}.")
             return redirect('poliza_menu')
@@ -828,6 +842,7 @@ def poliza_crear(request):
 def poliza_detalle(request, poliza_id):
     """Detalle de una póliza con gastos y familiares."""
     if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
     poliza = get_object_or_404(Poliza.objects.select_related('paciente', 'plan'), id=poliza_id)
@@ -851,6 +866,7 @@ def poliza_detalle(request, poliza_id):
 def poliza_registrar_familiar(request, poliza_id):
     """Registrar un familiar en una póliza."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     poliza = get_object_or_404(Poliza, id=poliza_id)
     if poliza.familiares.count() >= 12:
@@ -872,6 +888,7 @@ def poliza_registrar_familiar(request, poliza_id):
 def poliza_registrar_gasto(request, poliza_id):
     """Registrar un gasto asociado a una póliza."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
     poliza = get_object_or_404(Poliza, id=poliza_id)
@@ -897,6 +914,7 @@ def poliza_registrar_gasto(request, poliza_id):
 @login_required
 def poliza_editar(request, poliza_id):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     poliza = get_object_or_404(Poliza, id=poliza_id)
     if request.method == 'POST':
@@ -914,6 +932,7 @@ def poliza_editar(request, poliza_id):
 @login_required
 def plan_salud_lista(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     planes = PlanSalud.objects.all()
     if request.method == 'POST':
@@ -930,6 +949,7 @@ def plan_salud_lista(request):
 @login_required
 def plan_salud_editar(request, plan_id):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     plan = get_object_or_404(PlanSalud, id=plan_id)
     if request.method == 'POST':
@@ -946,6 +966,7 @@ def plan_salud_editar(request, plan_id):
 @login_required
 def plan_salud_eliminar(request, plan_id):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     plan = get_object_or_404(PlanSalud, id=plan_id)
     plan.delete()
@@ -991,15 +1012,15 @@ def calendario_citas(request):
         messages.error(request, 'No tienes permisos para acceder al calendario.')
         return redirect('home')
     if user.is_superuser or user.groups.filter(name='Administracion').exists():
-        citas = SolicitudSecretaria.objects.all()
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').all()
     elif user.groups.filter(name='Medico').exists():
-        citas = SolicitudSecretaria.objects.filter(especialista__groups__name='Medico')
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Medico')
     elif user.groups.filter(name='Odontologo').exists():
-        citas = SolicitudSecretaria.objects.filter(especialista__groups__name='Odontologo')
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Odontologo')
     elif user.groups.filter(name='Especialista').exists():
-        citas = SolicitudSecretaria.objects.filter(especialista=user)
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista=user)
     elif user.groups.filter(name='Secretaria').exists():
-        citas = SolicitudSecretaria.objects.all()
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').all()
     else:
         citas = SolicitudSecretaria.objects.none()
 
@@ -1113,6 +1134,7 @@ def marcar_notificacion(request, notif_id):
 @login_required
 def exportar_pacientes_excel(request):
     if not _es_admin(request.user):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     import openpyxl
     query = request.GET.get('q', '').strip()
@@ -1136,6 +1158,7 @@ def exportar_pacientes_excel(request):
 @login_required
 def exportar_pacientes_csv(request):
     if not _es_admin(request.user):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     query = request.GET.get('q', '').strip()
     pacientes = Paciente.objects.filter(activo=True)
@@ -1155,6 +1178,7 @@ def exportar_pacientes_csv(request):
 @login_required
 def exportar_reporte_excel(request):
     if not _es_admin(request.user):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     import openpyxl
     citas = SolicitudSecretaria.objects.filter(estado='Atendido').select_related('paciente', 'especialista').order_by('-fecha_cita')
@@ -1181,6 +1205,7 @@ def exportar_reporte_excel(request):
 @login_required
 def exportar_reporte_csv(request):
     if not _es_admin(request.user):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     citas = SolicitudSecretaria.objects.filter(estado='Atendido').select_related('paciente', 'especialista').order_by('-fecha_cita')
     response = HttpResponse(content_type='text/csv')
@@ -1204,6 +1229,7 @@ def exportar_reporte_csv(request):
 def importar_pacientes_excel(request):
     """Importa pacientes desde un archivo Excel."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     if request.method == 'POST' and request.FILES.get('archivo'):
         import openpyxl
@@ -1255,6 +1281,7 @@ def importar_pacientes_excel(request):
 def facturas_lista(request):
     """Listado de facturas generadas."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists() or request.user.groups.filter(name='Secretaria').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     facturas = Factura.objects.all().order_by('-fecha_emision')
     return render(request, 'ipp1/facturacion/facturas_lista.html', {'facturas': facturas})
@@ -1264,6 +1291,7 @@ def facturas_lista(request):
 def factura_detalle(request, factura_id):
     """Detalle de una factura."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists() or request.user.groups.filter(name='Secretaria').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     factura = get_object_or_404(Factura, id=factura_id)
     return render(request, 'ipp1/facturacion/factura_detalle.html', {'factura': factura})
@@ -1273,6 +1301,7 @@ def factura_detalle(request, factura_id):
 def factura_generar(request, cita_id):
     """Genera una factura opcional para una cita atendida."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     cita = get_object_or_404(SolicitudSecretaria, id=cita_id, estado='Atendido')
     if hasattr(cita, 'factura'):
@@ -1357,6 +1386,7 @@ def eliminar_paciente(request, paciente_id):
 @login_required
 def marcar_factura_pagada(request, factura_id):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists() or request.user.groups.filter(name='Secretaria').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     factura = get_object_or_404(Factura, id=factura_id)
     if request.method == 'POST':
@@ -1377,6 +1407,7 @@ def marcar_factura_pagada(request, factura_id):
 @login_required
 def recibo_factura(request, factura_id):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists() or request.user.groups.filter(name='Secretaria').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     factura = get_object_or_404(Factura, id=factura_id)
     return render(request, 'ipp1/facturacion/recibo_factura.html', {'factura': factura})
@@ -1385,6 +1416,7 @@ def recibo_factura(request, factura_id):
 @login_required
 def reporte_caja(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     from django.utils.timezone import localdate
     hoy = localdate()
@@ -1420,6 +1452,7 @@ def reporte_caja(request):
 @login_required
 def receta_crear(request, cita_id):
     if not (request.user.is_superuser or request.user.groups.filter(name='Medico').exists() or request.user.groups.filter(name='Odontologo').exists() or request.user.groups.filter(name='Especialista').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     cita = get_object_or_404(SolicitudSecretaria, id=cita_id, estado='Atendido')
     if cita.especialista and cita.especialista != request.user and not request.user.is_superuser:
@@ -1456,6 +1489,7 @@ def estado_poliza_paciente(request, paciente_id):
     """Vista compartida Secretaría/Póliza: estado de póliza del paciente."""
     if not (request.user.is_superuser
             or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     paciente = get_object_or_404(Paciente, id=paciente_id)
     poliza = Poliza.objects.filter(paciente=paciente).select_related('plan').first()
@@ -1479,6 +1513,7 @@ def gastos_por_paciente(request):
     """Gastos detallados por paciente accesible desde Admin y Póliza."""
     if not (request.user.is_superuser
             or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
     q = request.GET.get('q', '').strip()
@@ -1488,21 +1523,35 @@ def gastos_por_paciente(request):
             Q(nombre__icontains=q) | Q(apellido__icontains=q) | Q(cedula__icontains=q)
         )
 
+    gastos_por_paciente = GastoPaciente.objects.filter(
+        poliza__paciente__activo=True
+    ).values('poliza__paciente__id').annotate(total=Sum('monto'))
+
+    citas_por_paciente = SolicitudSecretaria.objects.filter(
+        paciente__activo=True, estado='Atendido', costo_consulta__gt=0
+    ).values('paciente__id').annotate(
+        total_costo=Sum('costo_consulta'),
+        total_medico=Sum('monto_medico'),
+        total_admin=Sum('monto_admin'),
+    )
+
+    polizas_activas = {
+        p.paciente_id: p
+        for p in Poliza.objects.filter(paciente__activo=True, estado='Activo')
+    }
+
+    gastos_map = {g['poliza__paciente__id']: g['total'] or 0 for g in gastos_por_paciente}
+    citas_map = {c['paciente__id']: c for c in citas_por_paciente}
+
     data = []
     for p in pacientes:
-        gastos_poliza = GastoPaciente.objects.filter(poliza__paciente=p).aggregate(total=Sum('monto'))['total'] or 0
-        citas_pagadas = SolicitudSecretaria.objects.filter(
-            paciente=p, estado='Atendido', costo_consulta__gt=0
-        ).aggregate(total=Sum('costo_consulta'))['total'] or 0
+        gastos_poliza = gastos_map.get(p.id, 0)
+        cita = citas_map.get(p.id, {})
+        citas_pagadas = cita.get('total_costo', 0) or 0
+        total_medico = cita.get('total_medico', 0) or 0
+        total_admin = cita.get('total_admin', 0) or 0
         total_gastado = gastos_poliza + citas_pagadas
-        total_medico = SolicitudSecretaria.objects.filter(
-            paciente=p, estado='Atendido'
-        ).aggregate(total=Sum('monto_medico'))['total'] or 0
-        total_admin = SolicitudSecretaria.objects.filter(
-            paciente=p, estado='Atendido'
-        ).aggregate(total=Sum('monto_admin'))['total'] or 0
-
-        poliza_activa = Poliza.objects.filter(paciente=p, estado='Activo').first()
+        poliza_activa = polizas_activas.get(p.id)
         saldo = poliza_activa.saldo_restante if poliza_activa else 0
 
         if total_gastado > 0 or poliza_activa:
@@ -1530,19 +1579,40 @@ def resumen_afiliados(request):
     """Cross-module spending visualization — Admin and Póliza."""
     if not (request.user.is_superuser
             or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
     afiliados = Paciente.objects.filter(status_afiliado='Afiliado', activo=True).order_by('apellido')
+
+    gastos_por_paciente = GastoPaciente.objects.filter(
+        poliza__paciente__status_afiliado='Afiliado', poliza__paciente__activo=True
+    ).values('poliza__paciente__id').annotate(total=Sum('monto'))
+
+    citas_por_paciente = SolicitudSecretaria.objects.filter(
+        paciente__status_afiliado='Afiliado', paciente__activo=True, estado='Atendido'
+    ).values('paciente__id').annotate(
+        total_costo=Sum('costo_consulta'),
+    )
+
+    citas_cubiertas = SolicitudSecretaria.objects.filter(
+        paciente__status_afiliado='Afiliado', paciente__activo=True,
+        estado='Atendido', cubierto_por_poliza=True
+    ).values('paciente__id').annotate(count=Count('id'))
+
+    polizas_map = {}
+    for pol in Poliza.objects.filter(paciente__status_afiliado='Afiliado', paciente__activo=True):
+        polizas_map[pol.paciente_id] = pol
+
+    gastos_map = {g['poliza__paciente__id']: g['total'] or 0 for g in gastos_por_paciente}
+    citas_map = {c['paciente__id']: c['total_costo'] or 0 for c in citas_por_paciente}
+    cubiertas_map = {c['paciente__id']: c['count'] for c in citas_cubiertas}
+
     data = []
     for p in afiliados:
-        poliza = Poliza.objects.filter(paciente=p).first()
-        gastos_poliza = GastoPaciente.objects.filter(poliza__paciente=p).aggregate(total=Sum('monto'))['total'] or 0
-        citas_totales = SolicitudSecretaria.objects.filter(
-            paciente=p, estado='Atendido'
-        ).aggregate(total=Sum('costo_consulta'))['total'] or 0
-        citas_usadas = SolicitudSecretaria.objects.filter(
-            paciente=p, estado='Atendido', cubierto_por_poliza=True
-        ).count()
+        poliza = polizas_map.get(p.id)
+        gastos_poliza = gastos_map.get(p.id, 0)
+        citas_totales = citas_map.get(p.id, 0)
+        citas_usadas = cubiertas_map.get(p.id, 0)
         data.append({
             'paciente': p,
             'poliza': poliza,
@@ -1563,11 +1633,11 @@ def exportar_gastos_excel(request):
     """Export a comprehensive Excel with spending by patient/consultation/doctor."""
     if not (request.user.is_superuser
             or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment
-    from django.http import HttpResponse
 
     wb = openpyxl.Workbook()
 
@@ -1583,13 +1653,26 @@ def exportar_gastos_excel(request):
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal='center')
 
+    gastos_data = GastoPaciente.objects.filter(
+        poliza__paciente__activo=True
+    ).values('poliza__paciente__id').annotate(total=Sum('monto'))
+    gastos_map = {g['poliza__paciente__id']: g['total'] or 0 for g in gastos_data}
+
+    citas_data = SolicitudSecretaria.objects.filter(
+        paciente__activo=True, estado='Atendido', costo_consulta__gt=0
+    ).values('paciente__id').annotate(total=Sum('costo_consulta'))
+    citas_map = {c['paciente__id']: c['total'] or 0 for c in citas_data}
+
+    polizas_map = {
+        p.paciente_id: p
+        for p in Poliza.objects.filter(paciente__activo=True)
+    }
+
     row = 2
     for p in Paciente.objects.filter(activo=True).order_by('apellido'):
-        gp = GastoPaciente.objects.filter(poliza__paciente=p).aggregate(total=Sum('monto'))['total'] or 0
-        cp = SolicitudSecretaria.objects.filter(
-            paciente=p, estado='Atendido', costo_consulta__gt=0
-        ).aggregate(total=Sum('costo_consulta'))['total'] or 0
-        poliza = Poliza.objects.filter(paciente=p).first()
+        gp = gastos_map.get(p.id, 0)
+        cp = citas_map.get(p.id, 0)
+        poliza = polizas_map.get(p.id)
         saldo = poliza.saldo_restante if poliza else 0
         ws1.cell(row=row, column=1, value=f"{p.nombre} {p.apellido}")
         ws1.cell(row=row, column=2, value=p.cedula)
@@ -1645,9 +1728,9 @@ def exportar_gastos_excel(request):
 def exportar_pacientes_seleccionados(request):
     """Exporta pacientes seleccionados a Excel."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     import openpyxl
-    from django.http import HttpResponse
     ids = request.GET.get('ids', '')
     if not ids:
         messages.warning(request, "No seleccionaste pacientes.")
@@ -1698,3 +1781,33 @@ def toggle_paciente(request, paciente_id):
     _registrar_log(request, f'{"Activó" if paciente.activo else "Desactivó"} paciente {paciente.nombre} {paciente.apellido}', 'Paciente', paciente.id)
     messages.success(request, f'Paciente {paciente.nombre} {paciente.apellido} ha sido {estado}.')
     return redirect('saldos_admin')
+
+# LABORATORIO
+@login_required
+def resultados_laboratorio(request):
+    """Lista de exámenes de laboratorio ya procesados con sus resultados."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Laboratorio').exists()):
+        messages.error(request, 'No tienes permisos.')
+        return redirect('home')
+    
+    q = request.GET.get('q', '').strip()
+    resultados = SolicitudLaboratorio.objects.filter(
+        estado='Procesado'
+    ).select_related('paciente').order_by('-fecha_procesamiento')
+    
+    if q:
+        resultados = resultados.filter(
+            Q(paciente__nombre__icontains=q) | 
+            Q(paciente__apellido__icontains=q) | 
+            Q(paciente__cedula__icontains=q) |
+            Q(prueba_laboratorio__icontains=q)
+        )
+    
+    paginator = Paginator(resultados, 15)
+    page = request.GET.get('page', 1)
+    resultados = paginator.get_page(page)
+    
+    return render(request, 'ipp1/laboratorio/resultados_lab.html', {
+        'resultados': resultados,
+        'q': q,
+    })

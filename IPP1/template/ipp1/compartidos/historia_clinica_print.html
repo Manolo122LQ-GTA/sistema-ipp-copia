@@ -67,7 +67,7 @@
             {% for cita in citas %}
             <tr>
                 <td>{{ cita.fecha_cita|date:"d/m/Y" }} {{ cita.hora_cita|time:"H:i" }}</td>
-                <td>{{ cita.especialista.get_full_name|default:cita.especialista.username|default:"—" }}</td>
+                <td>{% if cita.especialista %}{{ cita.especialista.get_full_name|default:cita.especialista.username }}{% else %}—{% endif %}</td>
                 <td>{{ cita.motivo_consulta|default:"—"|truncatechars:60 }}</td>
                 <td><span class="badge-print {% if cita.estado == 'Atendido' %}badge-print-success{% elif cita.estado == 'Cancelado' %}badge-print-danger{% else %}badge-print-warning{% endif %}">{{ cita.estado }}</span></td>
                 <td>{% if cita.costo_consulta %}${{ cita.costo_consulta|floatformat:2 }}{% else %}—{% endif %}</td>
