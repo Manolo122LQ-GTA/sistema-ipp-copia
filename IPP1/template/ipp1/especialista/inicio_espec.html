@@ -2,109 +2,146 @@
 {% block navbar_brand %}Sistema IPP - Especialista{% endblock %}
 {% block title %}Panel de Especialista - IPP{% endblock %}
 {% block content %}
-<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
 
-<div class="row mb-4 align-items-center">
-    <div class="col-md-8">
-        <h2 class="fw-bold text-dark">Gestión de Especialista</h2>
-        <p class="text-muted">Bienvenido al panel de atención y consultas especializadas.</p>
-    </div>
-    <div class="col-md-4 text-md-end">
-        <a href="{% url 'home' %}" class="btn btn-outline-secondary uiverse-btn">
-            <i class="bi bi-house-door me-1"></i>Volver al Menú
-        </a>
-    </div>
-</div>
+<style>
+.inicio-espec-card .card-body {
+    display: grid;
+    grid-template-rows: 1fr auto;
+}
+</style>
 
-<div class="row g-4 mb-5">
-    <div class="col-md-6">
-        <div class="card h-100 shadow-sm border-1">
-            <div class="card-body d-flex flex-column justify-content-between">
-                <div>
-                    <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-cash-stack fs-2 text-gray me-3"></i>
-                        <h5 class="card-title text-primary mb-0">Costo de Cita</h5>
-                    </div>
-                    <p class="card-text text-muted">Visualiza el costo de la Cita</p>
-                </div>
-                <a href="{% url 'costos_especialista' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Ver Costo</a>
-            </div>
+<div class="mt-2">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-dark">Gestión de Especialista</h2>
+            <p class="text-muted">Bienvenido al panel de atención y consultas especializadas.</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{% url 'medico' %}" class="btn btn-outline-secondary uiverse-btn">
+                <i class="bi bi-house-door me-1"></i>Volver al Menú
+            </a>
         </div>
     </div>
 
-    <div class="col-md-6">
-        <div class="card h-100 shadow-sm border-1">
-            <div class="card-body d-flex flex-column justify-content-between">
-                <div>
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
+                <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-plus-circle fs-2 text-gray me-3"></i>
-                        <h5 class="card-title text-primary mb-0">Nueva Cita</h5>
+                        <i class="bi bi-cash-stack fs-2 text-primary me-3"></i>
+                        <div>
+                            <h5 class="fw-bold mb-1">Costo de Cita</h5>
+                            <p class="text-muted mb-0 small">Visualiza el costo de la Cita</p>
+                        </div>
                     </div>
-                    <p class="card-text text-muted">Agende una nueva consulta directamente para un paciente.</p>
+                    <a href="{% url 'costos_especialista' %}" class="uiverse-btn btn btn-outline-primary w-100">
+                        <i class="bi bi-eye me-1"></i>Ver Costo
+                    </a>
                 </div>
-                <a href="{% url 'nueva_cita_especialista' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Agendar Cita</a>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-6">
-        <div class="card h-100 shadow-sm border-1">
-            <div class="card-body d-flex flex-column justify-content-between">
-                <div>
+        <div class="col-md-4">
+            <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
+                <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-capsule fs-2 text-gray me-3"></i>
-                        <h5 class="card-title text-primary mb-0">Medicamentos</h5>
+                        <i class="bi bi-plus-circle fs-2 text-primary me-3"></i>
+                        <div>
+                            <h5 class="fw-bold mb-1">Nueva Cita</h5>
+                            <p class="text-muted mb-0 small">Agende una nueva consulta directamente para un paciente.</p>
+                        </div>
                     </div>
-                    <p class="card-text text-muted">Consulte el catálogo de medicamentos y suministros disponibles.</p>
+                    <a href="{% url 'nueva_cita_especialista' %}" class="uiverse-btn btn btn-outline-primary w-100">
+                        <i class="bi bi-calendar-plus me-1"></i>Agendar Cita
+                    </a>
                 </div>
-                <a href="{% url 'medicamentos_especialista' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Ver Medicamentos</a>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-6">
-        <div class="card h-100 shadow-sm border-1">
-            <div class="card-body d-flex flex-column justify-content-between">
-                <div>
+        <div class="col-md-4">
+            <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
+                <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-calendar-range fs-2 text-gray me-3"></i>
-                        <h5 class="card-title text-primary mb-0">Calendario</h5>
+                        <i class="bi bi-capsule fs-2 text-primary me-3"></i>
+                        <div>
+                            <h5 class="fw-bold mb-1">Medicamentos</h5>
+                            <p class="text-muted mb-0 small">Consulte el catálogo de medicamentos y suministros disponibles.</p>
+                        </div>
                     </div>
-                    <p class="card-text text-muted">Vista cronológica de todas las citas agendadas.</p>
+                    <a href="{% url 'medicamentos_especialista' %}" class="uiverse-btn btn btn-outline-primary w-100">
+                        <i class="bi bi-capsule me-1"></i>Ver Medicamentos
+                    </a>
                 </div>
-                <a href="{% url 'calendario_citas' %}" class="btn btn-outline-primary uiverse-btn">Ver Calendario</a>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-6">
-        <div class="card h-100 shadow-sm border-1">
-            <div class="card-body d-flex flex-column justify-content-between">
-                <div>
+        <div class="col-md-4">
+            <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
+                <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-clipboard2-pulse fs-2 text-gray me-3"></i>
-                        <h5 class="card-title text-primary mb-0">Chequeo de Citas/Consultas</h5>
+                        <i class="bi bi-calendar-range fs-2 text-primary me-3"></i>
+                        <div>
+                            <h5 class="fw-bold mb-1">Calendario</h5>
+                            <p class="text-muted mb-0 small">Vista cronológica de todas las citas agendadas.</p>
+                        </div>
                     </div>
-                    <p class="card-text text-muted">Chequear las Citas/Consultas de los Pacientes</p>
+                    <a href="{% url 'calendario_citas' %}" class="uiverse-btn btn btn-outline-primary w-100">
+                        <i class="bi bi-calendar3 me-1"></i>Ver Calendario
+                    </a>
                 </div>
-                <a href="{% url 'citas_especialista' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Chequear Citas/Consultas</a>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-6">
-        <div class="card h-100 shadow-sm border-1">
-            <div class="card-body d-flex flex-column justify-content-between">
-                <div>
+        <div class="col-md-4">
+            <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
+                <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-flask fs-2 text-gray me-3"></i>
-                        <h5 class="card-title text-primary mb-0">Laboratorios Pendientes</h5>
+                        <i class="bi bi-clipboard2-pulse fs-2 text-primary me-3"></i>
+                        <div>
+                            <h5 class="fw-bold mb-1">Chequeo de Citas/Consultas</h5>
+                            <p class="text-muted mb-0 small">Chequear las Citas/Consultas de los Pacientes</p>
+                        </div>
                     </div>
-                    <p class="card-text text-muted">Exámenes de laboratorio pendientes por procesar.</p>
+                    <a href="{% url 'citas_especialista' %}" class="uiverse-btn btn btn-outline-primary w-100">
+                        <i class="bi bi-clipboard2-check me-1"></i>Ver Citas
+                    </a>
                 </div>
-                <div class="d-flex align-items-center justify-content-between mt-3">
-                    <span class="badge bg-info text-dark fs-5 px-3 py-2">Ninguno</span>
-                    <a href="{% url 'solicitudes_pendientes_laboratorio' %}" class="btn btn-outline-info uiverse-btn">Ver Laboratorios</a>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-flask fs-2 text-primary me-3"></i>
+                        <div>
+                            <h5 class="fw-bold mb-1">Laboratorios Pendientes</h5>
+                            <p class="text-muted mb-0 small">Exámenes de laboratorio pendientes por procesar.</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="badge bg-info text-dark fs-6 px-3 py-2">Ninguno</span>
+                        <a href="{% url 'solicitudes_pendientes_laboratorio' %}" class="uiverse-btn btn btn-outline-info">
+                            <i class="bi bi-eye me-1"></i>Ver
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-card-checklist fs-2 text-primary me-3"></i>
+                        <div>
+                            <h5 class="fw-bold mb-1">Historial Especialista</h5>
+                            <p class="text-muted mb-0 small">Búsqueda de expedientes, diagnósticos previos y antecedentes de pacientes.</p>
+                        </div>
+                    </div>
+                    <a href="#" class="uiverse-btn btn btn-outline-primary w-100">
+                        <i class="bi bi-search me-1"></i>Consultar Historial
+                    </a>
                 </div>
             </div>
         </div>

@@ -2,7 +2,6 @@
 {% block navbar_brand %}Sistema IPP - Administración{% endblock %}
 {% block title %}Estatus y Saldos - IPP{% endblock %}
 {% block content %}
-<style>body { font-family: Verdana, Geneva, Tahoma, sans-serif; }</style>
 
 <div class="row mb-4 align-items-center">
     <div class="col-md-8">
@@ -18,26 +17,47 @@
 
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="card border-primary shadow-sm">
-            <div class="card-body text-center">
-                <h5 class="card-title text-gray">Total Pacientes</h5>
-                <span class="fs-2 fw-bold text-primary">{{ pacientes|length }}</span>
+        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #2c6e9c;">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-3 p-3" style="background-color: #e8f0f8;">
+                        <i class="bi bi-people fs-3 text-primary"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">Total Pacientes</small>
+                        <span class="fs-4 fw-bold">{{ pacientes|length }}</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card border-success shadow-sm">
-            <div class="card-body text-center">
-                <h5 class="card-title text-gray">Afiliados</h5>
-                <span class="fs-2 fw-bold text-success">{{ total_afiliados }}</span>
+        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #2b7a62;">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-3 p-3" style="background-color: #e8f5f0;">
+                        <i class="bi bi-person-check fs-3 text-success"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">Afiliados</small>
+                        <span class="fs-4 fw-bold text-success">{{ total_afiliados }}</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card border-primary shadow-sm">
-            <div class="card-body text-center">
-                <h5 class="card-title text-gray">Comunidad</h5>
-                <span class="fs-2 fw-bold text-primary">{{ total_comunidad }}</span>
+        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #4a90d9;">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-3 p-3" style="background-color: #eef4fb;">
+                        <i class="bi bi-person-heart fs-3 text-info"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">Comunidad</small>
+                        <span class="fs-4 fw-bold text-info">{{ total_comunidad }}</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

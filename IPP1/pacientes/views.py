@@ -76,7 +76,6 @@ def login_view(request):
             usuario_obj = authenticate(request, username=usuario, password=clave)
             if usuario_obj is not None:
                 login(request, usuario_obj)
-                messages.error(request, 'No tienes permisos para acceder a esta seccion.')
                 return redirect('home')
             else:
                 messages.error(request, 'Contraseña incorrecta.')
@@ -561,7 +560,7 @@ def solicitudes_pendientes_laboratorio(request):
         messages.warning(request, "No tienes permiso para acceder a esta área.")
         return redirect('home')
 
-    solicitudes = SolicitudLaboratorio.objects.filter(estado='Pendiente').order_by('-fecha_creacion')
+    solicitudes = SolicitudLaboratorio.objects.filter(estado='Pendiente').select_related('paciente').order_by('-fecha_creacion')
 
     if request.method == 'POST':
         solicitud_id = request.POST.get('solicitud_id')
@@ -599,7 +598,7 @@ def menu_admin(request):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
-    usuarios = User.objects.all().exclude(is_superuser=True) # Excluimos superusuarios para seguridad
+    usuarios = User.objects.all().exclude(is_superuser=True).prefetch_related('groups') # Excluimos superusuarios para seguridad
     grupos = Group.objects.all()
 
     if request.method == 'POST':
@@ -669,7 +668,7 @@ def reporte_admin(request):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
-    citas_atendidas = SolicitudSecretaria.objects.filter(estado='Atendido').order_by('-fecha_cita', '-hora_cita')
+    citas_atendidas = SolicitudSecretaria.objects.filter(estado='Atendido').select_related('paciente', 'especialista').order_by('-fecha_cita', '-hora_cita')
     total_consultas = citas_atendidas.count()
     cobro_nomina_citas = citas_atendidas.filter(cobro_nomina=True).select_related('paciente', 'especialista')
     total_con_cobro = cobro_nomina_citas.count()
@@ -698,7 +697,7 @@ def ver_logs(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
-    logs = LogActividad.objects.all().order_by('-fecha')[:500]
+    logs = LogActividad.objects.select_related('usuario').order_by('-fecha')[:500]
     return render(request, 'ipp1/administracion/logs.html', {'logs': logs})
 
 @login_required
@@ -806,8 +805,9 @@ def poliza_menu(request):
             poliza.save()
             messages.success(request, f"Póliza de {poliza.paciente} cambiada a '{poliza.estado}'.")
         elif accion == 'eliminar':
-            poliza.delete()
-            messages.success(request, "Póliza eliminada.")
+            poliza.estado = 'Inactivo'
+            poliza.save()
+            messages.success(request, "Póliza desactivada.")
 
         return redirect('poliza_menu')
 
@@ -964,6 +964,7 @@ def plan_salud_editar(request, plan_id):
 
 
 @login_required
+@require_POST
 def plan_salud_eliminar(request, plan_id):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
@@ -1045,7 +1046,7 @@ def detalle_paciente(request, paciente_id):
         messages.error(request, 'No tienes permisos para ver este paciente.')
         return redirect('home')
     paciente = get_object_or_404(Paciente, id=paciente_id)
-    citas = SolicitudSecretaria.objects.filter(paciente=paciente).order_by('-fecha_cita', '-hora_cita')
+    citas = SolicitudSecretaria.objects.filter(paciente=paciente).select_related('especialista').order_by('-fecha_cita', '-hora_cita')
     laboratorios = SolicitudLaboratorio.objects.filter(paciente=paciente).order_by('-fecha_solicitud')
     poliza_activa = Poliza.objects.filter(paciente=paciente, estado='Activo').select_related('plan').first()
     recetas = Receta.objects.filter(cita__paciente=paciente).select_related('medicamento', 'cita__especialista').order_by('-fecha_prescrita')
@@ -1374,9 +1375,10 @@ def eliminar_paciente(request, paciente_id):
         messages.error(request, "Acceso denegado.")
         return redirect('home')
     paciente = get_object_or_404(Paciente, id=paciente_id)
-    _registrar_log(request, f'Eliminó paciente {paciente.nombre} {paciente.apellido} ({paciente.cedula})', 'Paciente', paciente.id)
-    paciente.delete()
-    messages.success(request, f"Paciente {paciente.nombre} {paciente.apellido} eliminado.")
+    _registrar_log(request, f'Desactivó paciente {paciente.nombre} {paciente.apellido} ({paciente.cedula})', 'Paciente', paciente.id)
+    paciente.activo = False
+    paciente.save()
+    messages.success(request, f"Paciente {paciente.nombre} {paciente.apellido} desactivado.")
     if request.user.groups.filter(name='Administracion').exists() and not request.user.groups.filter(name='Secretaria').exists():
         return redirect('saldos_admin')
     return redirect('registrar_paciente')
@@ -1767,6 +1769,7 @@ def exportar_pacientes_seleccionados(request):
 
 # ACTIVAR DESACTIVAR
 @login_required
+@require_POST
 def toggle_paciente(request, paciente_id):
     """Activa o desactiva un paciente."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):

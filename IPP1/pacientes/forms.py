@@ -159,6 +159,7 @@ class PolizaForm(forms.ModelForm):
         self.fields['cuota_inicial'].widget.attrs.update({'class': 'form-control uiverse-input', 'step': '0.01'})
         if not self.instance.pk:
             self.fields['saldo_restante'].widget = forms.HiddenInput()
+            self.fields['saldo_restante'].required = False
         else:
             self.fields['cuota_inicial'].widget = forms.HiddenInput()
 

@@ -403,30 +403,11 @@ select.input option {
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 
+/* ====== TEXT WRAPPER (toast messages) ====== */
+.text-wrapper { flex: 1; }
+
 /* ====== RESPONSIVE MOBILE ====== */
 @media (max-width: 767px) {
-  .table-responsive-cards thead { display: none; }
-  .table-responsive-cards tr {
-    display: block;
-    margin-bottom: 1rem;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 0.75rem;
-    background: #fff;
-  }
-  .table-responsive-cards td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.4rem 0;
-    border: none;
-  }
-  .table-responsive-cards td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    color: #2c6e9c;
-    margin-right: 0.5rem;
-  }
   .card-body { padding: 1rem; }
   .container-fluid { padding-left: 0.75rem; padding-right: 0.75rem; }
   h5, .h5 { font-size: 1rem; }
@@ -434,7 +415,6 @@ select.input option {
   .btn { font-size: 0.8rem; padding: 0.3rem 0.6rem; }
   .form-control, .form-select { font-size: 0.85rem; }
   .navbar-brand { font-size: 0.9rem; }
-  .d-mobile-block { display: block !important; }
 }
 
 @media (max-width: 575px) {

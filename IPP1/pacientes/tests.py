@@ -43,7 +43,7 @@ class BaseTest(TestCase):
 
     def _crear_paciente(self, **kwargs):
         defaults = {
-            'nombre': 'Juan', 'apellido': 'Perez', 'cedula': 'V12345678',
+            'nombre': 'Juan', 'apellido': 'Perez', 'cedula': '12345678',
             'fecha_nacimiento': date(1990, 5, 15),
         }
         defaults.update(kwargs)
@@ -57,23 +57,23 @@ class PacienteModelTest(BaseTest):
         p = self._crear_paciente()
         self.assertEqual(p.nombre, 'Juan')
         self.assertEqual(p.apellido, 'Perez')
-        self.assertEqual(p.cedula, 'V12345678')
+        self.assertEqual(p.cedula, '12345678')
         self.assertEqual(p.status_afiliado, 'Comunidad')
         self.assertEqual(p.saldo_plan_salud, Decimal('0.00'))
 
     def test_str_representation(self):
         p = self._crear_paciente()
-        self.assertEqual(str(p), 'Juan Perez (V12345678)')
+        self.assertEqual(str(p), 'Juan Perez (12345678)')
 
     def test_cedula_unica(self):
-        self._crear_paciente(cedula='V12345678')
+        self._crear_paciente(cedula='12345678')
         with self.assertRaises(Exception):
-            self._crear_paciente(cedula='V12345678', nombre='Otro')
+            self._crear_paciente(cedula='12345678', nombre='Otro')
 
     def test_status_choices(self):
         p = self._crear_paciente(status_afiliado='Afiliado')
         self.assertEqual(p.status_afiliado, 'Afiliado')
-        p2 = self._crear_paciente(cedula='V87654321', status_afiliado='Comunidad')
+        p2 = self._crear_paciente(cedula='87654321', status_afiliado='Comunidad')
         self.assertEqual(p2.status_afiliado, 'Comunidad')
 
 
@@ -226,7 +226,7 @@ class GastoPacienteModelTest(BaseTest):
             poliza=self.poliza, concepto='Consulta',
             monto=Decimal('50.00'), fecha=date(2026, 6, 1)
         )
-        self.assertEqual(str(g), 'Consulta - $50.00 (Juan Perez (V12345678))')
+        self.assertEqual(str(g), 'Consulta - $50.00 (Juan Perez (12345678))')
 
 
 class FamiliarModelTest(BaseTest):
@@ -326,7 +326,7 @@ class LoginFormTest(BaseTest):
 class PacienteFormTest(BaseTest):
     def test_form_valido(self):
         form = PacienteForm(data={
-            'nombre': 'Juan', 'apellido': 'Perez', 'cedula': 'V12345678',
+            'nombre': 'Juan', 'apellido': 'Perez', 'cedula': '12345678',
             'codigo_telefono': '0412', 'numero_telefono': '1234567',
             'fecha_nacimiento': '1990-05-15',
             'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Docente',
@@ -342,9 +342,9 @@ class PacienteFormTest(BaseTest):
         self.assertIn('fecha_nacimiento', form.errors)
 
     def test_cedula_unica(self):
-        self._crear_paciente(cedula='V12345678')
+        self._crear_paciente(cedula='12345678')
         form = PacienteForm(data={
-            'nombre': 'Otro', 'apellido': 'Perez', 'cedula': 'V12345678',
+            'nombre': 'Otro', 'apellido': 'Perez', 'cedula': '12345678',
             'codigo_telefono': '0412', 'numero_telefono': '1234567',
             'fecha_nacimiento': '1990-05-15',
             'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Beneficiario',
@@ -657,13 +657,13 @@ class PacienteCRUDTest(BaseTest):
     def test_registrar_paciente(self):
         self._login(grupo='Secretaria')
         response = self.client.post(reverse('registrar_paciente'), {
-            'nombre': 'Maria', 'apellido': 'Gomez', 'cedula': 'V87654321',
+            'nombre': 'Maria', 'apellido': 'Gomez', 'cedula': '87654321',
             'codigo_telefono': '0414', 'numero_telefono': '7654321',
             'fecha_nacimiento': '1985-03-22',
             'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Docente',
         }, follow=True)
         self.assertContains(response, 'exitosamente')
-        self.assertTrue(Paciente.objects.filter(cedula='V87654321').exists())
+        self.assertTrue(Paciente.objects.filter(cedula='87654321').exists())
 
 
 class LaboratorioFlowTest(BaseTest):
@@ -734,7 +734,7 @@ class PolizaFlowTest(BaseTest):
             'paciente': self.paciente.id,
             'plan': self.plan.id,
             'fecha_inicio': '2026-01-01',
-            'saldo_restante': '1000.00',
+            'cuota_inicial': '10.00',
             'estado': 'Activo',
         }, follow=True)
         self.assertContains(response, 'creada')
@@ -809,14 +809,14 @@ class AdminMenuTest(BaseTest):
 
 class SaldosAdminTest(BaseTest):
     def test_saldos_filtro_respeta_conteo(self):
-        self._crear_paciente(cedula='V1', status_afiliado='Afiliado')
-        self._crear_paciente(cedula='V2', status_afiliado='Comunidad')
-        self._crear_paciente(cedula='V3', status_afiliado='Afiliado')
+        self._crear_paciente(cedula='11111111', status_afiliado='Afiliado')
+        self._crear_paciente(cedula='22222222', status_afiliado='Comunidad')
+        self._crear_paciente(cedula='33333333', status_afiliado='Afiliado')
         self._login(grupo='Administracion')
-        response = self.client.get(reverse('saldos_admin'), {'q': 'V3'})
+        response = self.client.get(reverse('saldos_admin'), {'q': '33333333'})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'V3')
-        self.assertNotContains(response, 'V1')
+        self.assertContains(response, '33333333')
+        self.assertNotContains(response, '11111111')
 
 
 class ReporteAdminTest(BaseTest):
@@ -894,7 +894,7 @@ class PricingTest(BaseTest):
     def setUp(self):
         super().setUp()
         self.paciente_afiliado = self._crear_paciente(status_afiliado='Afiliado')
-        self.paciente_comunidad = self._crear_paciente(cedula='V87654321', status_afiliado='Comunidad')
+        self.paciente_comunidad = self._crear_paciente(cedula='87654321', status_afiliado='Comunidad')
         self.medico = self._crear_usuario('dr_medico', 'Test1234!', 'Medico')
         self.tarifa = TarifaEspecialidad.objects.create(
             especialidad='Medicina General', costo_consulta=Decimal('30.00'), activo=True
@@ -993,11 +993,11 @@ class PricingTest(BaseTest):
 
 class AfiliadoCodigoTest(BaseTest):
     def test_codigo_auto_generado(self):
-        p = self._crear_paciente(cedula='V99999999')
-        self.assertEqual(p.codigo_afiliado, 'IPP-V99999999')
+        p = self._crear_paciente(cedula='99999999')
+        self.assertEqual(p.codigo_afiliado, 'IPP-99999999')
 
     def test_codigo_no_sobrescribe_existente(self):
-        p = self._crear_paciente(cedula='V88888888')
+        p = self._crear_paciente(cedula='88888888')
         codigo_original = p.codigo_afiliado
         p.nombre = 'Otro'
         p.save()
@@ -1052,7 +1052,7 @@ class FacturaTest(BaseTest):
     def test_factura_duplicada_rechazada(self):
         Factura.objects.create(
             cita=self.cita, paciente_nombre='Test',
-            paciente_cedula='V1', subtotal=Decimal('0'),
+            paciente_cedula='11111111', subtotal=Decimal('0'),
             total=Decimal('0'),
         )
         self._login(grupo='Administracion')
@@ -1098,7 +1098,8 @@ class EditarPacienteTest(BaseTest):
         self._login(grupo='Secretaria')
         p = self._crear_paciente()
         response = self.client.post(reverse('eliminar_paciente', args=[p.id]))
-        self.assertFalse(Paciente.objects.filter(id=p.id).exists())
+        p.refresh_from_db()
+        self.assertFalse(p.activo)
         self.assertRedirects(response, reverse('registrar_paciente'))
 
 
@@ -1167,9 +1168,9 @@ class FacturaPagoTest(BaseTest):
 #         self.assertContains(response, 'Registro al Portal')
 # 
 #     def test_portal_registro_post(self):
-#         p = self._crear_paciente(cedula='V12345679')
+#         p = self._crear_paciente(cedula='12345679')
 #         response = self.client.post(reverse('portal_registro'), {
-#             'cedula': 'V12345679', 'codigo_afiliado': '',
+#             'cedula': '12345679', 'codigo_afiliado': '',
 #             'password': 'MiPass123!', 'password2': 'MiPass123!',
 #         })
 #         p.refresh_from_db()
@@ -1183,7 +1184,7 @@ class FacturaPagoTest(BaseTest):
 #         self.assertContains(response, 'Portal del Paciente')
 # 
 #     def test_portal_inicio_authenticated(self):
-#         p = self._crear_paciente(cedula='V99999999')
+#         p = self._crear_paciente(cedula='99999999')
 #         user = User.objects.create_user(username='PAC-V99999999', password='Test1234!')
 #         p.usuario = user
 #         p.save()
