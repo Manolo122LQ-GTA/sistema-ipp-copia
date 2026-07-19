@@ -114,11 +114,14 @@
                     <input type="text" name="username" class="input" placeholder="Usuario" required value="{{ request.POST.username }}">
 
                     <!-- Contraseña con validacion en tiempo real -->
-                    <input type="password" name="password" id="id_password" class="input" placeholder="Contraseña" maxlength="128" required oninput="validarPassword()">
+                    <div class="position-relative">
+                    <input type="password" name="password" id="id_password" class="input" placeholder="Contraseña" maxlength="8" required oninput="validarPassword()" style="padding-right: 40px;">
+                    <i class="bi bi-eye-slash" onclick="togglePassword(this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #6c757d;"></i>
+                    </div>
 
                     <!-- REQUISITOS DE CONTRASEÑA -->
                     <ul id="password-requisitos" class="text-start small px-3" style="list-style:none; padding:4px 12px; margin:0; font-size:11px;">
-                        <li id="req-long" class="text-muted">✗ Mín. 8 caracteres</li>
+                        <li id="req-long" class="text-muted">✗ Exactamente 8 caracteres</li>
                         <li id="req-mayus" class="text-muted">✗ 1 letra mayúscula</li>
                         <li id="req-num" class="text-muted">✗ 1 número</li>
                         <li id="req-symbol" class="text-muted">✗ 1 símbolo</li>
@@ -159,7 +162,7 @@ function validarPassword() {
         el.className = cond ? 'text-success' : 'text-danger';
         el.innerHTML = (cond ? '✓' : '✗') + ' ' + el.innerHTML.substring(2);
     };
-    req('req-long', pwd.length >= 8);
+    req('req-long', pwd.length === 8);
     req('req-mayus', /[A-Z]/.test(pwd));
     req('req-num', /[0-9]/.test(pwd));
     req('req-symbol', /[^A-Za-z0-9]/.test(pwd));
@@ -173,6 +176,19 @@ function validarPassword() {
         <small class="text-white text-opacity-75">© 2026 IPP-IUTAG. Todos los derechos reservados.</small>
     </div>
 </footer>
+
+<script>
+function togglePassword(icon) {
+    var input = icon.previousElementSibling;
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    }
+}
+</script>
 
 </body>
 </html>

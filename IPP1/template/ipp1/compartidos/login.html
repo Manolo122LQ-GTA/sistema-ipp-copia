@@ -64,7 +64,10 @@
                 <span class="subtitle">Ingresa tus credenciales para acceder al sistema IPP-IUTAG.</span>
                 <div class="form-container">
                     <input type="text" name="username" class="input" placeholder="Usuario" required>
-                    <input type="password" name="password" class="input" placeholder="Contraseña" required>
+                    <div class="position-relative">
+                    <input type="password" name="password" class="input" placeholder="Contraseña" required style="padding-right: 40px;">
+                    <i class="bi bi-eye-slash" onclick="togglePassword(this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #6c757d;"></i>
+                    </div>
                 </div>
                 <button type="submit">Iniciar Sesión</button>
             </form>
@@ -81,6 +84,19 @@
         <small class="text-white text-opacity-75">© 2026 IPP-IUTAG. Todos los derechos reservados.</small>
     </div>
 </footer>
+
+<script>
+function togglePassword(icon) {
+    var input = icon.previousElementSibling;
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    }
+}
+</script>
 
 </body>
 </html>

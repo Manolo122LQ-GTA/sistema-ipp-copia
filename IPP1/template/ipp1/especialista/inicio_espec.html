@@ -28,23 +28,6 @@
             <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-cash-stack fs-2 text-primary me-3"></i>
-                        <div>
-                            <h5 class="fw-bold mb-1">Costo de Cita</h5>
-                            <p class="text-muted mb-0 small">Visualiza el costo de la Cita</p>
-                        </div>
-                    </div>
-                    <a href="{% url 'costos_especialista' %}" class="uiverse-btn btn btn-outline-primary w-100">
-                        <i class="bi bi-eye me-1"></i>Ver Costo
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-plus-circle fs-2 text-primary me-3"></i>
                         <div>
                             <h5 class="fw-bold mb-1">Nueva Cita</h5>
@@ -62,14 +45,14 @@
             <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-capsule fs-2 text-primary me-3"></i>
+                        <i class="bi bi-clipboard2-pulse fs-2 text-primary me-3"></i>
                         <div>
-                            <h5 class="fw-bold mb-1">Medicamentos</h5>
-                            <p class="text-muted mb-0 small">Consulte el catálogo de medicamentos y suministros disponibles.</p>
+                            <h5 class="fw-bold mb-1">Chequeo de Citas</h5>
+                            <p class="text-muted mb-0 small">Consulte y gestione las Citas/Consultas de los Pacientes.</p>
                         </div>
                     </div>
-                    <a href="{% url 'medicamentos_especialista' %}" class="uiverse-btn btn btn-outline-primary w-100">
-                        <i class="bi bi-capsule me-1"></i>Ver Medicamentos
+                    <a href="{% url 'citas_especialista' %}" class="uiverse-btn btn btn-outline-primary w-100">
+                        <i class="bi bi-clipboard2-check me-1"></i>Ver Citas
                     </a>
                 </div>
             </div>
@@ -96,14 +79,31 @@
             <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-clipboard2-pulse fs-2 text-primary me-3"></i>
+                        <i class="bi bi-cash-stack fs-2 text-primary me-3"></i>
                         <div>
-                            <h5 class="fw-bold mb-1">Chequeo de Citas/Consultas</h5>
-                            <p class="text-muted mb-0 small">Chequear las Citas/Consultas de los Pacientes</p>
+                            <h5 class="fw-bold mb-1">Costo de Cita</h5>
+                            <p class="text-muted mb-0 small">Visualiza el costo de la Cita</p>
                         </div>
                     </div>
-                    <a href="{% url 'citas_especialista' %}" class="uiverse-btn btn btn-outline-primary w-100">
-                        <i class="bi bi-clipboard2-check me-1"></i>Ver Citas
+                    <a href="{% url 'costos_especialista' %}" class="uiverse-btn btn btn-outline-primary w-100">
+                        <i class="bi bi-eye me-1"></i>Ver Costo
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="uiverse-card shadow-sm h-100 inicio-espec-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-capsule fs-2 text-primary me-3"></i>
+                        <div>
+                            <h5 class="fw-bold mb-1">Medicamentos</h5>
+                            <p class="text-muted mb-0 small">Consulte el catálogo de medicamentos y suministros disponibles.</p>
+                        </div>
+                    </div>
+                    <a href="{% url 'medicamentos_especialista' %}" class="uiverse-btn btn btn-outline-primary w-100">
+                        <i class="bi bi-capsule me-1"></i>Ver Medicamentos
                     </a>
                 </div>
             </div>
@@ -120,7 +120,7 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-center justify-content-between">
-                        <span class="badge bg-info text-dark fs-6 px-3 py-2">Ninguno</span>
+                        <span class="badge bg-info text-dark fs-6 py-2">Ninguno</span>
                         <a href="{% url 'solicitudes_pendientes_laboratorio' %}" class="uiverse-btn btn btn-outline-info">
                             <i class="bi bi-eye me-1"></i>Ver
                         </a>
@@ -136,10 +136,10 @@
                         <i class="bi bi-card-checklist fs-2 text-primary me-3"></i>
                         <div>
                             <h5 class="fw-bold mb-1">Historial Especialista</h5>
-                            <p class="text-muted mb-0 small">Búsqueda de expedientes, diagnósticos previos y antecedentes de pacientes.</p>
+                            <p class="text-muted mb-0 small">Búsqueda de expedientes, diagnósticos previos y antecedentes.</p>
                         </div>
                     </div>
-                    <a href="#" class="uiverse-btn btn btn-outline-primary w-100">
+                    <a href="{% url 'consulta_historial_especialista' %}" class="uiverse-btn btn btn-outline-primary w-100">
                         <i class="bi bi-search me-1"></i>Consultar Historial
                     </a>
                 </div>

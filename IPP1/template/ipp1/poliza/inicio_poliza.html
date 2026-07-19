@@ -9,7 +9,7 @@
         <p class="text-muted">Administración de planes de salud, pólizas, gastos y familiares.</p>
     </div>
     <div class="col-md-4 text-md-end">
-        <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary uiverse-btn">
             <i class="bi bi-house-door me-1"></i>Volver al Menú
         </a>
     </div>
@@ -26,7 +26,7 @@
                     </div>
                     <div>
                         <small class="text-muted d-block">Total Pólizas</small>
-                        <span class="fs-4 fw-bold text-success">{{ total_polizas }}</span>
+                        <span class="fs-4 fw-bold text-dark">{{ total_polizas }}</span>
                     </div>
                 </div>
             </div>
@@ -38,12 +38,12 @@
         <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #4a90d9;">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #e8f5f0;">
-                        <i class="bi bi-cash fs-3 text-success"></i>
+                    <div class="rounded-3 p-3" style="background-color: #eef4fb;">
+                        <i class="bi bi-cash fs-3 text-primary"></i>
                     </div>
                     <div>
                         <small class="text-muted d-block">Activas</small>
-                        <span class="fs-4 fw-bold text-success">{{ activas }}</span>
+                        <span class="fs-4 fw-bold text-dark">{{ activas }}</span>
                     </div>
                 </div>
             </div>
@@ -55,12 +55,12 @@
         <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #c0392b;">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #e8f5f0;">
-                        <i class="bi bi-cash fs-3 text-success"></i>
+                    <div class="rounded-3 p-3" style="background-color: #fde8e8;">
+                        <i class="bi bi-cash fs-3 text-danger"></i>
                     </div>
                     <div>
                         <small class="text-muted d-block">Inactivas</small>
-                        <span class="fs-4 fw-bold text-success">{{ inactivas }}</span>
+                        <span class="fs-4 fw-bold text-dark">{{ inactivas }}</span>
                     </div>
                 </div>
             </div>
@@ -69,15 +69,15 @@
 
     <!-- TOTAL GASTOS -->
     <div class="col-md-3">
-        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #4a90d9;">
+        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #d4a017;">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #e8f5f0;">
-                        <i class="bi bi-cash fs-3 text-success"></i>
+                    <div class="rounded-3 p-3" style="background-color: #fdf5e6;">
+                        <i class="bi bi-cash fs-3 text-warning"></i>
                     </div>
                     <div>
                         <small class="text-muted d-block">Total Gastos</small>
-                        <span class="fs-4 fw-bold text-success">${{ total_gastos|floatformat:2 }}</span>
+                        <span class="fs-4 fw-bold text-dark">${{ total_gastos|floatformat:2 }}</span>
                     </div>
                 </div>
             </div>

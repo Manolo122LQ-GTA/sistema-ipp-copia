@@ -111,6 +111,8 @@ def registro(request):
             messages.error(request, 'El nombre de usuario ya existe.')
         elif email and User.objects.filter(email=email).exists():
             messages.error(request, 'El correo electrónico ya está registrado.')
+        elif len(password) != 8:
+            messages.error(request, 'La contraseña debe tener exactamente 8 caracteres.')
         else:
             try:
                 validate_password(password)
@@ -519,6 +521,38 @@ def medicamentos_especialista(request):
     return render(request, 'ipp1/especialista/medicamentos.html', {
         'medicamentos': medicamentos,
     })
+
+@login_required
+def consulta_historial_especialista(request):
+    """Vista para consultar el historial de pacientes en Especialista."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Especialista').exists()):
+        messages.warning(request, "Acceso denegado.")
+        return redirect('home')
+
+    query = request.GET.get('q')
+    base_qs = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Especialista')
+    if query:
+        citas = base_qs.filter(
+            Q(paciente__nombre__icontains=query) | 
+            Q(paciente__apellido__icontains=query) | 
+            Q(paciente__cedula__icontains=query)
+        ).order_by('-fecha_cita', '-hora_cita')
+    else:
+        citas = base_qs.all().order_by('-fecha_cita', '-hora_cita')
+
+    context = {
+        'citas': citas,
+        'navbar_brand': 'Sistema IPP - Especialista',
+        'title': 'Historial de Especialista',
+        'page_heading': 'Historial de Especialista',
+        'search_url_name': 'consulta_historial_especialista',
+        'back_url_name': 'especialista',
+        'back_icon': 'bi-arrow-left',
+        'back_text': 'Volver al Menú',
+        'badge_class': 'bg-info',
+        'empty_message': 'No se encontraron registros de especialista para mostrar.',
+    }
+    return render(request, 'ipp1/compartidos/historial_compartido.html', context)
 
 # VISITA LABORATORISTA
 @login_required

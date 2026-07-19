@@ -44,6 +44,7 @@ urlpatterns = [
     path('especialista/costos/', views.costos_especialista, name='costos_especialista'),
     path('especialista/nueva-cita/', views.nueva_cita_especialista, name='nueva_cita_especialista'),
     path('especialista/medicamentos/', views.medicamentos_especialista, name='medicamentos_especialista'),
+    path('especialista/historial/', views.consulta_historial_especialista, name='consulta_historial_especialista'),
 
     # Laboratorista
     path('laboratorio/inicio/', views.laboratorista, name='laboratorio'),

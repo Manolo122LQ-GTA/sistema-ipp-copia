@@ -422,3 +422,8 @@ select.input option {
   .btn-sm { font-size: 0.7rem; padding: 0.2rem 0.4rem; }
   .container-fluid { padding-left: 0.5rem; padding-right: 0.5rem; }
 }
+
+/* ====== GLOBAL FONT ====== */
+body, *, *::before, *::after {
+  font-family: Verdana, Geneva, Tahoma, sans-serif !important;
+}

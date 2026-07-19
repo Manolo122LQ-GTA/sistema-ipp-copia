@@ -486,7 +486,7 @@ class RegistroViewTest(BaseTest):
     def test_registro_valido(self):
         response = self.client.post(reverse('registro'), {
             'username': 'nuevousuario',
-            'password': 'StrongPass1!',
+            'password': 'Abc123!@',
             'name': 'Carlos',
             'last_name': 'Lopez',
             'email': 'carlos@test.com',
@@ -500,7 +500,7 @@ class RegistroViewTest(BaseTest):
     def test_registro_usuario_duplicado(self):
         self._crear_usuario(username='existente')
         response = self.client.post(reverse('registro'), {
-            'username': 'existente', 'password': 'StrongPass1!'
+            'username': 'existente', 'password': 'Abc123!@'
         })
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'ya existe')
