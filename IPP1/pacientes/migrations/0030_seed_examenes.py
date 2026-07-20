@@ -47,7 +47,8 @@ def forwards(apps, schema_editor):
 
 def backwards(apps, schema_editor):
     ExamenLaboratorio = apps.get_model('pacientes', 'ExamenLaboratorio')
-    ExamenLaboratorio.objects.all().delete()
+    nombres_seed = [nombre for nombre, _ in EXAMENES]
+    ExamenLaboratorio.objects.filter(nombre__in=nombres_seed).delete()
 
 
 class Migration(migrations.Migration):

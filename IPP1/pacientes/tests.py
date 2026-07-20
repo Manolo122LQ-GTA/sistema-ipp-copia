@@ -1159,36 +1159,3 @@ class FacturaPagoTest(BaseTest):
         response = self.client.get(reverse('recibo_factura', args=[factura.id]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'RECIBO')
-
-
-# class PortalPacienteTest(BaseTest):
-#     def test_portal_registro_get(self):
-#         response = self.client.get(reverse('portal_registro'))
-#         self.assertEqual(response.status_code, 200)
-#         self.assertContains(response, 'Registro al Portal')
-# 
-#     def test_portal_registro_post(self):
-#         p = self._crear_paciente(cedula='12345679')
-#         response = self.client.post(reverse('portal_registro'), {
-#             'cedula': '12345679', 'codigo_afiliado': '',
-#             'password': 'MiPass123!', 'password2': 'MiPass123!',
-#         })
-#         p.refresh_from_db()
-#         self.assertIsNotNone(p.usuario)
-#         self.assertTrue(User.objects.filter(username='PAC-V12345679').exists())
-#         self.assertRedirects(response, reverse('portal_login'))
-# 
-#     def test_portal_login_get(self):
-#         response = self.client.get(reverse('portal_login'))
-#         self.assertEqual(response.status_code, 200)
-#         self.assertContains(response, 'Portal del Paciente')
-# 
-#     def test_portal_inicio_authenticated(self):
-#         p = self._crear_paciente(cedula='99999999')
-#         user = User.objects.create_user(username='PAC-V99999999', password='Abc123!@')
-#         p.usuario = user
-#         p.save()
-#         self.client.force_login(user)
-#         response = self.client.get(reverse('portal_inicio'))
-#         self.assertEqual(response.status_code, 200)
-#         self.assertContains(response, p.nombre)
