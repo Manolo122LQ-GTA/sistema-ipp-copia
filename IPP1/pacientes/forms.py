@@ -83,9 +83,10 @@ class SolicitudSecretariaForm(forms.ModelForm):
 class SolicitudLaboratorioForm(forms.ModelForm):
     class Meta:
         model = SolicitudLaboratorio
-        fields = ['paciente', 'prueba_laboratorio', 'fecha_solicitud']
+        fields = ['paciente', 'examen', 'prueba_laboratorio', 'fecha_solicitud']
         widgets = {
             'paciente': forms.Select(attrs={'class': 'form-control uiverse-input'}),
+            'examen': forms.Select(attrs={'class': 'form-control uiverse-input', 'id': 'id_examen'}),
             'prueba_laboratorio': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ej. Hemograma, Urianálisis, Perfil 20...'}),
             'fecha_solicitud': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
         }

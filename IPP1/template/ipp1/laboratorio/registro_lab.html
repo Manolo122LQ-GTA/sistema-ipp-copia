@@ -9,13 +9,13 @@
         <p class="text-muted">Complete los datos para enviar una nueva solicitud de análisis clínico.</p>
     </div>
     <div class="col-md-4 text-md-end">
-        <a href="{% url 'laboratorio' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'laboratorio' %}" class="btn btn-outline-secondary uiverse-btn">
             <i class="bi bi-arrow-left me-1"></i>Volver al Panel
         </a>
     </div>
 </div>
 
-<div class="uiverse-card shadow-sm mx-auto" style="max-width: 750px;">
+<div class="uiverse-card shadow-sm mx-auto" style="max-width: 1000px;">
     <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
         <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Datos de la Solicitud</h5>
     </div>
@@ -23,8 +23,9 @@
         <form method="post">
             {% csrf_token %}
 
+            <!-- DATOS DE PACIENTES -->
             <div class="row g-4">
-                <div class="col-md-8">
+                <div class="col-md-5">
                     <label for="{{ form.paciente.id_for_label }}" class="form-label fw-semibold text-secondary">
                         <i class="bi bi-person me-1"></i>Paciente
                     </label>
@@ -34,7 +35,22 @@
                     {% endif %}
                 </div>
 
-                <div class="col-md-4">
+                <!-- TIPO DE PACIENTES AFILIADO/NO AFILIADO/BENEFICIADO -->
+                    <div class="col-md-4">
+                    <label for="tipo-paciente" class="form-label fw-semibold text-secondary">
+                    <i class="bi bi-person-check me-1"></i>Tipo de Paciente
+                    </label>
+                    <select id="tipo-paciente" name="tipo_paciente" class="form-control uiverse-input" onchange="actualizarPrecio()" required>
+                    <option value="" selected>Selecciona el tipo de paciente</option>
+                    <option value="Comunidad">Comunidad</option>
+                    <option value="Afiliado">Afiliado (20% off)</option>
+                    <option value="Beneficiario">Beneficiario</option>
+                    <option value="Particular">Particular</option>
+                    </select>
+                    </div>
+
+                <!-- FECHA DE SOLICITUD -->
+                <div class="col-md-3">
                     <label for="{{ form.fecha_solicitud.id_for_label }}" class="form-label fw-semibold text-secondary">
                         <i class="bi bi-calendar me-1"></i>Fecha de Solicitud
                     </label>
@@ -44,15 +60,33 @@
                     {% endif %}
                 </div>
 
-                <div class="col-12">
+                <div class="col-md-6">
+                    <label for="{{ form.examen.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-clipboard2-pulse me-1"></i>Examen del Catálogo
+                    </label>
+                    {{ form.examen }}
+                    {% if form.examen.errors %}
+                        <div class="text-danger small mt-1">{{ form.examen.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-6">
                     <label for="{{ form.prueba_laboratorio.id_for_label }}" class="form-label fw-semibold text-secondary">
-                        <i class="bi bi-clipboard2-pulse me-1"></i>Prueba / Análisis Solicitado
+                        <i class="bi bi-pencil me-1"></i>Prueba / Análisis (opcional si selecciona examen)
                     </label>
                     {{ form.prueba_laboratorio }}
                     {% if form.prueba_laboratorio.errors %}
                         <div class="text-danger small mt-1">{{ form.prueba_laboratorio.errors }}</div>
                     {% endif %}
-                    <div class="form-text">Especifique el tipo de examen de laboratorio requerido.</div>
+                    <div class="form-text">Si selecciona un examen del catálogo, este campo se completa automáticamente.</div>
+                </div>
+
+                <div class="col-12" id="precio-info" style="display:none;">
+                    <div class="alert alert-info py-2 mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>Precio Comunidad/Particular:</strong> $<span id="precio-base">0.00</span> &nbsp;|&nbsp;
+                        <strong>Precio Afiliado (20% off):</strong> $<span id="precio-afiliado" class="text-success fw-bold">0.00</span>
+                    </div>
                 </div>
             </div>
 
@@ -64,4 +98,75 @@
         </form>
     </div>
 </div>
+
+<script>
+var pacientesStatus = {{ pacientes_status_json|safe }};
+
+var examenesData = {
+    {% for e in examenes %}
+    "{{ e.id }}": { "nombre": "{{ e.nombre }}", "costo": "{{ e.costo }}", "costo_afiliado": "{{ e.costo_afiliado }}"{% if not forloop.last %},{% endif %}
+    {% endfor %}
+};
+
+document.getElementById('id_paciente').addEventListener('change', function() {
+    var tipoSelect = document.getElementById('tipo-paciente');
+    var status = pacientesStatus[this.value];
+    if (status) {
+        for (var i = 0; i < tipoSelect.options.length; i++) {
+            if (tipoSelect.options[i].value === status) {
+                tipoSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    actualizarPrecio();
+});
+
+function actualizarPrecio() {
+    var examenSelect = document.getElementById('id_examen');
+    var tipoSelect = document.getElementById('tipo-paciente');
+    var info = document.getElementById('precio-info');
+    var base = document.getElementById('precio-base');
+    var afiliado = document.getElementById('precio-afiliado');
+
+    if (examenSelect.value && examenesData[examenSelect.value]) {
+        var ex = examenesData[examenSelect.value];
+        var esAfiliado = tipoSelect.value === 'Afiliado';
+        base.textContent = ex.costo;
+        afiliado.textContent = ex.costo_afiliado;
+        info.style.display = 'block';
+        if (esAfiliado) {
+            base.style.textDecoration = 'line-through';
+            base.style.color = '#6c757d';
+            afiliado.style.display = 'inline';
+        } else {
+            base.style.textDecoration = 'none';
+            base.style.color = '';
+            afiliado.style.display = 'none';
+        }
+    } else {
+        info.style.display = 'none';
+    }
+}
+
+document.getElementById('id_examen').addEventListener('change', function() {
+    var info = document.getElementById('precio-info');
+    var base = document.getElementById('precio-base');
+    var afiliado = document.getElementById('precio-afiliado');
+    var prueba = document.getElementById('id_prueba_laboratorio');
+
+    if (this.value && examenesData[this.value]) {
+        var ex = examenesData[this.value];
+        base.textContent = ex.costo;
+        afiliado.textContent = ex.costo_afiliado;
+        info.style.display = 'block';
+        if (prueba) prueba.value = ex.nombre;
+        actualizarPrecio();
+    } else {
+        info.style.display = 'none';
+        if (prueba) prueba.value = '';
+    }
+});
+</script>
+
 {% endblock %}

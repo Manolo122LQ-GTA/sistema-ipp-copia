@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import PerfilUsuario, Paciente, SolicitudSecretaria, SolicitudLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura
+from .models import PerfilUsuario, Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura
 
 # Register your models here.
 
@@ -88,3 +88,9 @@ class RecetaAdmin(admin.ModelAdmin):
     list_display = ('id', 'cita', 'medicamento', 'cantidad', 'dosis', 'fecha_prescrita')
     list_filter = ('fecha_prescrita',)
     search_fields = ('cita__paciente__nombre', 'medicamento__nombre')
+
+@admin.register(ExamenLaboratorio)
+class ExamenLaboratorioAdmin(admin.ModelAdmin):
+    list_display = ('id', 'nombre', 'costo', 'activo')
+    list_filter = ('activo',)
+    search_fields = ('nombre',)

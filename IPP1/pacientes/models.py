@@ -103,10 +103,32 @@ class SolicitudSecretaria(models.Model):
         monto_admin = (costo_base - monto_medico).quantize(Decimal('0.01'))
         return (costo_base, monto_medico, monto_admin)
 
+# EXAMEN DE LABORATORIO (Catálogo)
+class ExamenLaboratorio(models.Model):
+    nombre = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True, null=True)
+    costo = models.DecimalField(max_digits=10, decimal_places=2)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Examen de Laboratorio"
+        verbose_name_plural = "Exámenes de Laboratorio"
+        ordering = ['nombre']
+
+    def __str__(self):
+        return f"{self.nombre} - ${self.costo}"
+
+    @property
+    def costo_afiliado(self):
+        from decimal import Decimal
+        return (self.costo * Decimal('0.80')).quantize(Decimal('0.01'))
+
+
 # SOLICITUD LABORATORIO
 class SolicitudLaboratorio(models.Model):
     paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name='solicitudes_laboratorio')
-    prueba_laboratorio = models.CharField(max_length=255) # Podría ser un ForeignKey a un modelo de 'PruebaLaboratorio' si tienes muchas
+    examen = models.ForeignKey(ExamenLaboratorio, on_delete=models.SET_NULL, null=True, blank=True, related_name='solicitudes')
+    prueba_laboratorio = models.CharField(max_length=255)
     fecha_solicitud = models.DateField()
     resultado = models.TextField(blank=True, null=True)
     costo = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -127,7 +149,7 @@ class SolicitudLaboratorio(models.Model):
         return f"Laboratorio para {self.paciente} ({self.prueba_laboratorio}) el {self.fecha_solicitud}"
 
 
-# Módulo Póliza
+# PLAN SALUD
 class PlanSalud(models.Model):
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True, null=True)
@@ -240,10 +262,10 @@ class Factura(models.Model):
         return f"Factura {self.numero_factura} - {self.paciente_nombre}"
 
     def save(self, *args, **kwargs):
-        if not self.numero_factura:
-            last = Factura.objects.aggregate(m=models.Max('id'))['m'] or 0
-            self.numero_factura = f"FAC-{last + 1:05d}"
         super().save(*args, **kwargs)
+        if not self.numero_factura:
+            self.numero_factura = f"FAC-{self.id:05d}"
+            super().save(update_fields=['numero_factura'])
 
 # TARIFAS ESPECIALISTAS
 class TarifaEspecialidad(models.Model):
@@ -260,7 +282,7 @@ class TarifaEspecialidad(models.Model):
     def __str__(self):
         return f"{self.especialidad} - ${self.costo_consulta}"
 
-# medicamento
+# MEDICAMENTOS
 class Medicamento(models.Model):
     nombre = models.CharField(max_length=150)
     descripcion = models.TextField(blank=True, null=True)

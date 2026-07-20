@@ -51,6 +51,7 @@ urlpatterns = [
     path('laboratorio/registro/', views.registrar_laboratorio, name='registrar_laboratorio'),
     path('laboratorio/pendientes/', views.solicitudes_pendientes_laboratorio, name='solicitudes_pendientes_laboratorio'),
     path('laboratorio/resultados/', views.resultados_laboratorio, name='resultados_laboratorio'),
+    path('laboratorio/examenes/', views.catalogo_examenes, name='catalogo_examenes'),
 
     # Administración
     path('administracion/inicio/', views.inicio_admin, name='inicio_admin'),

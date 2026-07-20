@@ -1,0 +1,108 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Laboratorio{% endblock %}
+{% block title %}Catálogo de Exámenes - IPP{% endblock %}
+{% block content %}
+
+<div class="mt-2">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-dark"><i class="bi bi-list-check me-2"></i>Catálogo de Exámenes</h2>
+            <p class="text-muted">Exámenes disponibles en laboratorio. Precio para afiliados: 20% de descuento.</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{% url 'laboratorio' %}" class="btn btn-outline-secondary uiverse-btn"><i class="bi bi-arrow-left me-1"></i>Volver al Panel</a>
+        </div>
+    </div>
+
+    <div class="uiverse-card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center py-3">
+            <span><i class="bi bi-flask me-2"></i>Exámenes Registrados</span>
+            <button class="btn btn-light btn-sm uiverse-btn" data-bs-toggle="modal" data-bs-target="#modalCrear">
+                <i class="bi bi-plus-circle me-1"></i>Nuevo Examen
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Examen</th>
+                        <th>Costo Base</th>
+                        <th>Precio Afiliado (20% off)</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in examenes %}
+                    <tr>
+                        <td class="text-muted">{{ forloop.counter }}</td>
+                        <td class="fw-semibold">{{ e.nombre }}</td>
+                        <td class="fw-bold text-dark">${{ e.costo|floatformat:2 }}</td>
+                        <td class="fw-bold text-success">${{ e.costo_afiliado|floatformat:2 }}</td>
+                        <td>
+                            {% if e.activo %}
+                                <span class="badge bg-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-primary uiverse-btn" data-bs-toggle="modal" data-bs-target="#modalEditar{{ e.id }}" title="Editar"><i class="bi bi-pencil"></i></button>
+                            {% if e.activo %}
+                            <form method="POST" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="desactivar">
+                                <input type="hidden" name="examen_id" value="{{ e.id }}">
+                                <button class="btn btn-sm btn-outline-danger uiverse-btn" title="Desactivar" onclick="return confirm('¿Desactivar este examen?')"><i class="bi bi-trash"></i></button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-5 text-muted">
+                        <i class="bi bi-search fs-1 d-block mb-2 text-secondary"></i>
+                        No se encontraron exámenes en el catálogo.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% for e in examenes %}
+    <div class="modal fade" id="modalEditar{{ e.id }}" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="editar">
+                <input type="hidden" name="examen_id" value="{{ e.id }}">
+                <div class="modal-header bg-warning text-white"><h5 class="modal-title">Editar Examen</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="mb-3"><label class="form-label">Nombre</label><input type="text" name="nombre" class="form-control uiverse-input" value="{{ e.nombre }}" required></div>
+                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control uiverse-input" rows="2">{{ e.descripcion|default:"" }}</textarea></div>
+                    <div class="mb-3"><label class="form-label">Costo Base ($)</label><input type="number" name="costo" class="form-control uiverse-input" step="0.01" value="{{ e.costo }}" required></div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-warning uiverse-btn">Guardar Cambios</button></div>
+            </form>
+        </div></div>
+    </div>
+    {% endfor %}
+
+    <div class="modal fade" id="modalCrear" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="crear">
+                <div class="modal-header bg-success text-white"><h5 class="modal-title">Nuevo Examen</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="mb-3"><label class="form-label">Nombre</label><input type="text" name="nombre" class="form-control uiverse-input" required></div>
+                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control uiverse-input" rows="2"></textarea></div>
+                    <div class="mb-3"><label class="form-label">Costo Base ($)</label><input type="number" name="costo" class="form-control uiverse-input" step="0.01" required></div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-success uiverse-btn">Crear Examen</button></div>
+            </form>
+        </div></div>
+    </div>
+</div>
+{% endblock %}

@@ -9,7 +9,7 @@ from django.contrib.auth.models import Group, User
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.conf import settings
-from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura, PerfilUsuario
+from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura, PerfilUsuario
 from .forms import PacienteForm, LoginForm, SolicitudSecretariaForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
@@ -221,7 +221,7 @@ def medico(request):
         or request.user.groups.filter(name='Laboratorio').exists()
     )
     if not puede_acceder:
-        messages.warning(request, "No tienes permiso para acceder al Servicio Médico.")
+        messages.error(request, "No tienes permiso para acceder al Servicio Médico.")
         return redirect('home')
     context = {
         'titulo': 'Servicio Médico - Selección de Área',
@@ -236,7 +236,7 @@ def medico(request):
 def medico_dashboard(request):
     """Panel operativo de Medicina General."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Medico').exists()):
-        messages.warning(request, "Acceso denegado.")
+        messages.error(request, "Acceso denegado.")
         return redirect('home')
     return render(request, 'ipp1/medico/inicio_medic.html')
 
@@ -291,7 +291,7 @@ def cancelar_cita(request, cita_id):
 def citas_recibidas_medico(request):
     """Vista para ver las citas recibidas en Medicina General."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Medico').exists()):
-        messages.warning(request, "Acceso denegado.")
+        messages.error(request, "Acceso denegado.")
         return redirect('home')
     
     citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
@@ -304,7 +304,7 @@ def citas_recibidas_medico(request):
 def consulta_historial_medico(request):
     """Vista para consultar el historial de pacientes en Medicina General."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Medico').exists()):
-        messages.warning(request, "Acceso denegado.")
+        messages.error(request, "Acceso denegado.")
         return redirect('home')
 
     query = request.GET.get('q')
@@ -337,7 +337,7 @@ def consulta_historial_medico(request):
 def odontologo(request):
     """Vista principal para el área de Odontología."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Odontologo').exists()):
-        messages.warning(request, "No tienes permiso para acceder a Odontología.")
+        messages.error(request, "No tienes permiso para acceder a Odontología.")
         return redirect('home')
     return render(request, 'ipp1/odontologia/inicio_odonto.html')
 
@@ -345,7 +345,7 @@ def odontologo(request):
 def citas_recibidas(request):
     """Vista para ver las citas recibidas en Odontología."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Odontologo').exists()):
-        messages.warning(request, "No tienes permiso para acceder a esta área.")
+        messages.error(request, "No tienes permiso para acceder a esta área.")
         return redirect('home')
     
     citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
@@ -358,7 +358,7 @@ def citas_recibidas(request):
 def consulta_historial_odonto(request):
     """Vista para el historial odontológico."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Odontologo').exists()):
-        messages.warning(request, "No tienes permiso para acceder a esta área.")
+        messages.error(request, "No tienes permiso para acceder a esta área.")
         return redirect('home')
 
     query = request.GET.get('q')
@@ -391,7 +391,7 @@ def consulta_historial_odonto(request):
 def especialista(request):
     """Vista principal para el Médico Especialista."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Especialista').exists()):
-        messages.warning(request, "No tienes permiso para acceder a esta área.")
+        messages.error(request, "No tienes permiso para acceder a esta área.")
         return redirect('home')
     return render(request, 'ipp1/especialista/inicio_espec.html')
 
@@ -399,7 +399,7 @@ def especialista(request):
 def citas_especialista(request):
     """Lista de citas asignadas específicamente al especialista logueado."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Especialista').exists()):
-        messages.warning(request, "Acceso denegado.")
+        messages.error(request, "Acceso denegado.")
         return redirect('home')
     
     # Filtramos citas asignadas a este usuario y que estén en espera
@@ -410,7 +410,7 @@ def citas_especialista(request):
 def costos_especialista(request):
     """Consulta y gestión de tarifas de especialidades."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Especialista').exists()):
-        messages.warning(request, "Acceso denegado.")
+        messages.error(request, "Acceso denegado.")
         return redirect('home')
 
     tarifas = TarifaEspecialidad.objects.filter(activo=True).order_by('especialidad')
@@ -526,7 +526,7 @@ def medicamentos_especialista(request):
 def consulta_historial_especialista(request):
     """Vista para consultar el historial de pacientes en Especialista."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Especialista').exists()):
-        messages.warning(request, "Acceso denegado.")
+        messages.error(request, "Acceso denegado.")
         return redirect('home')
 
     query = request.GET.get('q')
@@ -559,7 +559,7 @@ def consulta_historial_especialista(request):
 def laboratorista(request):
     """Panel principal para el área de Laboratorio."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Laboratorio').exists()):
-        messages.warning(request, "No tienes permiso para acceder al área de Laboratorio.")
+        messages.error(request, "No tienes permiso para acceder al área de Laboratorio.")
         return redirect('home')
     return render(request, 'ipp1/laboratorio/inicio_lab.html')
 
@@ -573,7 +573,10 @@ def registrar_laboratorio(request):
     if request.method == 'POST':
         form = SolicitudLaboratorioForm(request.POST)
         if form.is_valid():
-            lab = form.save()
+            lab = form.save(commit=False)
+            if lab.examen and not lab.prueba_laboratorio:
+                lab.prueba_laboratorio = lab.examen.nombre
+            lab.save()
             _registrar_log(request, f'Registró solicitud de laboratorio: {lab.prueba_laboratorio}', 'SolicitudLaboratorio', lab.id)
             messages.success(request, 'Solicitud de laboratorio registrada exitosamente.')
             return redirect('laboratorio')
@@ -582,8 +585,15 @@ def registrar_laboratorio(request):
     else:
         form = SolicitudLaboratorioForm()
 
+    examenes = ExamenLaboratorio.objects.filter(activo=True).order_by('nombre')
+    pacientes_status = {}
+    for p in Paciente.objects.filter(activo=True):
+        pacientes_status[p.id] = p.status_afiliado
+
     ctx = {
         'form': form,
+        'examenes': examenes,
+        'pacientes_status_json': pacientes_status,
     }
     return render(request, 'ipp1/laboratorio/registro_lab.html', ctx)
 
@@ -591,7 +601,7 @@ def registrar_laboratorio(request):
 def solicitudes_pendientes_laboratorio(request):
     """Lista y procesamiento de solicitudes de laboratorio pendientes."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Laboratorio').exists()):
-        messages.warning(request, "No tienes permiso para acceder a esta área.")
+        messages.error(request, "No tienes permiso para acceder a esta área.")
         return redirect('home')
 
     solicitudes = SolicitudLaboratorio.objects.filter(estado='Pendiente').select_related('paciente').order_by('-fecha_creacion')
@@ -1846,5 +1856,62 @@ def resultados_laboratorio(request):
     
     return render(request, 'ipp1/laboratorio/resultados_lab.html', {
         'resultados': resultados,
+        'q': q,
+    })
+
+# CATALOGO EXAMENES
+@login_required
+def catalogo_examenes(request):
+    """Catálogo de exámenes de laboratorio con CRUD."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Laboratorio').exists()):
+        messages.error(request, 'No tienes permisos.')
+        return redirect('home')
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        if accion == 'crear':
+            nombre = request.POST.get('nombre', '').strip()
+            descripcion = request.POST.get('descripcion', '').strip()
+            costo = request.POST.get('costo', '0')
+            if nombre:
+                ExamenLaboratorio.objects.create(
+                    nombre=nombre, descripcion=descripcion, costo=costo
+                )
+                _registrar_log(request, f'Creó examen {nombre}', 'ExamenLaboratorio', None)
+                messages.success(request, f'Examen "{nombre}" creado correctamente.')
+            else:
+                messages.error(request, 'El nombre del examen es obligatorio.')
+        elif accion == 'editar':
+            examen_id = request.POST.get('examen_id')
+            examen = get_object_or_404(ExamenLaboratorio, id=examen_id)
+            examen.nombre = request.POST.get('nombre', examen.nombre).strip()
+            examen.descripcion = request.POST.get('descripcion', examen.descripcion).strip()
+            examen.costo = request.POST.get('costo', examen.costo)
+            examen.save()
+            _registrar_log(request, f'Editó examen {examen.nombre}', 'ExamenLaboratorio', examen.id)
+            messages.success(request, f'Examen "{examen.nombre}" actualizado.')
+        elif accion == 'desactivar':
+            examen_id = request.POST.get('examen_id')
+            examen = get_object_or_404(ExamenLaboratorio, id=examen_id)
+            examen.activo = False
+            examen.save()
+            _registrar_log(request, f'Desactivó examen {examen.nombre}', 'ExamenLaboratorio', examen.id)
+            messages.success(request, f'Examen "{examen.nombre}" desactivado.')
+        return redirect('catalogo_examenes')
+
+    q = request.GET.get('q', '').strip()
+    examenes = ExamenLaboratorio.objects.all()
+    if q:
+        examenes = examenes.filter(
+            Q(nombre__icontains=q) |
+            Q(descripcion__icontains=q)
+        )
+
+    paginator = Paginator(examenes, 15)
+    page = request.GET.get('page', 1)
+    examenes = paginator.get_page(page)
+
+    return render(request, 'ipp1/laboratorio/catalogo_examenes.html', {
+        'examenes': examenes,
         'q': q,
     })

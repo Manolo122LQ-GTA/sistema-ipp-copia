@@ -5,9 +5,9 @@ from django.utils.translation import gettext_lazy as _
 class ValidarContrasenaFuerte:
     def validate(self, password, user=None):
         # VALIDAR LA CONTRASEÑA DE SOLO 8 CARACTERES
-        if len(password) < 8:
+        if len(password) != 8:
             raise ValidationError(
-                _("La contraseña debe tener al menos 8 caracteres."),
+                _("La contraseña debe tener exactamente 8 caracteres."),
                 code='password_too_short',
             )
 
@@ -42,6 +42,6 @@ class ValidarContrasenaFuerte:
         # AQUI LA CONTRASEÑA DEBE DE TENER 8 CARACTERES, LETRAS MINUSCULAS, MAYUSCULAS, NUMEROS Y CARACTERES ESPECIAL
     def get_help_text(self):
         return _(
-            "La contraseña debe tener al menos 8 caracteres, una letra minúscula, "
+            "La contraseña debe tener exactamente 8 caracteres, una letra minúscula, "
             "una letra mayúscula, un número y un carácter especial."
         )

@@ -30,7 +30,7 @@ class BaseTest(TestCase):
         for nombre in ['Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio', 'Administracion']:
             Group.objects.get_or_create(name=nombre)
 
-    def _crear_usuario(self, username='testuser', password='Test1234!', grupo=None):
+    def _crear_usuario(self, username='testuser', password='Abc123!@', grupo=None):
         user = User.objects.create_user(username=username, password=password)
         if grupo:
             user.groups.add(Group.objects.get(name=grupo))
@@ -81,7 +81,7 @@ class SolicitudSecretariaModelTest(BaseTest):
     def setUp(self):
         super().setUp()
         self.paciente = self._crear_paciente()
-        self.especialista = self._crear_usuario('dr', 'Test1234!', 'Medico')
+        self.especialista = self._crear_usuario('dr', 'Abc123!@', 'Medico')
 
     def test_creacion_solicitud(self):
         s = SolicitudSecretaria.objects.create(
@@ -183,7 +183,7 @@ class PolizaModelTest(BaseTest):
         self.assertIsNone(p.consultas_restantes())
 
     def test_consultas_usadas_anuales_cuenta_citas(self):
-        medico = self._crear_usuario('dr_cons', 'Test1234!', 'Medico')
+        medico = self._crear_usuario('dr_cons', 'Abc123!@', 'Medico')
         p = Poliza.objects.create(
             paciente=self.paciente, plan=self.plan,
             fecha_inicio=date(2026, 1, 1)
@@ -198,7 +198,7 @@ class PolizaModelTest(BaseTest):
     def test_consultas_restantes_agotado(self):
         self.plan.consultas_maximas_anuales = 1
         self.plan.save()
-        medico = self._crear_usuario('dr_cons2', 'Test1234!', 'Medico')
+        medico = self._crear_usuario('dr_cons2', 'Abc123!@', 'Medico')
         p = Poliza.objects.create(
             paciente=self.paciente, plan=self.plan,
             fecha_inicio=date(2026, 1, 1)
@@ -271,7 +271,7 @@ class MedicamentoModelTest(BaseTest):
 class ValidatorTest(BaseTest):
     def test_valida_password_valido(self):
         try:
-            self.validator.validate('Abcd1234!')
+            self.validator.validate('Abc123!@')
         except ValidationError:
             self.fail('Password válido lanzó ValidationError')
 
@@ -282,22 +282,22 @@ class ValidatorTest(BaseTest):
 
     def test_rechaza_sin_mayuscula(self):
         with self.assertRaises(ValidationError) as ctx:
-            self.validator.validate('abcd1234!')
+            self.validator.validate('abcd12!@')
         self.assertIn('mayúscula', str(ctx.exception))
 
     def test_rechaza_sin_minuscula(self):
         with self.assertRaises(ValidationError) as ctx:
-            self.validator.validate('ABCD1234!')
+            self.validator.validate('ABCD12!@')
         self.assertIn('minúscula', str(ctx.exception))
 
     def test_rechaza_sin_numero(self):
         with self.assertRaises(ValidationError) as ctx:
-            self.validator.validate('Abcdefgh!')
+            self.validator.validate('Abcdefg!')
         self.assertIn('número', str(ctx.exception))
 
     def test_rechaza_sin_especial(self):
         with self.assertRaises(ValidationError) as ctx:
-            self.validator.validate('Abcdefgh1')
+            self.validator.validate('Abcdefg1')
         self.assertIn('especial', str(ctx.exception))
 
     def test_help_text(self):
@@ -357,7 +357,7 @@ class SolicitudSecretariaFormTest(BaseTest):
     def setUp(self):
         super().setUp()
         self.paciente = self._crear_paciente()
-        self.medico = self._crear_usuario('dr_medico', 'Test1234!', 'Medico')
+        self.medico = self._crear_usuario('dr_medico', 'Abc123!@', 'Medico')
 
     def test_form_valido(self):
         form = SolicitudSecretariaForm(data={
@@ -370,8 +370,8 @@ class SolicitudSecretariaFormTest(BaseTest):
         self.assertTrue(form.is_valid())
 
     def test_especialista_queryset_filtrado(self):
-        odontologo = self._crear_usuario('dr_odon', 'Test1234!', 'Odontologo')
-        self._crear_usuario('solo_user', 'Test1234!')
+        odontologo = self._crear_usuario('dr_odon', 'Abc123!@', 'Odontologo')
+        self._crear_usuario('solo_user', 'Abc123!@')
         form = SolicitudSecretariaForm()
         qs = form.fields['especialista'].queryset
         self.assertIn(self.medico, qs)
@@ -447,13 +447,13 @@ class LoginViewTest(BaseTest):
     def test_login_valido(self):
         self._crear_usuario()
         response = self.client.post(reverse('login'), {
-            'username': 'testuser', 'password': 'Test1234!'
+            'username': 'testuser', 'password': 'Abc123!@'
         })
         self.assertRedirects(response, reverse('home'))
 
     def test_login_usuario_no_existe(self):
         response = self.client.post(reverse('login'), {
-            'username': 'noexiste', 'password': 'Test1234!'
+            'username': 'noexiste', 'password': 'Abc123!@'
         })
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'no existe')
@@ -566,8 +566,8 @@ class CitaFlowTest(BaseTest):
     def setUp(self):
         super().setUp()
         self.paciente = self._crear_paciente()
-        self.medico = self._crear_usuario('dr_medico', 'Test1234!', 'Medico')
-        self.odontologo = self._crear_usuario('dr_odonto', 'Test1234!', 'Odontologo')
+        self.medico = self._crear_usuario('dr_medico', 'Abc123!@', 'Medico')
+        self.odontologo = self._crear_usuario('dr_odonto', 'Abc123!@', 'Odontologo')
 
     def test_crear_solicitud(self):
         self._login(grupo='Secretaria')
@@ -773,7 +773,7 @@ class PolizaFlowTest(BaseTest):
 
 class AdminMenuTest(BaseTest):
     def test_menu_admin_agrega_rol_sin_borrar(self):
-        user = self._crear_usuario('target', 'Test1234!', 'Medico')
+        user = self._crear_usuario('target', 'Abc123!@', 'Medico')
         self._login(grupo='Administracion')
         response = self.client.post(reverse('menu_admin'), {
             'usuario_id': user.id,
@@ -785,7 +785,7 @@ class AdminMenuTest(BaseTest):
         self.assertTrue(user.groups.filter(name='Odontologo').exists())
 
     def test_menu_admin_quita_todos_los_roles(self):
-        user = self._crear_usuario('target', 'Test1234!', 'Medico')
+        user = self._crear_usuario('target', 'Abc123!@', 'Medico')
         self._login(grupo='Administracion')
         response = self.client.post(reverse('menu_admin'), {
             'usuario_id': user.id,
@@ -796,7 +796,7 @@ class AdminMenuTest(BaseTest):
         self.assertEqual(user.groups.count(), 0)
 
     def test_menu_admin_toggle_status(self):
-        user = self._crear_usuario('target', 'Test1234!')
+        user = self._crear_usuario('target', 'Abc123!@')
         self.assertTrue(user.is_active)
         self._login(grupo='Administracion')
         response = self.client.post(reverse('menu_admin'), {
@@ -822,7 +822,7 @@ class SaldosAdminTest(BaseTest):
 class ReporteAdminTest(BaseTest):
     def test_reporte_calcula_nomina(self):
         paciente = self._crear_paciente()
-        medico = self._crear_usuario('dr', 'Test1234!', 'Medico')
+        medico = self._crear_usuario('dr', 'Abc123!@', 'Medico')
         SolicitudSecretaria.objects.create(
             paciente=paciente, especialista=medico,
             fecha_cita=date(2026, 6, 1), hora_cita=time(10, 0),
@@ -895,7 +895,7 @@ class PricingTest(BaseTest):
         super().setUp()
         self.paciente_afiliado = self._crear_paciente(status_afiliado='Afiliado')
         self.paciente_comunidad = self._crear_paciente(cedula='87654321', status_afiliado='Comunidad')
-        self.medico = self._crear_usuario('dr_medico', 'Test1234!', 'Medico')
+        self.medico = self._crear_usuario('dr_medico', 'Abc123!@', 'Medico')
         self.tarifa = TarifaEspecialidad.objects.create(
             especialidad='Medicina General', costo_consulta=Decimal('30.00'), activo=True
         )
@@ -1018,7 +1018,7 @@ class FacturaTest(BaseTest):
     def setUp(self):
         super().setUp()
         self.paciente = self._crear_paciente(status_afiliado='Comunidad')
-        self.medico = self._crear_usuario('dr_fact', 'Test1234!', 'Medico')
+        self.medico = self._crear_usuario('dr_fact', 'Abc123!@', 'Medico')
         self.tarifa = TarifaEspecialidad.objects.create(
             especialidad='Medicina General', costo_consulta=Decimal('30.00'), activo=True
         )
@@ -1046,7 +1046,7 @@ class FacturaTest(BaseTest):
         self.assertEqual(factura.total, Decimal('34.80'))
         self.assertEqual(factura.paciente_nombre, 'Juan Perez')
         response = self.client.get(reverse('factura_detalle', args=[factura.id]))
-        self.assertContains(response, 'FAC-00001')
+        self.assertContains(response, factura.numero_factura)
         self.assertContains(response, '34')
 
     def test_factura_duplicada_rechazada(self):
@@ -1185,7 +1185,7 @@ class FacturaPagoTest(BaseTest):
 # 
 #     def test_portal_inicio_authenticated(self):
 #         p = self._crear_paciente(cedula='99999999')
-#         user = User.objects.create_user(username='PAC-V99999999', password='Test1234!')
+#         user = User.objects.create_user(username='PAC-V99999999', password='Abc123!@')
 #         p.usuario = user
 #         p.save()
 #         self.client.force_login(user)

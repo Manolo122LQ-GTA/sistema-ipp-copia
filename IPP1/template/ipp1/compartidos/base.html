@@ -47,6 +47,7 @@
                             <li class="nav-item"><a class="nav-link" href="{% url 'medicamentos_especialista' %}">Medicamentos</a></li>
                         {% elif "Laboratorio" in user.groups.all|join:"," %}
                             <li class="nav-item"><a class="nav-link" href="{% url 'laboratorio' %}">Panel</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'catalogo_examenes' %}">Catálogo</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'registrar_laboratorio' %}">Registrar</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'solicitudes_pendientes_laboratorio' %}">Pendientes</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'resultados_laboratorio' %}">Resultados</a></li>
