@@ -18,8 +18,8 @@
 <!-- REGISTRO PERSONAL ESPECIALIDADES -->
 <div class="row g-4 mb-5">
     <div class="col-md-4">
-        <div class="uiverse-card shadow-sm h-100">
-            <div class="card-body d-flex flex-column justify-content-between">
+        <div class="uiverse-card shadow-sm h-100 d-flex flex-column">
+            <div class="card-body d-flex flex-column justify-content-between flex-grow-1">
                 <div>
                     <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-person-fill-add fs-2 text-gray me-3"></i>
@@ -27,15 +27,15 @@
                     </div>
                     <p class="card-text text-muted">Ver y asignar roles al personal del sistema.</p>
                 </div>
-                <a href="{% url 'menu_admin' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Asignar Roles</a>
+                <a href="{% url 'menu_admin' %}" class="btn btn-outline-primary mt-3 uiverse-btn w-100">Asignar Roles</a>
             </div>
         </div>
     </div>
 
     <!-- ESTATUSS SALDO SALUD -->
     <div class="col-md-4">
-        <div class="uiverse-card shadow-sm h-100">
-            <div class="card-body d-flex flex-column justify-content-between">
+        <div class="uiverse-card shadow-sm h-100 d-flex flex-column">
+            <div class="card-body d-flex flex-column justify-content-between flex-grow-1">
                 <div>
                     <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-wallet2 fs-2 text-gray me-3"></i>
@@ -43,15 +43,15 @@
                     </div>
                     <p class="card-text text-muted">Consulte saldos restantes en planes de salud y estatus de afiliados/comunidad.</p>
                 </div>
-                <a href="{% url 'saldos_admin' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Ver Estatus y Saldos</a>
+                <a href="{% url 'saldos_admin' %}" class="btn btn-outline-primary mt-3 uiverse-btn w-100">Ver Estatus y Saldos</a>
             </div>
         </div>
     </div>
 
     <!-- REPORTES CONSULTAS NOMINA -->
     <div class="col-md-4">
-        <div class="uiverse-card shadow-sm h-100">
-            <div class="card-body d-flex flex-column justify-content-between">
+        <div class="uiverse-card shadow-sm h-100 d-flex flex-column">
+            <div class="card-body d-flex flex-column justify-content-between flex-grow-1">
                 <div>
                     <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-cash-stack fs-2 text-gray me-3"></i>
@@ -59,15 +59,15 @@
                     </div>
                     <p class="card-text text-muted">Registro de médicos vistos y gestión de cobros por nómina del personal.</p>
                 </div>
-                <a href="{% url 'reporte_admin' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Ver Registros de Cobro</a>
+                <a href="{% url 'reporte_admin' %}" class="btn btn-outline-primary mt-3 uiverse-btn w-100">Ver Registros de Cobro</a>
             </div>
         </div>
     </div>
 
     <!-- REGISTRO DE ACTIVIDADES -->
     <div class="col-md-4">
-        <div class="uiverse-card shadow-sm h-100">
-            <div class="card-body d-flex flex-column justify-content-between">
+        <div class="uiverse-card shadow-sm h-100 d-flex flex-column">
+            <div class="card-body d-flex flex-column justify-content-between flex-grow-1">
                 <div>
                     <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-activity fs-2 text-gray me-3"></i>
@@ -75,15 +75,15 @@
                     </div>
                     <p class="card-text text-muted">Auditoría de acciones realizadas en el sistema.</p>
                 </div>
-                <a href="{% url 'ver_logs' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Ver Logs</a>
+                <a href="{% url 'ver_logs' %}" class="btn btn-outline-primary mt-3 uiverse-btn w-100">Ver Logs</a>
             </div>
         </div>
     </div>
 
     <!-- INGRESOS POR ESPECIALISTA -->
     <div class="col-md-4">
-        <div class="uiverse-card shadow-sm h-100">
-            <div class="card-body d-flex flex-column justify-content-between">
+        <div class="uiverse-card shadow-sm h-100 d-flex flex-column">
+            <div class="card-body d-flex flex-column justify-content-between flex-grow-1">
                 <div>
                     <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-pie-chart fs-2 text-gray me-3"></i>
@@ -91,15 +91,15 @@
                     </div>
                     <p class="card-text text-muted">Distribución de ingresos médicos vs administración.</p>
                 </div>
-                <a href="{% url 'ingresos_especialistas' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Ver Ingresos</a>
+                <a href="{% url 'ingresos_especialistas' %}" class="btn btn-outline-primary mt-3 uiverse-btn w-100">Ver Ingresos</a>
             </div>
         </div>
     </div>
 
     <!-- FACTURACION -->
     <div class="col-md-4">
-        <div class="uiverse-card shadow-sm h-100">
-            <div class="card-body d-flex flex-column justify-content-between">
+        <div class="uiverse-card shadow-sm h-100 d-flex flex-column">
+            <div class="card-body d-flex flex-column justify-content-between flex-grow-1">
                 <div>
                     <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-receipt fs-2 text-gray me-3"></i>
@@ -107,15 +107,15 @@
                     </div>
                     <p class="card-text text-muted">Gestión de facturas generadas desde citas atendidas.</p>
                 </div>
-                <a href="{% url 'facturas_lista' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Ver Facturas</a>
+                <a href="{% url 'facturas_lista' %}" class="btn btn-outline-primary mt-3 uiverse-btn w-100">Ver Facturas</a>
             </div>
         </div>
     </div>
 
     <!-- REPORTE DE CAJA -->
     <div class="col-md-4">
-        <div class="uiverse-card shadow-sm h-100">
-            <div class="card-body d-flex flex-column justify-content-between">
+        <div class="uiverse-card shadow-sm h-100 d-flex flex-column">
+            <div class="card-body d-flex flex-column justify-content-between flex-grow-1">
                 <div>
                     <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-cash-stack fs-2 text-gray me-3"></i>
@@ -123,15 +123,15 @@
                     </div>
                     <p class="card-text text-muted">Cobros del día por método de pago.</p>
                 </div>
-                <a href="{% url 'reporte_caja' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Ver Caja</a>
+                <a href="{% url 'reporte_caja' %}" class="btn btn-outline-primary mt-3 uiverse-btn w-100">Ver Caja</a>
             </div>
         </div>
     </div>
 
     <!-- GASTOS POR PACIENTE -->
     <div class="col-md-4">
-        <div class="uiverse-card shadow-sm h-100">
-            <div class="card-body d-flex flex-column justify-content-between">
+        <div class="uiverse-card shadow-sm h-100 d-flex flex-column">
+            <div class="card-body d-flex flex-column justify-content-between flex-grow-1">
                 <div>
                     <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-bar-chart-line fs-2 text-gray me-3"></i>
@@ -139,15 +139,15 @@
                     </div>
                     <p class="card-text text-muted">Desglose detallado de gastos por paciente (Lic. Laudy).</p>
                 </div>
-                <a href="{% url 'gastos_por_paciente' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Ver Gastos</a>
+                <a href="{% url 'gastos_por_paciente' %}" class="btn btn-outline-primary mt-3 uiverse-btn w-100">Ver Gastos</a>
             </div>
         </div>
     </div>
 
     <!-- RESUMEN DE AFILIADOS -->
     <div class="col-md-4">
-        <div class="uiverse-card shadow-sm h-100">
-            <div class="card-body d-flex flex-column justify-content-between">
+        <div class="uiverse-card shadow-sm h-100 d-flex flex-column">
+            <div class="card-body d-flex flex-column justify-content-between flex-grow-1">
                 <div>
                     <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-grid-3x3-gap fs-2 text-gray me-3"></i>
@@ -155,15 +155,15 @@
                     </div>
                     <p class="card-text text-muted">Visualización cruzada de gastos por afiliado (Admin-Póliza).</p>
                 </div>
-                <a href="{% url 'resumen_afiliados' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Ver Resumen</a>
+                <a href="{% url 'resumen_afiliados' %}" class="btn btn-outline-primary mt-3 uiverse-btn w-100">Ver Resumen</a>
             </div>
         </div>
     </div>
 
     <!-- EXPORTAR DOCUMENTOS -->
     <div class="col-md-4">
-        <div class="uiverse-card shadow-sm h-100">
-            <div class="card-body d-flex flex-column justify-content-between">
+        <div class="uiverse-card shadow-sm h-100 d-flex flex-column">
+            <div class="card-body d-flex flex-column justify-content-between flex-grow-1">
                 <div>
                     <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-file-earmark-spreadsheet fs-2 text-gray me-3"></i>
@@ -171,7 +171,7 @@
                     </div>
                     <p class="card-text text-muted">Exportar Excel completo con gastos por paciente, consulta y médico.</p>
                 </div>
-                <a href="{% url 'exportar_gastos_excel' %}" class="btn btn-outline-primary mt-3 uiverse-btn">Exportar Excel</a>
+                <a href="{% url 'exportar_gastos_excel' %}" class="btn btn-outline-primary mt-3 uiverse-btn w-100">Exportar Excel</a>
             </div>
     </div>
 </div>

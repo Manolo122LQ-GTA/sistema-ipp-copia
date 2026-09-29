@@ -57,7 +57,10 @@
                                     <td>{{ plan.consultas_maximas_anuales|default:"Ilimitadas" }}</td>
                                     <td>
                                         <a href="{% url 'plan_salud_editar' plan.id %}" class="btn btn-sm btn-warning uiverse-btn"><i class="bi bi-pencil"></i></a>
-                                        <a href="{% url 'plan_salud_eliminar' plan.id %}" class="btn btn-sm btn-danger uiverse-btn" onclick="return confirm('¿Eliminar este plan?')"><i class="bi bi-trash"></i></a>
+                                        <form method="post" action="{% url 'plan_salud_eliminar' plan.id %}" class="d-inline" onsubmit="return confirm('¿Eliminar este plan?')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger uiverse-btn"><i class="bi bi-trash"></i></button>
+                                        </form>
                                     </td>
                                 </tr>
                                 {% endfor %}

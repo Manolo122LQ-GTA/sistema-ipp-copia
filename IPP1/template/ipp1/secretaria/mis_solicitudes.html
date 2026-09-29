@@ -1,0 +1,86 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Secretaría{% endblock %}
+{% block title %}Mis Solicitudes - IPP{% endblock %}
+{% block content %}
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-journal-text me-2"></i>Mis Solicitudes</h2>
+        <p class="text-muted">Historial de las solicitudes de cita registradas por usted.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'secretaria' %}" class="uiverse-btn btn btn-outline-secondary shadow-sm">
+            <i class="bi bi-arrow-left me-1"></i>Volver al Panel
+        </a>
+    </div>
+</div>
+
+<div class="uiverse-card shadow-sm">
+    <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
+        <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Solicitudes Registradas</h5>
+    </div>
+    <div class="table-responsive p-3">
+        <table class="table table-hover table-primary align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Paciente</th>
+                    <th>Médico General</th>
+                    <th>Fecha de la Cita</th>
+                    <th>Hora</th>
+                    <th>Motivo</th>
+                    <th>Estado</th>
+                    <th>Registrada</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in solicitudes %}
+                <tr>
+                    <td>{{ s.paciente }}</td>
+                    <td>{{ s.especialista.get_full_name|default:s.especialista.username|default:"-" }}</td>
+                    <td>{{ s.fecha_cita|date:"d/m/Y" }}</td>
+                    <td>{{ s.hora_cita|time:"H:i" }}</td>
+                    <td>{{ s.motivo_consulta|default:"-"|truncatechars:40 }}</td>
+                    <td>
+                        {% if s.estado == 'Atendido' %}
+                            <span class="badge bg-success">{{ s.estado }}</span>
+                        {% elif s.estado == 'Cancelado' %}
+                            <span class="badge bg-danger">{{ s.estado }}</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">{{ s.estado }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ s.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted">No ha registrado solicitudes aún.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if solicitudes.paginator.num_pages > 1 %}
+        <nav>
+            <ul class="pagination justify-content-center mb-0">
+                {% if solicitudes.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page=1">&laquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ solicitudes.previous_page_number }}">&lsaquo;</a></li>
+                {% endif %}
+
+                {% for num in solicitudes.paginator.page_range %}
+                    <li class="page-item {% if num == solicitudes.number %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                {% endfor %}
+
+                {% if solicitudes.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ solicitudes.next_page_number }}">&rsaquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ solicitudes.paginator.num_pages }}">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

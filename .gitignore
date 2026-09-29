@@ -5,7 +5,11 @@ db.sqlite3
 # Datos exportados / temporales
 exports/
 datos.json
+datos_iniciales.json
 *.log
+
+# Salida de collectstatic (se regenera en deploy)
+staticfiles/
 
 # Python compilado
 __pycache__/

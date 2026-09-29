@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!doctype html>
 <html lang="es">
 <head>
@@ -8,7 +8,7 @@
     <link rel="icon" type="image/svg+xml" href="{% static 'icon/LOGO_IPP_IUTAG.svg' %}">
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}">
-    <link rel="stylesheet" href="{% static 'css/uiverse.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'css/uiverse.css' %}?v=5">
     <style>
         html, body { height: 100%; margin: 0; }
         body {
@@ -46,7 +46,7 @@
                         </div>
                         <form method="post" action="{% url 'logout' %}" class="mt-3">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-secondary">
+                            <button type="submit" class="btn btn-outline-secondary uiverse-btn">
                                 <i class="bi bi-box-arrow-left me-1"></i>Cerrar Sesión
                             </button>
                         </form>
@@ -58,7 +58,7 @@
 
     <footer class="py-3 text-center" style="background: rgba(0,0,0,0.15);">
         <div class="container-fluid">
-            <small class="text-white text-opacity-75">© 2026 IPP-IUTAG. Todos los derechos reservados.</small>
+            <small class="text-white text-opacity-75">© {% now "Y" %} IPP-IUTAG. Todos los derechos reservados.</small>
         </div>
     </footer>
 </body>

@@ -1,88 +1,98 @@
 {% extends 'ipp1/compartidos/base.html' %}
-{% load static %}
 {% block navbar_brand %}Sistema IPP - Secretaría{% endblock %}
 {% block title %}Crear Solicitud - IPP{% endblock %}
 {% block content %}
 
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-file-earmark-plus me-2"></i>Crear Solicitud de Servicio</h2>
+        <p class="text-muted">Complete los datos para generar una nueva solicitud de cita médica.</p>
+    </div>
+       </div>
 
-<div class="row mb-4">
-    <div class="col-md-8 mx-auto text-center">
-        <h2 class="fw-bold text-primary mb-4">Crear Solicitud de Servicio</h2>
-        <p class="text-muted mb-5">Complete el formulario para solicitar un servicio para un paciente registrado.</p>
+<div class="uiverse-card shadow-sm mx-auto" style="max-width: 1000px;">
+    <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
+        <h5 class="mb-0"><i class="bi bi-clipboard2-check me-2"></i>Datos de la Solicitud</h5>
+    </div>
+    <div class="card-body p-4">
+        <form method="post" action="{% url 'crear_solicitud' %}" id="solicitudForm">
+            {% csrf_token %}
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label for="{{ form.paciente.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-person me-1"></i>Paciente
+                    </label>
+                    {{ form.paciente }}
+                    {% if form.paciente.errors %}
+                        <div class="text-danger small mt-1">{{ form.paciente.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label for="{{ form.especialista.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-person-badge me-1"></i>{{ form.especialista.label }}
+                    </label>
+                    {{ form.especialista }}
+                    {% if form.especialista.errors %}
+                        <div class="text-danger small mt-1">{{ form.especialista.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- ELIMINADO POR ALGUNAS COSAS QUE NO SERVIAN -->
+                <!--div class="col-md-6">
+                    <label for="{{ form.especialista.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-person-badge me-1"></i>{{ form.especialista.label }}
+                    </label>
+                    {{ form.especialista }}
+                    {% if form.especialista.errors %}
+                        <div class="text-danger small mt-1">{{ form.especialista.errors }}</div>
+                    {% endif %}
+                </div-->
+
+
+                <div class="col-md-6">
+                    <label for="{{ form.fecha_cita.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-calendar me-1"></i>Fecha de la Cita
+                    </label>
+                    {{ form.fecha_cita }}
+                    {% if form.fecha_cita.errors %}
+                        <div class="text-danger small mt-1">{{ form.fecha_cita.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label for="{{ form.hora_cita.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-clock me-1"></i>Hora de la Cita
+                    </label>
+                    {{ form.hora_cita }}
+                    {% if form.hora_cita.errors %}
+                        <div class="text-danger small mt-1">{{ form.hora_cita.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-12">
+                    <label for="{{ form.motivo_consulta.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-journal-text me-1"></i>{{ form.motivo_consulta.label }}
+                    </label>
+                    {{ form.motivo_consulta }}
+                    {% if form.motivo_consulta.errors %}
+                        <div class="text-danger small mt-1">{{ form.motivo_consulta.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="border-top mt-4 pt-4 text-center">
+                <button type="submit" class="uiverse-btn btn btn-outline-primary px-4 shadow-sm">
+                    <i class="bi bi-check-circle me-2"></i>Generar Solicitud
+                </button>
+                <a href="{% url 'secretaria' %}" onclick="document.getElementById('solicitudForm').reset();" class="uiverse-btn btn btn-outline-danger px-4 ms-2 shadow-sm">
+                    <i class="bi bi-x-lg me-1"></i>Cancelar
+                </a>
+            </div>
+        </form>
     </div>
 </div>
-
-<div class="row">
-    <div class="col-md-8 mx-auto">
-        <div class="uiverse-card shadow p-3 p-md-4">
-
-            <form method="post" action="{% url 'crear_solicitud' %}">
-                {% csrf_token %}
-
-                <!-- Encabezado de Fecha -->
-
-                <!-- Datos del Formulario Django -->
-                <div class="row g-3 mb-4 p-4 bg-light rounded border">
-                    <h6 class="text-secondary text-uppercase fw-bold border-bottom pb-2 mb-3">Datos de la Cita</h6>
-
-                    {% for field in form %}
-                        {% if field.name == 'motivo_consulta' %}
-                            <div class="col-12 mb-3">
-                                <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.errors %}
-                                    <div class="text-danger small mt-1">{{ field.errors }}</div>
-                                {% endif %}
-                            </div>
-                        {% else %}
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.errors %}
-                                    <div class="text-danger small mt-1">{{ field.errors }}</div>
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                    {% endfor %}
-                </div>
-
-                <!-- Destinatario -->
-                <div class="mb-4">
-                    <label class="form-label fw-bold text-secondary">Destinatario</label>
-                    <input type="text" class="uiverse-input form-control mb-1" placeholder="Ej. Ciudadano Director del Hospital">
-                    <span class="d-block fw-bold text-dark">Su Despacho.</span>
-                </div>
-
-                <!-- Asunto -->
-                <div class="mb-4">
-                    <div class="d-flex align-items-center border-bottom pb-2">
-                        <label class="form-label fw-bold text-uppercase text-danger mb-0 me-3">Asunto:</label>
-                        <input type="text" class="uiverse-input form-control border-0 fw-bold" placeholder="Ej. Solicitud de Servicio para Paciente">
-                    </div>
-                </div>
-
-                <!-- Cuerpo -->
-                <div class="mb-4">
-                    <label class="form-label fw-bold text-secondary text-uppercase small">Cuerpo de la Solicitud</label>
-                    <textarea class="uiverse-input form-control" rows="6" placeholder="Redacte los detalles de la solicitud aquí..."></textarea>
-                </div>
-
-                <!-- Firma -->
-                <div class="mb-5 pt-3">
-                    <p class="fw-bold text-secondary mb-0">Atentamente,</p>
-                    <p class="text-muted small">Secretaría General IPP</p>
-                </div>
-
-                <!-- Acciones -->
-                <div class="border-top pt-4 text-center">
-                    <button type="submit" class="btn uiverse-btn btn-outline-primary px-3 shadow-sm">
-                        <i class="bi bi-check-circle me-2"></i>Generar Solicitud
-                    </button>
-                    <a href="{% url 'secretaria' %}" class="btn btn-outline-danger px-3 ms-2 shadow-sm">Cancelar</a>
-                </div>
-            </form>
-
-        </div>
-    </div>
-</div>
+<script>window.addEventListener('pageshow', function(e){ if(e.persisted){ document.getElementById('solicitudForm').reset(); } });</script>
 {% endblock %}
+<!-- tu no deberias de estar leyendo esto ¿sabes? -->

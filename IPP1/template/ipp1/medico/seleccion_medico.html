@@ -3,45 +3,63 @@
 {% block title %}{{ titulo }}{% endblock %}
 {% block content %}
 
+<!-- TITULO DEL PANEL -->
 <div class="row mb-4 align-items-center">
     <div class="col-md-8">
+        <!-- TITULO -->
         <h2 class="fw-bold text-dark">Servicio Médico</h2>
+        <!-- DESCRIPCION CHIDA -->
         <p class="text-muted">Selecciona tu área de "Servicio Médico" para configurar tus accesos.</p>
     </div>
+    <!-- BOTON DEL MENU -->
     <div class="col-md-4 text-md-end">
         <a href="{% url 'home' %}" class="btn btn-outline-secondary uiverse-btn">
+            <!-- ICONOS -->
+             <!-- ICONOCO PARA EL BOTON DEL MENU -->
             <i class="bi bi-house-door me-1"></i>Volver al Menú
         </a>
     </div>
 </div>
 
+<!-- BOTON DE MEDICINA GENERAL -->
+ <!-- AQUI ES DONDE SE PONE EL BOTON AZUL -->
 <div class="row g-4 justify-content-center">
-    <div class="col-md-3">
+    <div class="uiverse-card shadow-sm col-md-6 col-lg-3 d-flex flex-column">
         <a href="{% if es_medico_real %}{% url 'medico_panel' %}{% else %}#{% endif %}"
-           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none uiverse-btn {% if not es_medico_real %}disabled{% endif %}"
-           {% if not es_medico_real %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+           class="btn btn-outline-primary p-4 w-100 d-flex flex-column align-items-center justify-content-center text-decoration-none uiverse-btn {% if not es_medico_real %}disabled{% endif %}"
+           {% if not es_medico_real %}style="opacity: 0.5; cursor: not-allowed; pointer-events: none;"{% endif %}>
+           <!-- ICONOS -->
             <i class="bi bi-hospital fs-1 mb-2"></i><span>Medicina General</span>
         </a>
     </div>
-    <div class="col-md-3">
+    <!-- BOTON DE ESPECIALISTA -->
+    <!-- AQUI ES DONDE SE PONE EL BOTON AZUL -->
+    <div class="uiverse-card shadow-sm col-md-6 col-lg-3 d-flex flex-column">
         <a href="{% if es_especialista %}{% url 'especialista' %}{% else %}#{% endif %}"
-           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none uiverse-btn {% if not es_especialista %}disabled{% endif %}"
-           {% if not es_especialista %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+           class="btn btn-outline-primary p-4 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none uiverse-btn {% if not es_especialista %}disabled{% endif %}"
+           {% if not es_especialista %}style="opacity: 0.5; cursor: not-allowed; pointer-events: none;"{% endif %}>
+           <!-- ICONOS -->
             <i class="bi bi-shield-check fs-1 mb-2"></i><span>Especialista</span>
         </a>
     </div>
-    <div class="col-md-3">
-        <a href="{% if es_laboratorio %}{% url 'laboratorio' %}{% else %}#{% endif %}"
-           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none uiverse-btn {% if not es_laboratorio %}disabled{% endif %}"
-           {% if not es_laboratorio %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
-            <i class="bi bi-hospital fs-1 mb-2"></i><span>Laboratorio</span>
+    <!-- BOTON DE ODONTOLOGO -->
+    <!-- AQUI ES DONDE SE PONE EL BOTON AZUL -->
+    <div class="uiverse-card shadow-sm col-md-6 col-lg-3 d-flex flex-column">
+        <a href="{% if es_odontologo %}{% url 'odontologo' %}{% else %}#{% endif %}"
+           class="btn btn-outline-primary p-4 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none uiverse-btn {% if not es_odontologo %}disabled{% endif %}"
+           {% if not es_odontologo %}style="opacity: 0.5; cursor: not-allowed; pointer-events: none;"{% endif %}>
+           <!-- ICONOS -->
+            <i class="bi bi-heart-pulse fs-1 mb-2"></i><span>Odontologo</span>
         </a>
     </div>
-    <div class="col-md-3">
-        <a href="{% if es_odontologo %}{% url 'odontologo' %}{% else %}#{% endif %}"
-           class="btn btn-outline-primary p-4 w-100 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none uiverse-btn {% if not es_odontologo %}disabled{% endif %}"
-           {% if not es_odontologo %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
-            <i class="bi bi-heart-pulse fs-1 mb-2"></i><span>Odontologo</span>
+    <!-- BOTON DE LABORATORIO -->
+    <!-- AQUI ES DONDE SE PONE EL BOTON AZUL -->
+    <div class="uiverse-card shadow-smviews.py:621) col-md-6 col-lg-3 d-flex flex-column">
+        <a href="{% if es_laboratorio %}{% url 'laboratorio' %}{% else %}#{% endif %}"
+           class="btn btn-outline-primary p-4 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none uiverse-btn {% if not es_laboratorio %}disabled{% endif %}"
+           {% if not es_laboratorio %}style="opacity: 0.5; cursor: not-allowed; pointer-events: none;"{% endif %}>
+           <!-- ICONOS -->
+            <i class="bi bi-eyedropper fs-1 mb-2"></i><span>Laboratorio</span>
         </a>
     </div>
 </div>

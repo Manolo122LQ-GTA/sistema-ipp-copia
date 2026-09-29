@@ -1,8 +1,21 @@
 from django.contrib import admin
 from django.urls import path
+from django.shortcuts import render
 from pacientes import views
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
+
+
+def handler404(request, exception):
+    return render(request, 'ipp1/errores/404.html', status=404)
+
+
+def handler403(request, exception):
+    return render(request, 'ipp1/errores/403.html', status=403)
+
+
+def handler500(request):
+    return render(request, 'ipp1/errores/500.html', status=500)
 
 urlpatterns = [
 
@@ -22,6 +35,7 @@ urlpatterns = [
     # Secretaria
     path('secretaria/inicio/', views.secretaria, name='secretaria'),
     path('secretaria/registrar_paciente/', views.registrar_paciente, name='registrar_paciente'),
+    path('secretaria/mis-solicitudes/', views.mis_solicitudes, name='mis_solicitudes'),
 
     # Medico
     path('medico/seleccion/', views.medico, name='medico'),
@@ -83,6 +97,7 @@ urlpatterns = [
     path('paciente/detalle/<int:paciente_id>/', views.detalle_paciente, name='detalle_paciente'),
     path('calendario/', views.calendario_citas, name='calendario_citas'),
     path('notificacion/marcar/<int:notif_id>/', views.marcar_notificacion, name='marcar_notificacion'),
+    path('notificaciones/', views.mis_notificaciones, name='mis_notificaciones'),
     path('secretaria/solicitud/', views.crear_solicitud_view, name='crear_solicitud'),
 
     # 1 PANTALLA PARA PEDIR EL CORREO
@@ -109,6 +124,7 @@ urlpatterns = [
 
     # Importar desde Excel
     path('importar/pacientes/', views.importar_pacientes_excel, name='importar_pacientes_excel'),
+    path('importar/gastos/', views.importar_gastos_excel, name='importar_gastos_excel'),
 
     # Facturación
     path('facturas/', views.facturas_lista, name='facturas_lista'),

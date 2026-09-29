@@ -31,7 +31,9 @@
                                 <th>Paciente</th>
                                 <th>Examen</th>
                                 <th>Fecha Solicitud</th>
+                                {% if puede_procesar %}
                                 <th class="text-center pe-4">Procesar</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -41,11 +43,13 @@
                                 <td class="fw-semibold">{{ solicitud.paciente.nombre }} {{ solicitud.paciente.apellido }}</td>
                                 <td>{{ solicitud.prueba_laboratorio }}</td>
                                 <td>{{ solicitud.fecha_solicitud|date:"d/m/Y" }}</td>
+                                {% if puede_procesar %}
                                 <td class="text-center pe-4">
                                     <button type="button" class="uiverse-btn btn btn-sm btn-outline-warning px-3" data-bs-toggle="modal" data-bs-target="#procesarModal{{ solicitud.id }}">
                                         <i class="bi bi-flask me-1"></i>Procesar
                                     </button>
                                 </td>
+                                {% endif %}
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -61,6 +65,7 @@
     </div>
 </div>
 
+{% if puede_procesar %}
 {% for solicitud in solicitudes %}
 <div class="modal fade" id="procesarModal{{ solicitud.id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -107,4 +112,5 @@
     </div>
 </div>
 {% endfor %}
+{% endif %}
 {% endblock %}

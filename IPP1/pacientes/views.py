@@ -2,7 +2,9 @@ from decimal import Decimal
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from django.db.models import Q, Sum, Count
+from django.db import transaction, IntegrityError
+from django.db.models import Q, Sum, Count, F
+from django.db.models.functions import Greatest
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group, User
@@ -10,12 +12,12 @@ from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.conf import settings
 from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura, PerfilUsuario
-from .forms import PacienteForm, LoginForm, SolicitudSecretariaForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm
+from .forms import PacienteForm, LoginForm, PerfilForm, SolicitudSecretariaForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import ValidationError
-from django.utils.timezone import now
+from django.utils.timezone import now, localdate
 import csv
 
 # SOLICITUD DE CITA
@@ -28,6 +30,7 @@ def crear_solicitud_view(request):
         form = SolicitudSecretariaForm(request.POST)
         if form.is_valid():
             cita = form.save(commit=False)
+            cita.creada_por = request.user
             _vincular_poliza(cita)
             cita.save()
             form.save_m2m()
@@ -58,33 +61,39 @@ def login_view(request):
     if request.user.is_authenticated:
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
-        
+
+    if request.GET.get('timeout'):
+        messages.warning(request, 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.')
+
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
             usuario = form.cleaned_data.get('username')
             clave = form.cleaned_data.get('password')
 
-            if not User.objects.filter(username=usuario).exists():
-                messages.error(request, 'El nombre de usuario no existe. Por favor, regístrate.')
+            usuario_obj = User.objects.filter(username=usuario).first()
+            if not usuario_obj:
+                messages.error(request, 'Usuario o contraseña incorrectos.')
                 return render(request, 'ipp1/compartidos/login.html', {'form': form})
 
-            usuario_existente = User.objects.filter(username=usuario).first()
-            if usuario_existente and not usuario_existente.is_active:
+            if not usuario_obj.is_active:
                 return redirect('pendiente_aprobacion')
 
-            usuario_obj = authenticate(request, username=usuario, password=clave)
-            if usuario_obj is not None:
-                login(request, usuario_obj)
-                return redirect('home')
-            else:
-                messages.error(request, 'Contraseña incorrecta.')
-                return render(request, 'ipp1/compartidos/login.html', {'form': form})
+            usuario_autenticado = authenticate(request, username=usuario, password=clave)
+            if usuario_autenticado is not None:
+                login(request, usuario_autenticado)
+                next_url = request.POST.get('next') or request.GET.get('next') or ''
+                siguiente = next_url if next_url.startswith('/') else 'home'
+                return redirect(siguiente)
+
+            messages.error(request, 'Usuario o contraseña incorrectos.')
+            return render(request, 'ipp1/compartidos/login.html', {'form': form})
     else:
         form = LoginForm()
 
     return render(request, 'ipp1/compartidos/login.html', {'form': form})
 
+@login_required
 @require_POST
 def logout_view(request):
     """Cierra la sesión y redirige al login con un mensaje de éxito."""
@@ -121,14 +130,19 @@ def registro(request):
                     messages.error(request, error)
                 return render(request, 'ipp1/compartidos/registro.html', {'request': request})
 
-            user = User.objects.create_user(
-                username=username, email=email, password=password,
-                first_name=first_name, last_name=last_name
-            )
-            user.is_active = False
-            user.save()
-            PerfilUsuario.objects.create(usuario=user, aprobado=False)
-            
+            try:
+                with transaction.atomic():
+                    user = User.objects.create_user(
+                        username=username, email=email, password=password,
+                        first_name=first_name, last_name=last_name
+                    )
+                    user.is_active = False
+                    user.save()
+                    PerfilUsuario.objects.create(usuario=user, aprobado=False)
+            except IntegrityError:
+                messages.error(request, 'Ese nombre de usuario o correo ya está registrado.')
+                return render(request, 'ipp1/compartidos/registro.html', {'request': request})
+
             if rol_elegido and rol_elegido in ROLES_PERMITIDOS_REGISTRO:
                 grupo, created = Group.objects.get_or_create(name=rol_elegido)
                 user.groups.add(grupo)
@@ -149,7 +163,7 @@ def usuarios_pendientes(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
-    pendientes = PerfilUsuario.objects.filter(aprobado=False).select_related('usuario', 'usuario__groups')
+    pendientes = PerfilUsuario.objects.filter(aprobado=False).select_related('usuario').prefetch_related('usuario__groups')
     return render(request, 'ipp1/admin/usuarios_pendientes.html', {'pendientes': pendientes})
 
 @login_required
@@ -166,11 +180,22 @@ def aprobar_usuario(request, user_id):
             perfil.fecha_aprobacion = timezone.now()
             perfil.aprobado_por = request.user
             perfil.save()
+            perfil.usuario.is_active = True
+            perfil.usuario.save()
             messages.success(request, f'Usuario {perfil.usuario.username} aprobado correctamente.')
         elif accion == 'rechazar':
             username = perfil.usuario.username
-            perfil.usuario.delete()
-            messages.success(request, f'Usuario {username} rechazado y eliminado.')
+            tiene_datos = (
+                perfil.usuario.solicitudes_creadas.exists()
+                or perfil.usuario.citas_asignadas.exists()
+                or perfil.usuario.notificaciones.exists()
+                or perfil.usuario.logactividad_set.exists()
+            )
+            if tiene_datos:
+                messages.error(request, f'No se pudo eliminar {username}: tiene registros asociados.')
+            else:
+                perfil.usuario.delete()
+                messages.success(request, f'Usuario {username} rechazado y eliminado.')
     return redirect('usuarios_pendientes')
 
 # PERFIL DE USUARIO
@@ -180,10 +205,13 @@ def perfil_usuario(request):
 
     if request.method == 'POST':
         user = request.user
-        user.first_name = request.POST.get('first_name', user.first_name)
-        user.last_name = request.POST.get('last_name', user.last_name)
-        user.email = request.POST.get('email', user.email)
-        user.save()
+        form = PerfilForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Perfil actualizado correctamente.')
+        else:
+            messages.error(request, 'Corrige los errores del perfil.')
+            return render(request, 'ipp1/compartidos/perfil.html', {'form': form, 'password_form': password_form})
 
         if request.POST.get('old_password'):
             password_form = PasswordChangeForm(user, request.POST)
@@ -192,13 +220,12 @@ def perfil_usuario(request):
                 messages.success(request, 'Perfil y contraseña actualizados correctamente.')
             else:
                 messages.error(request, 'Corrige los errores de la contraseña.')
-                return render(request, 'ipp1/compartidos/perfil.html', {'password_form': password_form})
-        else:
-            messages.success(request, 'Perfil actualizado correctamente.')
+                return render(request, 'ipp1/compartidos/perfil.html', {'form': form, 'password_form': password_form})
 
         return redirect('perfil_usuario')
 
-    return render(request, 'ipp1/compartidos/perfil.html', {'password_form': password_form})
+    form = PerfilForm(instance=request.user)
+    return render(request, 'ipp1/compartidos/perfil.html', {'form': form, 'password_form': password_form})
 
 # VISTA SECRETARIA
 @login_required
@@ -207,6 +234,19 @@ def secretaria(request):
         messages.error(request, "Acceso denegado: No tienes el rol de Secretaria.")
         return redirect('home')
     return render(request, 'ipp1/secretaria/inicio_secre.html')
+
+@login_required
+def mis_solicitudes(request):
+    if not request.user.groups.filter(name='Secretaria').exists() and not request.user.is_superuser:
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('home')
+    solicitudes = SolicitudSecretaria.objects.filter(
+        creada_por=request.user
+    ).select_related('paciente', 'especialista').order_by('-fecha_creacion')
+    paginator = Paginator(solicitudes, 20)
+    page = request.GET.get('page')
+    ctx = {'solicitudes': paginator.get_page(page)}
+    return render(request, 'ipp1/secretaria/mis_solicitudes.html', ctx)
 
 # VISTA MEDICO
 @login_required
@@ -238,7 +278,20 @@ def medico_dashboard(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Medico').exists()):
         messages.error(request, "Acceso denegado.")
         return redirect('home')
-    return render(request, 'ipp1/medico/inicio_medic.html')
+    hoy = now().date()
+    ctx = {
+        'citas_hoy': SolicitudSecretaria.objects.filter(
+            especialista=request.user, fecha_cita=hoy
+        ).count(),
+        'citas_pendientes': SolicitudSecretaria.objects.filter(
+            especialista=request.user, estado='En Espera'
+        ).count(),
+        'citas_atendidas_mes': SolicitudSecretaria.objects.filter(
+            especialista=request.user, estado='Atendido',
+            fecha_cita__year=hoy.year, fecha_cita__month=hoy.month
+        ).count(),
+    }
+    return render(request, 'ipp1/medico/inicio_medic.html', ctx)
 
 @login_required
 @require_POST
@@ -248,7 +301,10 @@ def atender_cita(request, cita_id):
         messages.error(request, "No tienes permiso para atender citas.")
         return redirect('home')
     cita = get_object_or_404(SolicitudSecretaria, id=cita_id)
-    if cita.especialista and cita.especialista != request.user and not request.user.is_superuser:
+    if not cita.especialista:
+        messages.error(request, "Esta cita no tiene especialista asignado.")
+        return redirect('home')
+    if cita.especialista != request.user and not request.user.is_superuser:
         messages.error(request, "Esta cita no te pertenece.")
         return redirect('home')
     cita.estado = 'Atendido'
@@ -274,7 +330,10 @@ def cancelar_cita(request, cita_id):
         messages.error(request, "No tienes permiso para cancelar citas.")
         return redirect('home')
     cita = get_object_or_404(SolicitudSecretaria, id=cita_id)
-    if cita.especialista and cita.especialista != request.user and not request.user.is_superuser:
+    if not cita.especialista:
+        messages.error(request, "Esta cita no tiene especialista asignado.")
+        return redirect('home')
+    if cita.especialista != request.user and not request.user.is_superuser:
         messages.error(request, "Esta cita no te pertenece.")
         return redirect('home')
     cita.estado = 'Cancelado'
@@ -294,10 +353,17 @@ def citas_recibidas_medico(request):
         messages.error(request, "Acceso denegado.")
         return redirect('home')
     
-    citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
-        estado='En Espera',
-        especialista__groups__name='Medico'
-    ).order_by('fecha_cita', 'hora_cita')
+    if request.user.is_superuser:
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
+            estado='En Espera',
+            especialista__groups__name='Medico'
+        )
+    else:
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
+            estado='En Espera',
+            especialista=request.user
+        )
+    citas = citas.order_by('fecha_cita', 'hora_cita')
     return render(request, 'ipp1/medico/citas_recibidas_medico.html', {'citas': citas})
 
 @login_required
@@ -308,7 +374,10 @@ def consulta_historial_medico(request):
         return redirect('home')
 
     query = request.GET.get('q')
-    base_qs = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Medico')
+    if request.user.is_superuser:
+        base_qs = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Medico')
+    else:
+        base_qs = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista=request.user)
     if query:
         citas = base_qs.filter(
             Q(paciente__nombre__icontains=query) | 
@@ -339,7 +408,20 @@ def odontologo(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Odontologo').exists()):
         messages.error(request, "No tienes permiso para acceder a Odontología.")
         return redirect('home')
-    return render(request, 'ipp1/odontologia/inicio_odonto.html')
+    hoy = now().date()
+    ctx = {
+        'citas_hoy': SolicitudSecretaria.objects.filter(
+            especialista=request.user, fecha_cita=hoy
+        ).count(),
+        'citas_pendientes': SolicitudSecretaria.objects.filter(
+            especialista=request.user, estado='En Espera'
+        ).count(),
+        'citas_atendidas_mes': SolicitudSecretaria.objects.filter(
+            especialista=request.user, estado='Atendido',
+            fecha_cita__year=hoy.year, fecha_cita__month=hoy.month
+        ).count(),
+    }
+    return render(request, 'ipp1/odontologia/inicio_odonto.html', ctx)
 
 @login_required
 def citas_recibidas(request):
@@ -348,10 +430,17 @@ def citas_recibidas(request):
         messages.error(request, "No tienes permiso para acceder a esta área.")
         return redirect('home')
     
-    citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
-        estado='En Espera',
-        especialista__groups__name='Odontologo'
-    ).order_by('fecha_cita', 'hora_cita')
+    if request.user.is_superuser:
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
+            estado='En Espera',
+            especialista__groups__name='Odontologo'
+        )
+    else:
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
+            estado='En Espera',
+            especialista=request.user
+        )
+    citas = citas.order_by('fecha_cita', 'hora_cita')
     return render(request, 'ipp1/odontologia/citas_recibidas_odonto.html', {'citas': citas})
 
 @login_required
@@ -362,7 +451,10 @@ def consulta_historial_odonto(request):
         return redirect('home')
 
     query = request.GET.get('q')
-    base_qs = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Odontologo')
+    if request.user.is_superuser:
+        base_qs = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Odontologo')
+    else:
+        base_qs = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista=request.user)
     if query:
         citas = base_qs.filter(
             Q(paciente__nombre__icontains=query) | 
@@ -409,9 +501,13 @@ def citas_especialista(request):
 @login_required
 def costos_especialista(request):
     """Consulta y gestión de tarifas de especialidades."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Especialista').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name='Especialista').exists() or request.user.groups.filter(name='Administracion').exists()):
         messages.error(request, "Acceso denegado.")
         return redirect('home')
+
+    if request.method == 'POST' and not _es_admin(request.user):
+        messages.error(request, "No tienes permiso para modificar tarifas.")
+        return redirect('costos_especialista')
 
     tarifas = TarifaEspecialidad.objects.filter(activo=True).order_by('especialidad')
 
@@ -463,9 +559,11 @@ def nueva_cita_especialista(request):
         if form.is_valid():
             cita = form.save(commit=False)
             cita.especialista = request.user
+            cita.creada_por = request.user
             _vincular_poliza(cita)
             cita.save()
             form.save_m2m()
+            _registrar_log(request, f'Especialista agendó cita para {cita.paciente}', 'SolicitudSecretaria', cita.id)
             poliza = cita.poliza
             if poliza and poliza.plan and poliza.consultas_restantes() == 0:
                 messages.warning(request, f'El paciente {cita.paciente} ha agotado las consultas de su póliza. Se registró como no cubierta.')
@@ -531,6 +629,11 @@ def consulta_historial_especialista(request):
 
     query = request.GET.get('q')
     base_qs = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Especialista')
+    if request.user.is_superuser or request.user.groups.filter(name='Administracion').exists():
+       base_qs = base_qs.filter(especialista__groups__name='Especialista')  # Solo citas con especialista asignado
+    else:
+        base_qs = base_qs.filter(especialista=request.user)
+        base_qs = base_qs.filter(especialista__isnull=False)  # Solo citas con especialista asignado
     if query:
         citas = base_qs.filter(
             Q(paciente__nombre__icontains=query) | 
@@ -573,10 +676,7 @@ def registrar_laboratorio(request):
     if request.method == 'POST':
         form = SolicitudLaboratorioForm(request.POST)
         if form.is_valid():
-            lab = form.save(commit=False)
-            if lab.examen and not lab.prueba_laboratorio:
-                lab.prueba_laboratorio = lab.examen.nombre
-            lab.save()
+            lab = form.save()
             _registrar_log(request, f'Registró solicitud de laboratorio: {lab.prueba_laboratorio}', 'SolicitudLaboratorio', lab.id)
             messages.success(request, 'Solicitud de laboratorio registrada exitosamente.')
             return redirect('laboratorio')
@@ -590,9 +690,20 @@ def registrar_laboratorio(request):
     for p in Paciente.objects.filter(activo=True):
         pacientes_status[p.id] = p.status_afiliado
 
+    examenes_list = [
+        {
+            'id': str(e.id),
+            'nombre': e.nombre,
+            'costo': str(e.costo),
+            'costo_afiliado': str(e.costo_afiliado),
+        }
+        for e in examenes
+    ]
+
     ctx = {
         'form': form,
         'examenes': examenes,
+        'examenes_json': examenes_list,
         'pacientes_status_json': pacientes_status,
     }
     return render(request, 'ipp1/laboratorio/registro_lab.html', ctx)
@@ -600,13 +711,18 @@ def registrar_laboratorio(request):
 @login_required
 def solicitudes_pendientes_laboratorio(request):
     """Lista y procesamiento de solicitudes de laboratorio pendientes."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Laboratorio').exists()):
+    puede_procesar = request.user.is_superuser or request.user.groups.filter(name='Laboratorio').exists()
+    puede_ver = puede_procesar or request.user.groups.filter(name__in=['Medico', 'Especialista', 'Odontologo']).exists()
+    if not puede_ver:
         messages.error(request, "No tienes permiso para acceder a esta área.")
         return redirect('home')
 
     solicitudes = SolicitudLaboratorio.objects.filter(estado='Pendiente').select_related('paciente').order_by('-fecha_creacion')
 
     if request.method == 'POST':
+        if not puede_procesar:
+            messages.error(request, "No tienes permiso para procesar solicitudes de laboratorio.")
+            return redirect('home')
         solicitud_id = request.POST.get('solicitud_id')
         solicitud = get_object_or_404(SolicitudLaboratorio, id=solicitud_id)
         form = ProcesarLaboratorioForm(request.POST, instance=solicitud)
@@ -624,6 +740,7 @@ def solicitudes_pendientes_laboratorio(request):
 
     return render(request, 'ipp1/laboratorio/solicitudes_pendientes.html', {
         'solicitudes': solicitudes,
+        'puede_procesar': puede_procesar,
     })
 
 # VISTAS DE ADMINISTRACIÓN
@@ -648,6 +765,11 @@ def menu_admin(request):
     if request.method == 'POST':
         usuario_id = request.POST.get('usuario_id')
         user_to_update = get_object_or_404(User, id=usuario_id)
+
+        # No permitir modificar superusuarios ni la propia cuenta
+        if user_to_update.is_superuser or user_to_update == request.user:
+            messages.error(request, 'No puedes modificar la cuenta de este usuario.')
+            return redirect('menu_admin')
 
         # Lógica para alternar estado de actividad (Activo/Inactivo)
         if 'toggle_status' in request.POST:
@@ -746,9 +868,8 @@ def ver_logs(request):
 
 @login_required
 def ingresos_especialistas(request):
-    """Reporte de ingresos generados por cada médico/especialista, agrupado por especialidad."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
-        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
+    if not _es_admin(request.user) and not request.user.is_superuser:
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('home')
     ingresos = (SolicitudSecretaria.objects
                 .filter(estado='Atendido', especialista__isnull=False)
@@ -839,6 +960,10 @@ def poliza_menu(request):
             | Q(paciente__cedula__icontains=query)
         )
 
+    if request.method == 'POST' and not _es_admin(request.user):
+        messages.error(request, 'No tienes permisos para modificar pólizas.')
+        return redirect('poliza_menu')
+
     if request.method == 'POST':
         accion = request.POST.get('accion')
         poliza_id = request.POST.get('poliza_id')
@@ -872,8 +997,12 @@ def poliza_crear(request):
     if request.method == 'POST':
         form = PolizaForm(request.POST)
         if form.is_valid():
-            poliza = form.save(commit=False)
-            poliza.saldo_restante = poliza.plan.costo_mensual - form.cleaned_data['cuota_inicial']
+            poliza = form.save(commit=False) 
+            if poliza.plan:
+                poliza.saldo_restante = max(
+                    poliza.plan.costo_mensual - form.cleaned_data['cuota_inicial'],
+                    Decimal('0.00')
+                    )
             poliza.save()
             _registrar_log(request, f'Creó póliza para {poliza.paciente}', 'Poliza', poliza.id)
             messages.success(request, f"Póliza creada para {poliza.paciente.nombre} {poliza.paciente.apellido}.")
@@ -906,6 +1035,8 @@ def poliza_detalle(request, poliza_id):
         'es_secretaria': es_secretaria,
     })
 
+    
+
 @login_required
 def poliza_registrar_familiar(request, poliza_id):
     """Registrar un familiar en una póliza."""
@@ -937,16 +1068,18 @@ def poliza_registrar_gasto(request, poliza_id):
 
     poliza = get_object_or_404(Poliza, id=poliza_id)
     if request.method == 'POST':
-        form = GastoPacienteForm(request.POST)
+        form = GastoPacienteForm(request.POST, poliza_id=poliza.id) 
         if form.is_valid():
             gasto = form.save(commit=False)
             gasto.poliza = poliza
-            if gasto.monto > poliza.saldo_restante:
-                messages.error(request, "El gasto supera el saldo restante de la póliza.")
-                return redirect('poliza_registrar_gasto', poliza_id=poliza.id)
-            gasto.save()
-            poliza.saldo_restante -= gasto.monto
-            poliza.save(update_fields=['saldo_restante'])
+            with transaction.atomic():
+                poliza = Poliza.objects.select_for_update().get(id=poliza.id)
+                if gasto.monto > poliza.saldo_restante:
+                    messages.error(request, "El gasto supera el saldo restante de la póliza.")
+                    return redirect('poliza_registrar_gasto', poliza_id=poliza.id)
+                gasto.save()
+                poliza.saldo_restante -= gasto.monto
+                poliza.save(update_fields=['saldo_restante'])
             _registrar_log(request, f'Registró gasto ${gasto.monto} en póliza de {poliza.paciente}', 'GastoPaciente', gasto.id)
             messages.success(request, f"Gasto registrado en la póliza de {poliza.paciente}.")
             return redirect('poliza_detalle', poliza_id=poliza.id)
@@ -1056,15 +1189,15 @@ def calendario_citas(request):
     if not (user.is_superuser or user.groups.filter(name__in=['Administracion', 'Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio']).exists()):
         messages.error(request, 'No tienes permisos para acceder al calendario.')
         return redirect('home')
-    if user.is_superuser or user.groups.filter(name='Administracion').exists():
-        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').all()
-    elif user.groups.filter(name='Medico').exists():
-        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Medico')
+    if user.groups.filter(name='Medico').exists():
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista=user)
     elif user.groups.filter(name='Odontologo').exists():
-        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista__groups__name='Odontologo')
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista=user)
     elif user.groups.filter(name='Especialista').exists():
         citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista=user)
     elif user.groups.filter(name='Secretaria').exists():
+        citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').all()
+    elif user.is_superuser or user.groups.filter(name='Administracion').exists():
         citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').all()
     else:
         citas = SolicitudSecretaria.objects.none()
@@ -1081,12 +1214,31 @@ def calendario_citas(request):
             fecha_actual = c.fecha_cita
         grupo['citas'].append(c)
 
-    return render(request, 'ipp1/compartidos/calendario_citas.html', {'citas_por_fecha': citas_por_fecha})
+    # Determinar a qué panel debe volver según el rol
+    if user.groups.filter(name='Medico').exists():
+        volver_url = 'medico_panel'
+    elif user.groups.filter(name='Odontologo').exists():
+        volver_url = 'odontologo'
+    elif user.groups.filter(name='Especialista').exists():
+        volver_url = 'especialista'
+    elif user.groups.filter(name='Laboratorio').exists():
+        volver_url = 'laboratorio'
+    elif user.groups.filter(name='Secretaria').exists():
+        volver_url = 'secretaria'
+    elif user.is_superuser or user.groups.filter(name='Administracion').exists():
+        volver_url = 'menu_admin'
+    else:
+        volver_url = 'home'
+
+    return render(request, 'ipp1/compartidos/calendario_citas.html', {
+        'citas_por_fecha': citas_por_fecha,
+        'volver_url': volver_url,
+    })
 
 # DETALLE DE PACIENTE
 @login_required
 def detalle_paciente(request, paciente_id):
-    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio']).exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
         messages.error(request, 'No tienes permisos para ver este paciente.')
         return redirect('home')
     paciente = get_object_or_404(Paciente, id=paciente_id)
@@ -1173,7 +1325,18 @@ def marcar_notificacion(request, notif_id):
     notif = get_object_or_404(Notificacion, id=notif_id, usuario=request.user)
     notif.leida = True
     notif.save()
-    return redirect(request.META.get('HTTP_REFERER', 'home'))
+    referer = request.META.get('HTTP_REFERER', '')
+    if referer.startswith(request.build_absolute_uri('/')):
+        return redirect(referer)
+    return redirect('mis_notificaciones')
+
+@login_required
+def mis_notificaciones(request):
+    notificaciones = Notificacion.objects.filter(usuario=request.user).order_by('-fecha_creacion')
+    paginator = Paginator(notificaciones, 20)
+    page = request.GET.get('page')
+    ctx = {'notificaciones': paginator.get_page(page)}
+    return render(request, 'ipp1/compartidos/notificaciones.html', ctx)
 
 
 @login_required
@@ -1269,7 +1432,6 @@ def exportar_reporte_csv(request):
         ])
     return response
 
-
 @login_required
 def importar_pacientes_excel(request):
     """Importa pacientes desde un archivo Excel."""
@@ -1317,10 +1479,53 @@ def importar_pacientes_excel(request):
                     messages.warning(request, f"...y {len(errores)-5} error(es) más.")
             _registrar_log(request, f'Importó {creados} pacientes desde Excel', 'Paciente')
         except Exception as e:
-            messages.error(request, f"Error al leer el archivo: {e}")
-        return redirect('saldos_admin')
-    return render(request, 'ipp1/administracion/importar_pacientes.html')
+            messages.error(request, f'Error al procesar el archivo: {e}')
+    return render(request, 'ipp1/administracion/importar_pacientes.html', {'modo': 'Pacientes'})
 
+@login_required
+def importar_gastos_excel(request):
+    """Importa gastos desde un archivo Excel (cédula, concepto, monto, fecha, factura)."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
+        return redirect('home')
+    if request.method == 'POST' and request.FILES.get('archivo'):
+        import openpyxl
+        wb = openpyxl.load_workbook(request.FILES['archivo'], read_only=True)
+        ws = wb.active
+        creados, errores = 0, []
+        for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            try:
+                cedula, concepto, monto, fecha, factura = (row + (None,)*5)[:5]
+                if not all([cedula, concepto, monto, fecha]):
+                    errores.append(f"Fila {i}: faltan datos obligatorios")
+                    continue
+                paciente = Paciente.objects.filter(cedula=str(cedula).strip()).first()
+                if not paciente:
+                    errores.append(f"Fila {i}: no existe paciente con cédula {cedula}")
+                    continue
+                poliza = paciente.polizas.filter(estado='Activo').order_by('-fecha_creacion').first()
+                if not poliza:
+                    errores.append(f"Fila {i}: {cedula} no tiene póliza activa")
+                    continue
+                from datetime import datetime
+                if isinstance(fecha, str):
+                    fecha = datetime.strptime(str(fecha).strip(), '%d/%m/%Y').date()
+                GastoPaciente.objects.create(
+                    poliza=poliza, concepto=str(concepto).strip(),
+                    monto=Decimal(str(monto)), fecha=fecha,
+                    factura=str(factura).strip() if factura else None,
+                )
+                creados += 1
+            except Exception as e:
+                errores.append(f"Fila {i}: {e}")
+        if creados:
+            messages.success(request, f"{creados} gasto(s) importado(s) correctamente.")
+        for err in errores[:5]:
+            messages.warning(request, err)
+        if len(errores) > 5:
+            messages.warning(request, f"...y {len(errores)-5} error(es) más.")
+        _registrar_log(request, f'Importó {creados} gastos desde Excel', 'GastoPaciente')
+    return render(request, 'ipp1/administracion/importar_pacientes.html', {'modo': 'Gastos'})
 
 @login_required
 def facturas_lista(request):
@@ -1328,8 +1533,15 @@ def facturas_lista(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists() or request.user.groups.filter(name='Secretaria').exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
-    facturas = Factura.objects.all().order_by('-fecha_emision')
-    return render(request, 'ipp1/facturacion/facturas_lista.html', {'facturas': facturas})
+    facturas = Factura.objects.select_related('cita__paciente').all().order_by('-fecha_emision')
+    facturadas_ids = facturas.values('cita_id')
+    citas_sin_factura = SolicitudSecretaria.objects.filter(
+        estado='Atendido',
+    ).exclude(id__in=facturadas_ids).select_related('paciente', 'especialista').order_by('-fecha_cita', '-hora_cita')
+    return render(request, 'ipp1/facturacion/facturas_lista.html', {
+        'facturas': facturas,
+        'citas_sin_factura': citas_sin_factura,
+    })
 
 
 @login_required
@@ -1353,10 +1565,16 @@ def factura_generar(request, cita_id):
         messages.info(request, "Esta cita ya tiene una factura.")
         return redirect('factura_detalle', factura_id=cita.factura.id)
     if request.method == 'POST':
-        iva = Decimal(request.POST.get('iva', '0'))
+        try:
+            iva = Decimal(request.POST.get('iva', '0'))
+        except Exception:
+            iva = settings.IVA_DEFAULT
+        if not iva.is_finite() or iva < 0 or iva > 100:
+            iva = settings.IVA_DEFAULT
         descripcion = request.POST.get('descripcion', '')
         subtotal = cita.costo_consulta or Decimal('0.00')
-        total = subtotal + (subtotal * iva / Decimal('100'))
+        iva_monto = (subtotal * iva / Decimal('100')).quantize(Decimal('0.01'))
+        total = (subtotal + iva_monto).quantize(Decimal('0.01'))
         factura = Factura.objects.create(
             cita=cita,
             paciente_nombre=f"{cita.paciente.nombre} {cita.paciente.apellido}",
@@ -1364,19 +1582,22 @@ def factura_generar(request, cita_id):
             especialista_nombre=cita.especialista.get_full_name() or cita.especialista.username if cita.especialista else '',
             descripcion=descripcion,
             subtotal=subtotal,
-            iva=subtotal * iva / Decimal('100'),
+            iva=iva_monto,
             total=total,
         )
         _registrar_log(request, f'Generó factura {factura.numero_factura} para cita {cita.id}', 'Factura', factura.id)
         messages.success(request, f"Factura {factura.numero_factura} generada.")
         return redirect('factura_detalle', factura_id=factura.id)
-    return render(request, 'ipp1/facturacion/factura_generar.html', {'cita': cita})
+        return render(request, 'ipp1/facturacion/factura_generar.html', {
+        'cita': cita,
+        'iva_default': settings.IVA_DEFAULT,
+    })
 
 
 @login_required
 def historia_clinica_print(request, paciente_id):
     """Vista imprimible de la historia clínica del paciente."""
-    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio']).exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria', 'Medico', 'Odontologo', 'Especialista']).exists()):
         messages.error(request, 'No tienes permisos para ver la historia clínica.')
         return redirect('home')
     paciente = get_object_or_404(Paciente, id=paciente_id)
@@ -1464,33 +1685,40 @@ def reporte_caja(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
-    from django.utils.timezone import localdate
+    from datetime import datetime, time as dtime
+    from django.utils.timezone import make_aware
     hoy = localdate()
     fecha_str = request.GET.get('fecha', '')
     if fecha_str:
-        from datetime import datetime
         try:
             fecha_filtro = datetime.strptime(fecha_str, '%Y-%m-%d').date()
         except ValueError:
             fecha_filtro = hoy
     else:
         fecha_filtro = hoy
-    facturas = Factura.objects.filter(pagada=True, fecha_pago__date=fecha_filtro).order_by('fecha_pago')
-    total_efectivo = facturas.filter(metodo_pago='Efectivo').aggregate(t=Sum('total'))['t'] or 0
-    total_debito = facturas.filter(metodo_pago='Tarjeta Débito').aggregate(t=Sum('total'))['t'] or 0
-    total_credito = facturas.filter(metodo_pago='Tarjeta Crédito').aggregate(t=Sum('total'))['t'] or 0
-    total_transferencia = facturas.filter(metodo_pago='Transferencia').aggregate(t=Sum('total'))['t'] or 0
-    total_otro = facturas.filter(metodo_pago='Otro').aggregate(t=Sum('total'))['t'] or 0
-    total_dia = facturas.aggregate(t=Sum('total'))['t'] or 0
+    # Rango en hora local de Caracas (no UTC) para no desplazar pagos de última hora
+    inicio_dia = make_aware(datetime.combine(fecha_filtro, dtime.min))
+    fin_dia = make_aware(datetime.combine(fecha_filtro, dtime.max))
+    facturas = Factura.objects.filter(pagada=True, fecha_pago__range=(inicio_dia, fin_dia)).order_by('fecha_pago')
+    totales = facturas.aggregate(
+        total_efectivo=Sum('total', filter=Q(metodo_pago='Efectivo')),
+        total_debito=Sum('total', filter=Q(metodo_pago='Tarjeta Débito')),
+        total_credito=Sum('total', filter=Q(metodo_pago='Tarjeta Crédito')),
+        total_transferencia=Sum('total', filter=Q(metodo_pago='Transferencia')),
+        total_otro=Sum('total', filter=Q(metodo_pago='Otro')),
+        total_dia=Sum('total'),
+    )
+    for clave in totales:
+        totales[clave] = totales[clave] or 0
     return render(request, 'ipp1/administracion/reporte_caja.html', {
         'facturas': facturas,
         'fecha': fecha_filtro,
-        'total_efectivo': total_efectivo,
-        'total_debito': total_debito,
-        'total_credito': total_credito,
-        'total_transferencia': total_transferencia,
-        'total_otro': total_otro,
-        'total_dia': total_dia,
+        'total_efectivo': totales['total_efectivo'],
+        'total_debito': totales['total_debito'],
+        'total_credito': totales['total_credito'],
+        'total_transferencia': totales['total_transferencia'],
+        'total_otro': totales['total_otro'],
+        'total_dia': totales['total_dia'],
     })
 
 
@@ -1504,18 +1732,30 @@ def receta_crear(request, cita_id):
     if cita.especialista and cita.especialista != request.user and not request.user.is_superuser:
         messages.error(request, "Esta cita no te pertenece.")
         return redirect('home')
+    laboratorios_pendientes = SolicitudLaboratorio.objects.filter(
+        paciente=cita.paciente
+    ).select_related('examen').order_by('-fecha_solicitud')
+    def _ctx(form):
+        return {'form': form, 'cita': cita, 'laboratorios_pendientes': laboratorios_pendientes}
     if request.method == 'POST':
         form = RecetaForm(request.POST)
         if form.is_valid():
+            medicamento = form.cleaned_data.get('medicamento')
+            cantidad = form.cleaned_data.get('cantidad')
+            if medicamento and medicamento.cantidad_stock <= 0:
+                messages.error(request, f'Sin stock de {medicamento.nombre}. No se puede registrar la receta.')
+                return render(request, 'ipp1/especialista/receta_crear.html', _ctx(form))
+            if medicamento and cantidad and cantidad > medicamento.cantidad_stock:
+                messages.error(request, f'Stock insuficiente de {medicamento.nombre}: disponible {medicamento.cantidad_stock}.')
+                return render(request, 'ipp1/especialista/receta_crear.html', _ctx(form))
             receta = form.save(commit=False)
             receta.cita = cita
-            receta.save()
-            if receta.medicamento and receta.medicamento.cantidad_stock:
-                med = receta.medicamento
-                med.cantidad_stock -= receta.cantidad
-                if med.cantidad_stock < 0:
-                    med.cantidad_stock = 0
-                med.save(update_fields=['cantidad_stock'])
+            with transaction.atomic():
+                receta.save()
+                if medicamento:
+                    Medicamento.objects.filter(pk=medicamento.pk).update(
+                        cantidad_stock=Greatest(F('cantidad_stock') - cantidad, 0)
+                    )
             _registrar_log(request, f'Creó receta para {cita.paciente}', 'Receta', receta.id)
             messages.success(request, "Receta registrada exitosamente.")
             if request.user.groups.filter(name='Medico').exists():
@@ -1525,9 +1765,10 @@ def receta_crear(request, cita_id):
             if request.user.groups.filter(name='Especialista').exists():
                 return redirect('citas_especialista')
             return redirect('reporte_admin')
+        return render(request, 'ipp1/especialista/receta_crear.html', _ctx(form))
     else:
         form = RecetaForm()
-    return render(request, 'ipp1/especialista/receta_crear.html', {'form': form, 'cita': cita})
+    return render(request, 'ipp1/especialista/receta_crear.html', _ctx(form))
 
 # VISTAS COMPARTIDAS
 @login_required
@@ -1642,11 +1883,14 @@ def resumen_afiliados(request):
 
     citas_cubiertas = SolicitudSecretaria.objects.filter(
         paciente__status_afiliado='Afiliado', paciente__activo=True,
-        estado='Atendido', cubierto_por_poliza=True
+        estado='Atendido', cubierto_por_poliza=True,
+        fecha_cita__year=localdate().year
     ).values('paciente__id').annotate(count=Count('id'))
 
     polizas_map = {}
-    for pol in Poliza.objects.filter(paciente__status_afiliado='Afiliado', paciente__activo=True):
+    for pol in Poliza.objects.filter(
+        paciente__status_afiliado='Afiliado', paciente__activo=True
+    ).select_related('plan'):
         polizas_map[pol.paciente_id] = pol
 
     gastos_map = {g['poliza__paciente__id']: g['total'] or 0 for g in gastos_por_paciente}
@@ -1677,8 +1921,7 @@ def resumen_afiliados(request):
 @login_required
 def exportar_gastos_excel(request):
     """Export a comprehensive Excel with spending by patient/consultation/doctor."""
-    if not (request.user.is_superuser
-            or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+    if not _es_admin(request.user):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
@@ -1772,15 +2015,18 @@ def exportar_gastos_excel(request):
 
 @login_required
 def exportar_pacientes_seleccionados(request):
-    """Exporta pacientes seleccionados a Excel."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
-        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
+    #  if not _es_admin(request.user) and not request.user.groups.filter(name='Secretaria').exists():
+    if not _es_admin(request.user):
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('home')
     import openpyxl
     ids = request.GET.get('ids', '')
     if not ids:
         messages.warning(request, "No seleccionaste pacientes.")
-        return redirect('saldos_admin')
+        referer = request.META.get('HTTP_REFERER', '')
+        if referer.startswith(request.build_absolute_uri('/')):
+            return redirect(referer)
+        return redirect('registrar_paciente')
     id_list = [int(x) for x in ids.split(',') if x.isdigit()]
     pacientes = Paciente.objects.filter(id__in=id_list).order_by('apellido')
     wb = openpyxl.Workbook()
@@ -1872,7 +2118,12 @@ def catalogo_examenes(request):
         if accion == 'crear':
             nombre = request.POST.get('nombre', '').strip()
             descripcion = request.POST.get('descripcion', '').strip()
-            costo = request.POST.get('costo', '0')
+            try:
+                costo = Decimal(request.POST.get('costo', '0'))
+            except Exception:
+                costo = Decimal('0')
+            if costo < 0:
+                costo = Decimal('0')
             if nombre:
                 ExamenLaboratorio.objects.create(
                     nombre=nombre, descripcion=descripcion, costo=costo
@@ -1886,7 +2137,12 @@ def catalogo_examenes(request):
             examen = get_object_or_404(ExamenLaboratorio, id=examen_id)
             examen.nombre = request.POST.get('nombre', examen.nombre).strip()
             examen.descripcion = request.POST.get('descripcion', examen.descripcion).strip()
-            examen.costo = request.POST.get('costo', examen.costo)
+            try:
+                costo = Decimal(request.POST.get('costo', examen.costo))
+            except Exception:
+                costo = examen.costo
+            if costo >= 0:
+                examen.costo = costo
             examen.save()
             _registrar_log(request, f'Editó examen {examen.nombre}', 'ExamenLaboratorio', examen.id)
             messages.success(request, f'Examen "{examen.nombre}" actualizado.')

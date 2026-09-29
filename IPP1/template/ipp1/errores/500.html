@@ -1,0 +1,36 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error del servidor - IPP</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'icon/LOGO_IPP_IUTAG.svg' %}">
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        body {
+            background: #2c6e9c;
+            background: linear-gradient(90deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%);
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container text-center text-white">
+        <h1 class="display-1 fw-bold">500</h1>
+        <p class="lead">Error interno del servidor</p>
+        <p class="text-white-50">Ocurrió un problema inesperado. Intenta nuevamente en unos minutos.</p>
+        <a href="{% url 'home' %}" class="btn btn-light rounded-pill px-4 mt-2">
+            <i class="bi bi-arrow-left me-1"></i> Volver
+        </a>
+    </div>
+</body>
+</html>

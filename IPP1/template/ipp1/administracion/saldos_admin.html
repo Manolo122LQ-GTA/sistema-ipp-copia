@@ -17,10 +17,10 @@
 
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #2c6e9c;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--primary">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #e8f0f8;">
+                    <div class="rounded-3 p-3 uiverse-metric-box uiverse-metric-box--primary">
                         <i class="bi bi-people fs-3 text-primary"></i>
                     </div>
                     <div>
@@ -32,10 +32,10 @@
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #2b7a62;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--success">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #e8f5f0;">
+                    <div class="rounded-3 p-3 uiverse-metric-box">
                         <i class="bi bi-person-check fs-3 text-success"></i>
                     </div>
                     <div>
@@ -47,10 +47,10 @@
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #4a90d9;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--info">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #eef4fb;">
+                    <div class="rounded-3 p-3 uiverse-metric-box uiverse-metric-box--info">
                         <i class="bi bi-person-heart fs-3 text-info"></i>
                     </div>
                     <div>
@@ -75,7 +75,10 @@
 
 <div class="mb-3 d-flex gap-2 flex-wrap">
     <a href="{% url 'importar_pacientes_excel' %}" class="btn btn-outline-primary btn-sm uiverse-btn">
-        <i class="bi bi-upload me-1"></i>Importar Excel
+        <i class="bi bi-upload me-1"></i>Importar Pacientes
+    </a>
+    <a href="{% url 'importar_gastos_excel' %}" class="btn btn-outline-primary btn-sm uiverse-btn">
+        <i class="bi bi-upload me-1"></i>Importar Gastos
     </a>
     <a href="{% url 'gastos_por_paciente' %}" class="btn btn-outline-info btn-sm uiverse-btn">
         <i class="bi bi-bar-chart-line me-1"></i>Gastos por Paciente
@@ -143,14 +146,14 @@
                             {% if paciente.activo %}
                                 <form method="post" action="{% url 'toggle_paciente' paciente.id %}" style="display:inline">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Desactivar">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger uiverse-btn" title="Desactivar">
                                         <i class="bi bi-person-x"></i>
                                     </button>
                                 </form>
                             {% else %}
                                 <form method="post" action="{% url 'toggle_paciente' paciente.id %}" style="display:inline">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Activar">
+                                    <button type="submit" class="btn btn-sm btn-outline-success uiverse-btn" title="Activar">
                                         <i class="bi bi-person-check"></i>
                                     </button>
                                 </form>

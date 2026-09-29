@@ -44,7 +44,6 @@
                     <option value="" selected>Selecciona el tipo de paciente</option>
                     <option value="Comunidad">Comunidad</option>
                     <option value="Afiliado">Afiliado (20% off)</option>
-                    <option value="Beneficiario">Beneficiario</option>
                     <option value="Particular">Particular</option>
                     </select>
                     </div>
@@ -99,14 +98,12 @@
     </div>
 </div>
 
-<script>
-var pacientesStatus = {{ pacientes_status_json|safe }};
+{{ pacientes_status_json|json_script:"pacientes-status-data" }}
+{{ examenes_json|json_script:"examenes-data" }}
 
-var examenesData = {
-    {% for e in examenes %}
-    "{{ e.id }}": { "nombre": "{{ e.nombre }}", "costo": "{{ e.costo }}", "costo_afiliado": "{{ e.costo_afiliado }}"{% if not forloop.last %},{% endif %}
-    {% endfor %}
-};
+<script>
+var pacientesStatus = JSON.parse(document.getElementById('pacientes-status-data').textContent);
+var examenesData = JSON.parse(document.getElementById('examenes-data').textContent);
 
 document.getElementById('id_paciente').addEventListener('change', function() {
     var tipoSelect = document.getElementById('tipo-paciente');

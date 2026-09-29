@@ -21,10 +21,10 @@
 
 <div class="row g-3 mb-4">
     <div class="col-md-3">
-        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #2b7a62;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--success">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #e8f5f0;">
+                    <div class="rounded-3 p-3 uiverse-metric-box">
                         <i class="bi bi-cash fs-3 text-success"></i>
                     </div>
                     <div>
@@ -36,10 +36,10 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #2c6e9c;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--primary">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #e8f0f8;">
+                    <div class="rounded-3 p-3 uiverse-metric-box uiverse-metric-box--primary">
                         <i class="bi bi-credit-card fs-3 text-primary"></i>
                     </div>
                     <div>
@@ -51,25 +51,25 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #d4a017;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--warning">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #fdf5e6;">
+                    <div class="rounded-3 p-3 uiverse-metric-box uiverse-metric-box--warning">
                         <i class="bi bi-credit-card-2-front fs-3 text-warning"></i>
                     </div>
                     <div>
                         <small class="text-muted d-block">Tarjeta Crédito</small>
-                        <span class="fs-4 fw-bold" style="color: #d4a017;">${{ total_credito|floatformat:2 }}</span>
+                        <span class="fs-4 fw-bold text-warning">${{ total_credito|floatformat:2 }}</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #4a90d9;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--info">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #eef4fb;">
+                    <div class="rounded-3 p-3 uiverse-metric-box uiverse-metric-box--info">
                         <i class="bi bi-phone fs-3 text-info"></i>
                     </div>
                     <div>
@@ -84,10 +84,10 @@
 
 <div class="row g-3 mb-4">
     <div class="col-md-6">
-        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #6c757d;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--secondary">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #f0f0f0;">
+                    <div class="rounded-3 p-3 uiverse-metric-box uiverse-metric-box--secondary">
                         <i class="bi bi-three-dots fs-3 text-secondary"></i>
                     </div>
                     <div>
@@ -99,10 +99,10 @@
         </div>
     </div>
     <div class="col-md-6">
-        <div class="card shadow-sm h-100" style="border-radius: 12px; border-left: 4px solid #1c1c1c;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--dark">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3" style="background-color: #e8e8e8;">
+                    <div class="rounded-3 p-3 uiverse-metric-box uiverse-metric-box--dark">
                         <i class="bi bi-calculator fs-3"></i>
                     </div>
                     <div>
@@ -140,7 +140,7 @@
                         <th scope="row" class="text-muted">{{ forloop.counter }}</th>
                         <td class="fw-semibold">{{ f.numero_factura }}</td>
                         <td>{{ f.paciente_nombre }}</td>
-                        <td class="fw-bold" style="color: #2b7a62;">${{ f.total|floatformat:2 }}</td>
+                        <td class="fw-bold text-success">${{ f.total|floatformat:2 }}</td>
                         <td>
                             <span class="badge {% if f.metodo_pago == 'Efectivo' %}bg-success{% elif f.metodo_pago == 'Transferencia' %}bg-info text-dark{% elif 'Crédito' in f.metodo_pago %}bg-warning text-dark{% elif 'Débito' in f.metodo_pago %}bg-primary{% else %}bg-secondary{% endif %}">
                                 {{ f.metodo_pago }}

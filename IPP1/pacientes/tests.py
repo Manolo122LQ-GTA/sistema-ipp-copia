@@ -8,12 +8,13 @@ from django.utils.timezone import now
 from .models import (
     Paciente, SolicitudSecretaria, SolicitudLaboratorio,
     PlanSalud, Poliza, GastoPaciente, Familiar,
-    TarifaEspecialidad, Medicamento, Receta, Factura
+    TarifaEspecialidad, Medicamento, Receta, Factura, ExamenLaboratorio
 )
 from .forms import (
     LoginForm, PacienteForm, SolicitudSecretariaForm,
     SolicitudLaboratorioForm, ProcesarLaboratorioForm,
-    TarifaEspecialidadForm, MedicamentoForm
+    TarifaEspecialidadForm, MedicamentoForm, RecetaForm,
+    PlanSaludForm, GastoPacienteForm, FamiliarForm
 )
 from .validators import ValidarContrasenaFuerte
 
@@ -266,6 +267,29 @@ class MedicamentoModelTest(BaseTest):
         self.assertTrue(m.activo)
 
 
+class ExamenLaboratorioModelTest(BaseTest):
+    def test_creacion_examen(self):
+        ex = ExamenLaboratorio.objects.create(
+            nombre='Hemograma Completo',
+            descripcion='Recuento sanguíneo completo',
+            costo=Decimal('25.00')
+        )
+        self.assertEqual(str(ex), 'Hemograma Completo - $25.00')
+        self.assertTrue(ex.activo)
+
+    def test_costo_afiliado_descuento(self):
+        ex = ExamenLaboratorio.objects.create(
+            nombre='Glicemia', costo=Decimal('50.00')
+        )
+        self.assertEqual(ex.costo_afiliado, Decimal('40.00'))  # 20% off
+
+    def test_costo_afiliado_redondeo(self):
+        ex = ExamenLaboratorio.objects.create(
+            nombre='Perfil 20', costo=Decimal('33.33')
+        )
+        self.assertEqual(ex.costo_afiliado, Decimal('26.66'))
+
+
 # ===================== VALIDATOR TESTS =====================
 
 class ValidatorTest(BaseTest):
@@ -363,7 +387,7 @@ class SolicitudSecretariaFormTest(BaseTest):
         form = SolicitudSecretariaForm(data={
             'paciente': self.paciente.id,
             'especialista': self.medico.id,
-            'fecha_cita': '2026-07-15',
+            'fecha_cita': '2027-07-15',
             'hora_cita': '14:30',
             'motivo_consulta': 'Control'
         })
@@ -456,7 +480,7 @@ class LoginViewTest(BaseTest):
             'username': 'noexiste', 'password': 'Abc123!@'
         })
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'no existe')
+        self.assertContains(response, 'incorrectos')
 
     def test_login_password_incorrecto(self):
         self._crear_usuario()
@@ -464,13 +488,29 @@ class LoginViewTest(BaseTest):
             'username': 'testuser', 'password': 'WrongPass1!'
         })
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'incorrecta')
+        self.assertContains(response, 'incorrectos')
+
+    def test_login_no_revela_que_usuario_existe(self):
+        response_noexiste = self.client.post(reverse('login'), {
+            'username': 'fantasma', 'password': 'Abc123!@'
+        })
+        self._crear_usuario()
+        response_existe = self.client.post(reverse('login'), {
+            'username': 'testuser', 'password': 'Mal123!@'
+        })
+        self.assertContains(response_noexiste, 'Usuario o contraseña incorrectos.')
+        self.assertContains(response_existe, 'Usuario o contraseña incorrectos.')
 
 
 class LogoutViewTest(BaseTest):
     def test_logout_requiere_post(self):
+        self._login()
         response = self.client.get(reverse('logout'))
         self.assertEqual(response.status_code, 405)
+
+    def test_logout_requiere_autenticacion(self):
+        response = self.client.get(reverse('logout'))
+        self.assertRedirects(response, reverse('login') + '?next=/logout/')
 
     def test_logout_valido(self):
         self._login()
@@ -574,7 +614,7 @@ class CitaFlowTest(BaseTest):
         response = self.client.post(reverse('crear_solicitud'), {
             'paciente': self.paciente.id,
             'especialista': self.medico.id,
-            'fecha_cita': '2026-07-20',
+            'fecha_cita': '2027-07-20',
             'hora_cita': '09:00',
             'motivo_consulta': 'Control general'
         }, follow=True)
@@ -622,7 +662,7 @@ class CitaFlowTest(BaseTest):
         response = self.client.post(reverse('crear_solicitud'), {
             'paciente': self.paciente.id,
             'especialista': self.odontologo.id,
-            'fecha_cita': '2026-07-20',
+            'fecha_cita': '2027-07-20',
             'hora_cita': '09:00',
         }, follow=True)
         self.assertContains(response, 'exitosamente')
@@ -645,12 +685,45 @@ class CitaFlowTest(BaseTest):
         response = self.client.post(reverse('crear_solicitud'), {
             'paciente': self.paciente.id,
             'especialista': self.odontologo.id,
-            'fecha_cita': '2026-07-20',
+            'fecha_cita': '2027-07-20',
             'hora_cita': '09:00',
         }, follow=True)
         self.assertContains(response, 'agotado')
         cita = SolicitudSecretaria.objects.last()
         self.assertFalse(cita.cubierto_por_poliza)
+
+
+class MisSolicitudesTest(BaseTest):
+    def test_mis_solicitudes_denegado_sin_rol(self):
+        self._login(grupo='Medico')
+        response = self.client.get(reverse('mis_solicitudes'))
+        self.assertRedirects(response, reverse('home'))
+
+    def test_mis_solicitudes_muestra_solo_las_propias(self):
+        secre1 = self._crear_usuario('secre1', 'Abc123!@', 'Secretaria')
+        secre2 = self._crear_usuario('secre2', 'Abc123!@', 'Secretaria')
+        medico = self._crear_usuario('dr_x', 'Abc123!@', 'Medico')
+        p1 = self._crear_paciente(cedula='11111111')
+        p2 = self._crear_paciente(cedula='22222222')
+        SolicitudSecretaria.objects.create(
+            paciente=p1, especialista=medico, creada_por=secre1,
+            fecha_cita=date(2026, 7, 10), hora_cita=time(10, 0)
+        )
+        SolicitudSecretaria.objects.create(
+            paciente=p2, especialista=medico, creada_por=secre2,
+            fecha_cita=date(2026, 7, 11), hora_cita=time(11, 0)
+        )
+        self.client.force_login(secre1)
+        response = self.client.get(reverse('mis_solicitudes'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '11111111')
+        self.assertNotContains(response, '22222222')
+
+    def test_mis_solicitudes_acceso_superuser(self):
+        superuser = User.objects.create_superuser('root', 'root@test.com', 'Abc123!@')
+        self.client.force_login(superuser)
+        response = self.client.get(reverse('mis_solicitudes'))
+        self.assertEqual(response.status_code, 200)
 
 
 class PacienteCRUDTest(BaseTest):
@@ -698,9 +771,50 @@ class LaboratorioFlowTest(BaseTest):
         self.assertEqual(solicitud.costo, Decimal('30.00'))
 
 
+class CatalogoExamenesTest(BaseTest):
+    def test_catalogo_denegado_sin_login(self):
+        response = self.client.get(reverse('catalogo_examenes'))
+        self.assertNotEqual(response.status_code, 200)
+
+    def test_catalogo_acceso_laboratorio(self):
+        self._login(grupo='Laboratorio')
+        ExamenLaboratorio.objects.create(nombre='Hemograma', costo=Decimal('25'))
+        response = self.client.get(reverse('catalogo_examenes'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hemograma')
+
+    def test_catalogo_crear_examen(self):
+        self._login(grupo='Laboratorio')
+        response = self.client.post(reverse('catalogo_examenes'), {
+            'accion': 'crear', 'nombre': 'Glicemia',
+            'costo': '15.00', 'descripcion': 'Glucosa en sangre'
+        }, follow=True)
+        self.assertContains(response, 'creado')
+        self.assertTrue(ExamenLaboratorio.objects.filter(nombre='Glicemia').exists())
+
+    def test_catalogo_crear_examen_costo_invalido(self):
+        self._login(grupo='Laboratorio')
+        response = self.client.post(reverse('catalogo_examenes'), {
+            'accion': 'crear', 'nombre': 'Perfil 20',
+            'costo': 'abc', 'descripcion': ''
+        }, follow=True)
+        self.assertContains(response, 'creado')
+        examen = ExamenLaboratorio.objects.get(nombre='Perfil 20')
+        self.assertEqual(examen.costo, Decimal('0.00'))
+
+    def test_catalogo_crear_examen_costo_negativo(self):
+        self._login(grupo='Laboratorio')
+        response = self.client.post(reverse('catalogo_examenes'), {
+            'accion': 'crear', 'nombre': 'Perfil 30',
+            'costo': '-5', 'descripcion': ''
+        }, follow=True)
+        examen = ExamenLaboratorio.objects.get(nombre='Perfil 30')
+        self.assertEqual(examen.costo, Decimal('0.00'))
+
+
 class TarifaMedicamentoCRUDTest(BaseTest):
     def test_crear_tarifa(self):
-        self._login(grupo='Especialista')
+        self._login(grupo='Administracion')
         response = self.client.post(reverse('costos_especialista'), {
             'accion': 'crear',
             'especialidad': 'Dermatología',
@@ -722,6 +836,18 @@ class TarifaMedicamentoCRUDTest(BaseTest):
         self.assertTrue(Medicamento.objects.filter(nombre='Ibuprofeno').exists())
 
 
+class HistorialEspecialistaTest(BaseTest):
+    def test_historial_especialista_denegado(self):
+        self._login(grupo='Medico')
+        response = self.client.get(reverse('consulta_historial_especialista'))
+        self.assertRedirects(response, reverse('home'))
+
+    def test_historial_especialista_acceso(self):
+        self._login(grupo='Especialista')
+        response = self.client.get(reverse('consulta_historial_especialista'))
+        self.assertEqual(response.status_code, 200)
+
+
 class PolizaFlowTest(BaseTest):
     def setUp(self):
         super().setUp()
@@ -739,6 +865,18 @@ class PolizaFlowTest(BaseTest):
         }, follow=True)
         self.assertContains(response, 'creada')
         self.assertEqual(Poliza.objects.count(), 1)
+
+    def test_crear_poliza_sin_plan(self):
+        self._login(grupo='Administracion')
+        response = self.client.post(reverse('poliza_crear'), {
+            'paciente': self.paciente.id,
+            'plan': '',
+            'fecha_inicio': '2026-01-01',
+            'cuota_inicial': '10.00',
+            'estado': 'Activo',
+        }, follow=True)
+        self.assertEqual(Poliza.objects.count(), 0)
+        self.assertContains(response, 'obligatorio')
 
     def test_registrar_gasto_descuenta_saldo(self):
         poliza = Poliza.objects.create(
@@ -806,6 +944,38 @@ class AdminMenuTest(BaseTest):
         user.refresh_from_db()
         self.assertFalse(user.is_active)
 
+    def test_menu_admin_no_desactiva_superuser(self):
+        superuser = User.objects.create_superuser(username='jefe', password='Abc123!@')
+        self.assertTrue(superuser.is_active)
+        self._login(grupo='Administracion')
+        response = self.client.post(reverse('menu_admin'), {
+            'usuario_id': superuser.id,
+            'toggle_status': '1'
+        }, follow=True)
+        superuser.refresh_from_db()
+        self.assertTrue(superuser.is_active)
+        self.assertContains(response, 'No puedes modificar')
+
+    def test_menu_admin_no_quita_roles_superuser(self):
+        superuser = User.objects.create_superuser(username='jefe2', password='Abc123!@')
+        self.assertTrue(superuser.is_superuser)
+        self._login(grupo='Administracion')
+        response = self.client.post(reverse('menu_admin'), {
+            'usuario_id': superuser.id,
+            'rol_nombre': ''
+        }, follow=True)
+        superuser.refresh_from_db()
+        self.assertTrue(superuser.is_superuser)
+        self.assertContains(response, 'No puedes modificar')
+
+    def test_menu_admin_no_modifica_propia_cuenta(self):
+        admin = self._login(grupo='Administracion')
+        response = self.client.post(reverse('menu_admin'), {
+            'usuario_id': admin.id,
+            'rol_nombre': 'Medico'
+        }, follow=True)
+        self.assertContains(response, 'No puedes modificar')
+
 
 class SaldosAdminTest(BaseTest):
     def test_saldos_filtro_respeta_conteo(self):
@@ -837,6 +1007,23 @@ class ReporteAdminTest(BaseTest):
         response = self.client.get(reverse('reporte_admin'))
         self.assertContains(response, '50,00')
         self.assertContains(response, '2')
+
+
+class GastosPorPacienteTest(BaseTest):
+    def test_gastos_por_paciente_denegado_sin_rol(self):
+        self._login(grupo='Medico')
+        response = self.client.get(reverse('gastos_por_paciente'))
+        self.assertRedirects(response, reverse('home'))
+
+    def test_gastos_por_paciente_acceso_admin(self):
+        self._login(grupo='Administracion')
+        response = self.client.get(reverse('gastos_por_paciente'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_gastos_por_paciente_acceso_secretaria(self):
+        self._login(grupo='Secretaria')
+        response = self.client.get(reverse('gastos_por_paciente'))
+        self.assertEqual(response.status_code, 200)
 
 
 class LandingPageTest(BaseTest):
@@ -1117,6 +1304,41 @@ class RecetaTest(BaseTest):
         self.assertEqual(receta.medicamento, med)
         self.assertEqual(receta.dosis, '1 cada 8h')
 
+    def test_receta_crear_descuenta_stock(self):
+        user = self._login(grupo='Medico')
+        p = self._crear_paciente()
+        cita = SolicitudSecretaria.objects.create(paciente=p, especialista=user, fecha_cita=date.today(), hora_cita=time(10, 0), estado='Atendido')
+        med = Medicamento.objects.create(nombre='Paracetamol', precio=10, cantidad_stock=100)
+        self.client.post(reverse('receta_crear', args=[cita.id]), {
+            'medicamento': med.id, 'cantidad': 3, 'dosis': '1', 'duracion': '7 días',
+        })
+        med.refresh_from_db()
+        self.assertEqual(med.cantidad_stock, 97)
+
+    def test_receta_sin_stock_rechazada(self):
+        user = self._login(grupo='Medico')
+        p = self._crear_paciente()
+        cita = SolicitudSecretaria.objects.create(paciente=p, especialista=user, fecha_cita=date.today(), hora_cita=time(10, 0), estado='Atendido')
+        med = Medicamento.objects.create(nombre='Amox', precio=10, cantidad_stock=0)
+        response = self.client.post(reverse('receta_crear', args=[cita.id]), {
+            'medicamento': med.id, 'cantidad': 1, 'dosis': '1', 'duracion': '7 días',
+        })
+        self.assertEqual(cita.recetas.count(), 0)
+        med.refresh_from_db()
+        self.assertEqual(med.cantidad_stock, 0)
+
+    def test_receta_stock_insuficiente_rechazada(self):
+        user = self._login(grupo='Medico')
+        p = self._crear_paciente()
+        cita = SolicitudSecretaria.objects.create(paciente=p, especialista=user, fecha_cita=date.today(), hora_cita=time(10, 0), estado='Atendido')
+        med = Medicamento.objects.create(nombre='Ibu', precio=10, cantidad_stock=2)
+        response = self.client.post(reverse('receta_crear', args=[cita.id]), {
+            'medicamento': med.id, 'cantidad': 10, 'dosis': '1', 'duracion': '7 días',
+        })
+        self.assertEqual(cita.recetas.count(), 0)
+        med.refresh_from_db()
+        self.assertEqual(med.cantidad_stock, 2)
+
     def test_receta_crear_denegado(self):
         user = self._login(grupo='Secretaria')
         p = self._crear_paciente()
@@ -1159,3 +1381,66 @@ class FacturaPagoTest(BaseTest):
         response = self.client.get(reverse('recibo_factura', args=[factura.id]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'RECIBO')
+
+
+class FormValidacionesTest(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.paciente = self._crear_paciente()
+        self.plan = PlanSalud.objects.create(nombre='Plan', costo_mensual=Decimal('50.00'))
+
+    def test_porcentaje_medico_mayor_100(self):
+        form = TarifaEspecialidadForm(data={
+            'especialidad': 'Cardio', 'costo_consulta': '50',
+            'porcentaje_medico': '150', 'descripcion': ''
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('porcentaje', str(form.errors))
+
+    def test_porcentaje_medico_negativo(self):
+        form = TarifaEspecialidadForm(data={
+            'especialidad': 'Cardio', 'costo_consulta': '50',
+            'porcentaje_medico': '-10', 'descripcion': ''
+        })
+        self.assertFalse(form.is_valid())
+
+    def test_costo_consulta_negativo(self):
+        form = TarifaEspecialidadForm(data={
+            'especialidad': 'Cardio', 'costo_consulta': '-5',
+            'porcentaje_medico': '50', 'descripcion': ''
+        })
+        self.assertFalse(form.is_valid())
+
+    def test_gasto_monto_negativo(self):
+        poliza = Poliza.objects.create(
+            paciente=self.paciente, plan=self.plan,
+            fecha_inicio=date(2026, 1, 1), saldo_restante=Decimal('100.00')
+        )
+        form = GastoPacienteForm(data={
+            'concepto': 'X', 'monto': '-10', 'fecha': '2026-06-01'
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('monto', str(form.errors))
+
+    def test_receta_cantidad_cero(self):
+        form = RecetaForm(data={
+            'medicamento': '', 'cantidad': '0', 'dosis': '', 'duracion': '', 'indicaciones': ''
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('cantidad', str(form.errors))
+
+    def test_familiar_cedula_con_letras(self):
+        form = FamiliarForm(data={
+            'nombre': 'Ana', 'apellido': 'Paz', 'cedula': '12A34',
+            'parentesco': 'Hijo(a)', 'fecha_nacimiento': '2010-01-01'
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('cedula', str(form.errors))
+
+    def test_plan_costo_mensual_negativo(self):
+        form = PlanSaludForm(data={
+            'nombre': 'Plan', 'descripcion': '', 'costo_mensual': '-5',
+            'cobertura': '', 'consultas_maximas_anuales': '10'
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('costo_mensual', str(form.errors))

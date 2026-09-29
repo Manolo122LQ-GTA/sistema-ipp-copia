@@ -32,7 +32,7 @@
             </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold">IVA (%)</label>
-                <input type="number" name="iva" class="uiverse-input form-control" step="0.01" value="0" min="0" max="100">
+                <input type="number" name="iva" class="uiverse-input form-control" step="0.01" value="{{ iva_default }}" min="0" max="100">
                 <div class="form-text">Porcentaje de IVA a aplicar (ej: 16).</div>
             </div>
             <button type="submit" class="uiverse-btn btn btn-primary"><i class="bi bi-check-lg me-1"></i>Generar Factura</button>

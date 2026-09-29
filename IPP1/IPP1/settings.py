@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from decimal import Decimal
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,7 +26,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-cambiar-en-produccion')
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured('SECRET_KEY no definida. Crea un archivo .env con SECRET_KEY=<clave_secreta>.')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -32,13 +36,18 @@ DEBUG = False
 # PARA COLOCAR EL IP DE HOSTING
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Orígenes permitidos para POST (requerido si se publica con HTTPS/dominio)
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
+]
+
 # Configuración SSL/HTTPS (descomentar cuando tengas certificado SSL)
 # SECURE_SSL_REDIRECT = True
-# SECURE_HSTS_SECONDS = 31536000
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-# SECURE_HSTS_PRELOAD = True
-# SESSION_COOKIE_SECURE = True
-# CSRF_COOKIE_SECURE = True
+#  SECURE_HSTS_SECONDS = 31536000
+#  SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+#  SECURE_HSTS_PRELOAD = True
+#  SESSION_COOKIE_SECURE = True
+#  CSRF_COOKIE_SECURE = True
 
 
 # DEFINICIONES DE LA APLICACION
@@ -89,15 +98,9 @@ WSGI_APPLICATION = 'IPP1.wsgi.application'
 
 
 # BASE DE DATOS
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# https://docs.djangoproject.com/en/6.0/ref/settings/
 
-# LO DE LA BASE DE DATOS
-#DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.sqlite3',
-#        'NAME': BASE_DIR / 'db.sqlite3',
-#    }
-#}
+# PostgreSQL
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -169,7 +172,6 @@ LOGOUT_REDIRECT_URL = 'login'
 
 # Configuración de django-axes (bloqueo por intentos de login)
 AUTHENTICATION_BACKENDS = [
-    'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 AXES_ENABLED = True
@@ -199,5 +201,32 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Expira la sesión al cerrar el navegad
 # Monto fijo por consulta para cálculo de nómina
 MONTO_POR_CONSULTA = 50.00
 
+# Porcentaje de IVA aplicado a las facturas (0-100, usado por facturacion)
+IVA_DEFAULT = Decimal('16')
+
 # Algo para que no de error al crear migraciones
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# LOGGING: registra errores 500 y advertencias en archivos de log
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
+    },
+    'root': {
+        'handlers': ['file'],
+        'level': 'WARNING',
+    },
+}

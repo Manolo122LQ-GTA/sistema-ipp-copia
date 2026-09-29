@@ -54,7 +54,8 @@
                 {% elif "Especialista" in user.groups.all|join:"," %}
                     <a href="{% url 'citas_especialista' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a>
                 {% else %}
-                    <a href="{% url 'reporte_admin' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a>
+                    <!-- <a href="{% url 'home' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a> -->
+                     <a href="{% url 'citas_especialista' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a>
                 {% endif %}
             </div>
         </form>
@@ -84,7 +85,7 @@
                     <tr>
                         <td>{{ lab.fecha_solicitud|date:"d/m/Y" }}</td>
                         <td>{{ lab.prueba_laboratorio }}</td>
-                        <td>{{ lab.resultado|default:"<em class='text-muted'>Pendiente</em>" }}</td>
+                        <td>{% if lab.resultado %}{{ lab.resultado }}{% else %}<em class="text-muted">Pendiente</em>{% endif %}</td>
                         <td>{{ lab.bioanalista|default:"—" }}</td>
                         <td>
                             {% if lab.estado == 'Procesado' %}

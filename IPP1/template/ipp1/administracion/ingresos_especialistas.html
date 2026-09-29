@@ -18,7 +18,7 @@
 <div class="row g-3 mb-4">
     {% for esp, totals in especialidad_totales.items %}
     <div class="col-md-3">
-        <div class="card shadow-sm h-100" style="border-left: 4px solid #2c6e9c;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--primary">
             <div class="card-body text-center">
                 <h6 class="fw-bold text-primary">{{ esp }}</h6>
                 <div class="d-flex justify-content-around small">
@@ -32,10 +32,10 @@
     </div>
     {% endfor %}
     <div class="col-md-3">
-        <div class="card shadow-sm h-100" style="border-left: 4px solid #d4a017;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--warning">
             <div class="card-body text-center">
-                <h6 class="fw-bold" style="color: #d4a017;">Gran Total</h6>
-                <span class="fs-4 fw-bold" style="color: #d4a017;">${{ gran_total|floatformat:2 }}</span>
+                <h6 class="fw-bold text-warning">Gran Total</h6>
+                <span class="fs-4 fw-bold text-warning">${{ gran_total|floatformat:2 }}</span>
             </div>
         </div>
     </div>

@@ -1,3 +1,6 @@
+/*  URL PARA LA TIPOGRAFIAS O FUENTE DE LEGRAS DE GOOGLE APIS */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
 /*  TEMA ESTILO SALUD  */
 :root {
   --bs-primary: #2c6e9c;
@@ -399,6 +402,29 @@ select.input option {
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 
+/* ====== CARDS DE METRICAS (dashboards) ====== */
+.uiverse-card-metric {
+  background: #f1f7fe;
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+  overflow: hidden;
+}
+.uiverse-metric-box {
+  background-color: #e8f5f0;
+}
+.uiverse-metric-box--primary { background-color: #e8f0f8; }
+.uiverse-metric-box--info { background-color: #eef4fb; }
+.uiverse-metric-box--danger { background-color: #fde8e8; }
+.uiverse-metric-box--warning { background-color: #fdf5e6; }
+.uiverse-metric-box--secondary { background-color: #f0f0f0; }
+.uiverse-metric-box--dark { background-color: #e8e8e8; }
+
+/* ====== SELECTS ====== */
+select.uiverse-input {
+  appearance: auto;
+}
+
 /* ====== TEXT WRAPPER (toast messages) ====== */
 .text-wrapper { flex: 1; }
 
@@ -419,7 +445,7 @@ select.input option {
   .container-fluid { padding-left: 0.5rem; padding-right: 0.5rem; }
 }
 
-/* ====== GLOBAL FONT ====== */
+/* TIPOGRAFIA O FUENTE DE LETRA GENERAL */
 body, *, *::before, *::after {
-  font-family: Verdana, Geneva, Tahoma, sans-serif !important;
+  font-family: 'Roboto', sans-serif !important;
 }

@@ -22,7 +22,7 @@
 <div class="row g-3 mb-4">
     {% for d in data %}
     <div class="col-md-6 col-lg-4">
-        <div class="card shadow-sm h-100" style="border-radius: 10px; border-left: 4px solid #2c6e9c;">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--primary">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <h6 class="fw-bold mb-0">{{ d.paciente.nombre }} {{ d.paciente.apellido }}</h6>
@@ -59,7 +59,7 @@
 
                 {% if d.poliza.plan and d.poliza.plan.consultas_maximas_anuales > 0 %}
                 <div class="mt-2">
-                    {% with usadas=d.poliza.consultas_usadas_anuales max_c=d.poliza.plan.consultas_maximas_anuales %}
+                    {% with usadas=d.citas_usadas max_c=d.poliza.plan.consultas_maximas_anuales %}
                     <small class="text-muted">Consumo: {{ usadas }}/{{ max_c }}</small>
                     <div class="progress" style="height: 5px;">
                         <div class="progress-bar {% if usadas >= max_c %}bg-danger{% else %}bg-success{% endif %}"

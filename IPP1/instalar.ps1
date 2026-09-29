@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
-    Instalador automático del Sistema IPP para Windows 10
+    Instalador automático del Sistema IPP para Windows 10/11
 .DESCRIPTION
-    Instala PostgreSQL 16, Python 3.14, dependencias, migra la BD y
+    Instala PostgreSQL 18, Python 3.14, dependencias, migra la BD y
     deja el sistema listo para usar. Un solo clic.
 .NOTES
     Ejecutar como Administrador. En PC sin internet, descargar los
@@ -42,14 +42,14 @@ if (-not $python) {
 
 # ------- 2. VERIFICAR / INSTALAR POSTGRESQL -------
 Write-Host "[2/7] Verificando PostgreSQL..."
-$pgBin = "C:\Program Files\PostgreSQL\16\bin"
+$pgBin = "C:\Program Files\PostgreSQL\18\bin"
 $pgInstalled = Test-Path "$pgBin\psql.exe"
 $pgPassword = Read-Host -Prompt "  Contraseña para PostgreSQL (superuser)" -AsSecureString
 $pgPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($pgPassword))
 if (-not $pgInstalled) {
     Write-Host "  > PostgreSQL no encontrado. Instalando..."
-    $pgUrl = "https://get.enterprisedb.com/postgresql/postgresql-16.8-1-windows-x64.exe"
-    $pgInstaller = "$env:TEMP\postgresql-16.8-1-windows-x64.exe"
+    $pgUrl = "https://get.enterprisedb.com/postgresql/postgresql-18.4-1-windows-x64.exe"
+    $pgInstaller = "$env:TEMP\postgresql-18.4-1-windows-x64.exe"
     if (-not (Test-Path $pgInstaller)) {
         Invoke-WebRequest -Uri $pgUrl -OutFile $pgInstaller
     }
@@ -58,19 +58,19 @@ if (-not $pgInstalled) {
         "--unattendedmodeui", "minimal",
         "--mode", "unattended",
         "--superpassword", $pgPasswordPlain,
-        "--servicename", "postgresql16",
+        "--servicename", "postgresql18",
         "--serverport", "5432"
     )
     Write-Host "  OK: PostgreSQL instalado."
     $env:Path += ";$pgBin"
 } else {
-    Write-Host "  OK: PostgreSQL 16 encontrado."
+    Write-Host "  OK: PostgreSQL 18 encontrado."
     $env:Path += ";$pgBin"
 }
 
 # ------- 3. INICIAR SERVICIO Y CREAR BD -------
 Write-Host "[3/7] Asegurando que PostgreSQL este corriendo..."
-$svc = Get-Service -Name "postgresql16*" -ErrorAction SilentlyContinue
+$svc = Get-Service -Name "postgresql18*" -ErrorAction SilentlyContinue
 if ($svc -and $svc.Status -ne "Running") {
     Start-Service $svc.Name
     Start-Sleep 2
@@ -90,12 +90,19 @@ if (-not $exists) {
 # ------- 4. INSTALAR DEPENDENCIAS -------
 Write-Host "[4/7] Instalando dependencias Python..."
 Set-Location -Path $ProjectDir
-pip install -r requirements.txt 2>&1 | Out-Host
+
+# Usar el virtualenv del proyecto si existe; si no, crearlo
+$venvPython = Join-Path $ProjectDir "venv\Scripts\python.exe"
+if (-not (Test-Path $venvPython)) {
+    Write-Host "  > Creando virtualenv..."
+    python -m venv venv
+}
+& $venvPython -m pip install -r requirements.txt 2>&1 | Out-Host
 Write-Host "  OK: Dependencias instaladas."
 
 # ------- 5. MIGRACIONES -------
 Write-Host "[5/7] Ejecutando migraciones..."
-python manage.py migrate 2>&1 | Out-Host
+& $venvPython manage.py migrate 2>&1 | Out-Host
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  ERROR en migraciones." -ForegroundColor Red
     Stop-Transcript
@@ -107,7 +114,7 @@ Write-Host "  OK: Migraciones aplicadas."
 Write-Host "[6/7] Cargando datos iniciales..."
 $dataFile = Join-Path $ProjectDir "datos_iniciales.json"
 if (Test-Path $dataFile) {
-    python manage.py loaddata "$dataFile" 2>&1 | Out-Host
+    & $venvPython manage.py loaddata "$dataFile" 2>&1 | Out-Host
     Write-Host "  OK: Datos cargados (ignorar errores de ContentType/Permission)."
 } else {
     Write-Host "  AVISO: No se encontro datos_iniciales.json. Los datos se migraran manualmente." -ForegroundColor Yellow
@@ -121,9 +128,9 @@ if ($crearSuper -eq "s" -or $crearSuper -eq "S") {
     if (-not $adminUser) { $adminUser = "admin" }
     $adminEmail = Read-Host "  Email del admin"
     Write-Host "  Ingrese la contrasena del superusuario:"
-    python manage.py createsuperuser --username $adminUser --email $adminEmail --noinput
+    & $venvPython manage.py createsuperuser --username $adminUser --email $adminEmail --noinput
     Write-Host "  AVISO: Asigne la contrasena manualmente con:" -ForegroundColor Yellow
-    Write-Host "    python manage.py changepassword $adminUser" -ForegroundColor Yellow
+    Write-Host "    $venvPython manage.py changepassword $adminUser" -ForegroundColor Yellow
 }
 
 # ------- 7. ACCESO DIRECTO + FIREWALL -------
@@ -139,7 +146,7 @@ echo === SISTEMA IPP ===
 echo Iniciando servidor...
 echo Accede en: http://localhost:8000
 echo.
-python manage.py runserver 127.0.0.1:8000
+"$venvPython" manage.py runserver 127.0.0.1:8000
 pause
 "@
 $batPath = "$desktop\Iniciar IPP.bat"

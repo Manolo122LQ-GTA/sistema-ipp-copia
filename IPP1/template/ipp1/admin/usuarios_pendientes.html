@@ -51,14 +51,14 @@
                             <form method="post" action="{% url 'aprobar_usuario' perfil.usuario.id %}" class="d-inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="accion" value="aprobar">
-                                <button type="submit" class="btn btn-sm btn-outline-success" title="Aprobar">
+                                <button type="submit" class="btn btn-sm btn-outline-success uiverse-btn" title="Aprobar">
                                     <i class="bi bi-check-lg"></i> Aprobar
                                 </button>
                             </form>
                             <form method="post" action="{% url 'aprobar_usuario' perfil.usuario.id %}" class="d-inline" onsubmit="return confirm('¿Rechazar y eliminar este usuario?')">
                                 {% csrf_token %}
                                 <input type="hidden" name="accion" value="rechazar">
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Rechazar">
+                                <button type="submit" class="btn btn-sm btn-outline-danger uiverse-btn" title="Rechazar">
                                     <i class="bi bi-x-lg"></i> Rechazar
                                 </button>
                             </form>

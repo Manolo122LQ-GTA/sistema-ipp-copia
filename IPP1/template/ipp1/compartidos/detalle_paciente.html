@@ -10,13 +10,19 @@
     </div>
     <div class="col-md-6 text-md-end mt-3 mt-md-0">
         {% if user.is_superuser or "Secretaria" in user.groups.all|join:"," or "Administracion" in user.groups.all|join:"," %}
-            <a href="{% url 'editar_paciente' paciente.id %}" class="btn btn-outline-warning">
+            <a href="{% url 'editar_paciente' paciente.id %}" class="btn btn-outline-warning uiverse-btn">
                 <i class="bi bi-pencil me-1"></i>Editar
             </a>
         {% endif %}
-        <a href="{% url 'registrar_paciente' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i>Volver
-        </a>
+        {% if "Secretaria" in user.groups.all|join:"," or "Administracion" in user.groups.all|join:"," %}
+            <a href="{% url 'registrar_paciente' %}" class="btn btn-outline-secondary uiverse-btn">
+                <i class="bi bi-arrow-left me-1"></i>Volver
+            </a>
+        {% else %}
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary uiverse-btn">
+                <i class="bi bi-arrow-left me-1"></i>Volver
+            </a>
+        {% endif %}
     </div>
 </div>
 
@@ -81,7 +87,9 @@
                         <div>
                             {% if paciente.status_afiliado == 'Afiliado' %}
                                 <span class="badge bg-success fs-6">Afiliado</span>
-                            {% else %}
+                            {% elif paciente.status_afiliado == 'No Afiliado' %}
+                                <span class="badge bg-primary fs-6">Particular</span>
+                            {% elif paciente.status_afiliado == 'Comunidad' %}
                                 <span class="badge bg-primary fs-6">Comunidad</span>
                             {% endif %}
                         </div>
@@ -179,7 +187,7 @@
             </div>
             <div class="col-md-3">
                 {% if user.is_superuser or "Administracion" in user.groups.all|join:"," or "Secretaria" in user.groups.all|join:"," %}
-                <a href="{% url 'estado_poliza_paciente' paciente.id %}" class="btn btn-outline-info btn-sm w-100">
+                <a href="{% url 'estado_poliza_paciente' paciente.id %}" class="btn btn-outline-info btn-sm uiverse-btn w-100">
                     <i class="bi bi-eye me-1"></i>Ver Estado Completo
                 </a>
                 {% endif %}
@@ -207,7 +215,7 @@
         <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Historial de Citas</h5>
         <div class="d-flex gap-2 align-items-center">
             <span class="badge bg-light text-dark fs-6">{{ citas|length }} cita(s)</span>
-            <a href="{% url 'historia_clinica_print' paciente.id %}" class="btn btn-sm btn-light" target="_blank" title="Historia Clínica imprimible">
+            <a href="{% url 'historia_clinica_print' paciente.id %}" class="btn btn-sm btn-light uiverse-btn" target="_blank" rel="noopener noreferrer" title="Historia Clínica imprimible">
                 <i class="bi bi-printer"></i>
             </a>
         </div>

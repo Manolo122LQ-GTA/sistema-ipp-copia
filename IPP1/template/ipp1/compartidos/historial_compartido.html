@@ -19,7 +19,7 @@
             </form>
         </div>
         <div class="col-md-3 text-md-end">
-            <a href="{% url back_url_name %}" class="btn btn-outline-secondary shadow-sm">
+            <a href="{% url back_url_name %}" class="btn btn-outline-secondary uiverse-btn shadow-sm">
                 <i class="bi {{ back_icon }} me-1"></i>{{ back_text }}
             </a>
         </div>
@@ -61,7 +61,7 @@
                                 <small class="text-muted">{% if cita.especialista %}{{ cita.especialista.get_full_name|default:cita.especialista.username }}{% else %}<em>Sin asignar</em>{% endif %}</small>
                             </td>
                             <td class="text-center pe-4">
-                                <a href="{% url 'historia_clinica_print' cita.paciente.id %}" class="btn btn-sm btn-outline-info shadow-sm" target="_blank">
+                                <a href="{% url 'historia_clinica_print' cita.paciente.id %}" class="btn btn-sm btn-outline-info uiverse-btn shadow-sm" target="_blank" rel="noopener noreferrer">
                                     <i class="bi bi-eye me-1"></i>Ver Ficha
                                 </a>
                             </td>

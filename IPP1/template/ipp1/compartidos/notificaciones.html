@@ -1,0 +1,89 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block title %}Mis Notificaciones - IPP{% endblock %}
+{% block content %}
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-bell me-2"></i>Mis Notificaciones</h2>
+        <p class="text-muted">Todas las notificaciones registradas para su usuario.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'home' %}" class="uiverse-btn btn btn-outline-secondary shadow-sm">
+            <i class="bi bi-arrow-left me-1"></i>Volver
+        </a>
+    </div>
+</div>
+
+<div class="uiverse-card shadow-sm">
+    <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
+        <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Historial de Notificaciones</h5>
+    </div>
+    <div class="table-responsive p-3">
+        <table class="table table-hover table-primary align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Mensaje</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for n in notificaciones %}
+                <tr class="{% if not n.leida %}table-warning{% endif %}">
+                    <td>
+                        {% if n.url %}<a href="{{ n.url }}" class="text-decoration-none">{{ n.mensaje }}</a>
+                        {% else %}{{ n.mensaje }}{% endif %}
+                    </td>
+                    <td>{{ n.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        {% if n.leida %}
+                            <span class="badge bg-secondary">Leída</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">No leída</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not n.leida %}
+                        <form method="post" action="{% url 'marcar_notificacion' n.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm uiverse-btn btn-outline-primary">
+                                <i class="bi bi-check-circle me-1"></i>Marcar leída
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">No tiene notificaciones.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if notificaciones.paginator.num_pages > 1 %}
+        <nav>
+            <ul class="pagination justify-content-center mb-0">
+                {% if notificaciones.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page=1">&laquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ notificaciones.previous_page_number }}">&lsaquo;</a></li>
+                {% endif %}
+
+                {% for num in notificaciones.paginator.page_range %}
+                    <li class="page-item {% if num == notificaciones.number %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                {% endfor %}
+
+                {% if notificaciones.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ notificaciones.next_page_number }}">&rsaquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ notificaciones.paginator.num_pages }}">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

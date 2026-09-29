@@ -11,7 +11,7 @@
     <div class="card-body">
         <form method="post">
             {% csrf_token %}
-            <!-- Datos personales -->
+            <!-- NOMBRE -->
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Nombre</label>
@@ -20,6 +20,7 @@
                         <div class="text-danger small mt-1">{{ form.nombre.errors }}</div>
                     {% endif %}
                 </div>
+                <!-- APELLIDO -->
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Apellido</label>
                     {{ form.apellido }}
@@ -27,6 +28,7 @@
                         <div class="text-danger small mt-1">{{ form.apellido.errors }}</div>
                     {% endif %}
                 </div>
+                <!-- FECHA DE NACIMIENTO -->
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Fecha de Nacimiento</label>
                     {{ form.fecha_nacimiento }}
@@ -35,7 +37,7 @@
                     {% endif %}
                 </div>
             </div>
-            <!-- Identificación y contacto -->
+            <!-- CEDULA -->
             <div class="row g-3 mt-1">
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Cédula</label>
@@ -44,6 +46,7 @@
                         <div class="text-danger small mt-1">{{ form.cedula.errors }}</div>
                     {% endif %}
                 </div>
+                <!-- CODIGO/TELEFONO -->
                 <div class="col-md-2">
                     <label class="form-label fw-semibold">Código</label>
                     {{ form.codigo_telefono }}
@@ -51,6 +54,7 @@
                         <div class="text-danger small mt-1">{{ form.codigo_telefono.errors }}</div>
                     {% endif %}
                 </div>
+                <!-- TELEFONO -->
                 <div class="col-md-3">
                     <label class="form-label fw-semibold">Teléfono</label>
                     {{ form.numero_telefono }}
@@ -58,6 +62,7 @@
                         <div class="text-danger small mt-1">{{ form.numero_telefono.errors }}</div>
                     {% endif %}
                 </div>
+                <!-- DIRECCION -->
                 <div class="col-md-3">
                     <label class="form-label fw-semibold">Dirección</label>
                     {{ form.direccion }}
@@ -75,6 +80,7 @@
                         <div class="text-danger small mt-1">{{ form.status_afiliado.errors }}</div>
                     {% endif %}
                 </div>
+                <!-- CATEGORIA -->
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Categoría</label>
                     {{ form.categoria_afiliado }}
@@ -83,12 +89,13 @@
                     {% endif %}
                 </div>
             </div>
+            <!-- GUARDAR/CANCELAR -->
             <div class="d-flex justify-content-center gap-2 mt-4">
                 <button type="submit" class="uiverse-btn btn btn-outline-primary px-4 shadow-sm">
                     <i class="bi bi-floppy me-2"></i>Guardar Paciente
                 </button>
                 <a href="{% url 'secretaria' %}" class="uiverse-btn btn btn-outline-danger px-4 shadow-sm">
-                    <i class="bi bi-arrow-left me-1"></i>Volver al Menú
+                    <i class="bi bi-arrow-left me-1"></i>Cancelar
                 </a>
             </div>
         </form>
@@ -128,15 +135,15 @@
                     <td>{{ paciente.direccion|default:"-" }}</td>
                     <td>{{ paciente.fecha_registro|date:"d/m/Y H:i" }}</td>
                     <td>
-                        <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-info btn-bg" title="Ver detalle">
+                        <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-info uiverse-btn" title="Ver detalle">
                             <i class="bi bi-eye"></i>
                         </a>
-                        <a href="{% url 'editar_paciente' paciente.id %}" class="btn btn-outline-success btn-bg" title="Editar">
+                        <a href="{% url 'editar_paciente' paciente.id %}" class="btn btn-outline-success uiverse-btn" title="Editar">
                             <i class="bi bi-pencil"></i>
                         </a>
                         <form method="post" action="{% url 'eliminar_paciente' paciente.id %}" class="d-inline" onsubmit="return confirm('¿Eliminar a {{ paciente.nombre }} {{ paciente.apellido }}? Esta acción no se puede deshacer.');">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-danger btn-bg" title="Eliminar">
+                            <button type="submit" class="btn btn-outline-danger uiverse-btn" title="Eliminar">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </form>
@@ -150,24 +157,24 @@
             </tbody>
         </table>
 
-        <!-- APARTADO DE PAGINACION -->>
+        <!-- APARTADO DE PAGINACION -->
         {% if pacientes.paginator.num_pages > 1 %}
         <nav>
             <ul class="pagination justify-content-center mb-0">
                 {% if pacientes.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page=1">&laquo;</a></li>
-                    <li class="page-item"><a class="page-link" href="?page={{ pacientes.previous_page_number }}">&lsaquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page=1{% if q %}&amp;q={{ q|urlencode }}{% endif %}">&laquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ pacientes.previous_page_number }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">&lsaquo;</a></li>
                 {% endif %}
 
                 {% for num in pacientes.paginator.page_range %}
                     <li class="page-item {% if num == pacientes.number %}active{% endif %}">
-                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        <a class="page-link" href="?page={{ num }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">{{ num }}</a>
                     </li>
                 {% endfor %}
 
                 {% if pacientes.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ pacientes.next_page_number }}">&rsaquo;</a></li>
-                    <li class="page-item"><a class="page-link" href="?page={{ pacientes.paginator.num_pages }}">&raquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ pacientes.next_page_number }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">&rsaquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ pacientes.paginator.num_pages }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">&raquo;</a></li>
                 {% endif %}
             </ul>
         </nav>

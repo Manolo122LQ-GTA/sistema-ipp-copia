@@ -8,6 +8,6 @@ def notificaciones(request):
     }
     if request.user.is_authenticated:
         no_leidas = Notificacion.objects.filter(usuario=request.user, leida=False)
-        ctx['notificaciones_no_leidas'] = no_leidas
+        ctx['notificaciones_no_leidas'] = no_leidas[:5]
         ctx['notificaciones_count'] = no_leidas.count()
     return ctx
