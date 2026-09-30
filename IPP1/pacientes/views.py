@@ -1588,7 +1588,7 @@ def factura_generar(request, cita_id):
         _registrar_log(request, f'Generó factura {factura.numero_factura} para cita {cita.id}', 'Factura', factura.id)
         messages.success(request, f"Factura {factura.numero_factura} generada.")
         return redirect('factura_detalle', factura_id=factura.id)
-        return render(request, 'ipp1/facturacion/factura_generar.html', {
+    return render(request, 'ipp1/facturacion/factura_generar.html', {
         'cita': cita,
         'iva_default': settings.IVA_DEFAULT,
     })
