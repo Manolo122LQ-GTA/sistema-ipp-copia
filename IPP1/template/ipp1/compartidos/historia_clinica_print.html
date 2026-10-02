@@ -23,11 +23,13 @@
     <div class="no-print mb-3">
         <button class="btn btn-primary uiverse-btn" onclick="window.print()">Imprimir</button>
         {% if "Medico" in user.groups.all|join:"," %}
-            <a href="{% url 'consulta_historial_medico' %}" class="btn btn-outline-secondary uiverse-btn">Volver</a>
+        <a href="{% url 'consulta_historial_medico' %}" class="btn btn-outline-secondary uiverse-btn">Volver</a>
         {% elif "Odontologo" in user.groups.all|join:"," %}
-            <a href="{% url 'historial_odonto' %}" class="btn btn-outline-secondary uiverse-btn">Volver</a>
+        <a href="{% url 'historial_odonto' %}" class="btn btn-outline-secondary uiverse-btn">Volver</a>
+        {% elif "Especialista" in user.groups.all|join:"," %}
+        <a href="{% url 'consulta_historial_especialista' %}" class="btn btn-outline-secondary uiverse-btn">Volver</a>
         {% else %}
-            <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-secondary uiverse-btn">Volver</a>
+        <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-secondary uiverse-btn">Volver</a>
         {% endif %}
     </div>
 

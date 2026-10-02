@@ -9,9 +9,11 @@
         <p class="text-muted">Desglose detallado de gastos por paciente. Total global: <strong class="text-primary">${{ total_global|floatformat:2 }}</strong></p>
     </div>
     <div class="col-md-4 text-md-end">
+        {% if user.is_superuser or "Administracion" in user.groups.all|join:"," %}
         <a href="{% url 'exportar_gastos_excel' %}" class="btn btn-success btn-sm uiverse-btn">
-            <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+        <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
         </a>
+        {% endif %}
         {% if "Administracion" in user.groups.all|join:"," or user.is_superuser %}
             <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary uiverse-btn">
         {% else %}

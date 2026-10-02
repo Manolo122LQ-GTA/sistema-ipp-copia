@@ -16,9 +16,11 @@
             <p class="mb-1"><strong>Cita #{{ cita.id }}</strong> — {{ cita.fecha_cita|date:"d/m/Y" }} a las {{ cita.hora_cita|time:"H:i" }}</p>
             <p class="mb-1"><strong>Paciente:</strong> {{ cita.paciente.nombre }} {{ cita.paciente.apellido }} ({{ cita.paciente.cedula }})</p>
             <p class="mb-0"><strong>Motivo:</strong> {{ cita.motivo_consulta|default:"—" }}</p>
-            <a href="{% url 'detalle_paciente' cita.paciente.id %}" class="btn btn-sm btn-outline-info mt-2 uiverse-btn">
-                <i class="bi bi-person-lines-fill me-1"></i>Ver ficha completa del paciente
-            </a>
+        {% if user.is_superuser or "Administracion" in user.groups.all|join:"," or "Secretaria" in user.groups.all|join:"," %}
+        <a href="{% url 'detalle_paciente' cita.paciente.id %}" class="btn btn-sm btn-outline-info mt-2 uiverse-btn">
+        <i class="bi bi-person-lines-fill me-1"></i>Ver ficha completa del paciente
+        </a>
+        {% endif %}
         </div>
 
         <form method="POST">

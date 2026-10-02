@@ -621,14 +621,16 @@ class CitaFlowTest(BaseTest):
         self.assertContains(response, 'exitosamente')
         self.assertEqual(SolicitudSecretaria.objects.count(), 1)
 
-    def test_atender_cita_requiere_post(self):
+    def test_atender_cita_con_get_no_cambia_estado(self):
         cita = SolicitudSecretaria.objects.create(
             paciente=self.paciente, especialista=self.medico,
             fecha_cita=date(2026, 7, 20), hora_cita=time(9, 0)
         )
         self._login(grupo='Medico')
         response = self.client.get(reverse('atender_cita', args=[cita.id]))
-        self.assertEqual(response.status_code, 405)
+        self.assertRedirects(response, reverse('citas_recibidas_medico'))
+        cita.refresh_from_db()
+        self.assertEqual(cita.estado, 'En Espera')
 
     def test_atender_cita_valido(self):
         cita = SolicitudSecretaria.objects.create(

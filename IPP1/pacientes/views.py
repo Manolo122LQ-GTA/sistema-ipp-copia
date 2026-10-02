@@ -294,9 +294,10 @@ def medico_dashboard(request):
     return render(request, 'ipp1/medico/inicio_medic.html', ctx)
 
 @login_required
-@require_POST
 def atender_cita(request, cita_id):
     """Cambia el estado de la cita a 'Atendido' y registra el costo."""
+    if request.method != 'POST':
+        return redirect('citas_recibidas_medico')
     if not (request.user.is_superuser or request.user.groups.filter(name='Medico').exists() or request.user.groups.filter(name='Odontologo').exists() or request.user.groups.filter(name='Especialista').exists()):
         messages.error(request, "No tienes permiso para atender citas.")
         return redirect('home')

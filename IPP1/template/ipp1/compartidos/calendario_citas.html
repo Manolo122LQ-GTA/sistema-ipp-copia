@@ -8,8 +8,8 @@
         <p class="text-muted">Citas agendadas por fecha.</p>
     </div>
     <div class="col-md-4 text-md-end">
-        <a href="{% url volver_url %}" class="btn btn-outline-secondary uiverse-btn">
-            <i class="bi bi-arrow-left me-1"></i>Volver</a>
+        <a href="{% url 'medico_panel' %}" class="btn btn-outline-secondary uiverse-btn">
+            <i class="bi bi-arrow-left me-1"></i>Volver Atrás</a>
     </div>
 
 <div class="row mb-3">
@@ -65,18 +65,22 @@
                         <td><small>{{ cita.motivo_consulta|default:"-"|truncatechars:50 }}</small></td>
                         <td class="text-center">
                             {% if cita.estado == 'En Espera' %}
-                            <form method="post" action="{% url 'atender_cita' cita.id %}" class="d-inline">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-outline-success btn-sm uiverse-btn" title="Atender">
-                                    <i class="bi bi-check-lg"></i>
-                                </button>
-                            </form>
-                            <form method="post" action="{% url 'cancelar_cita' cita.id %}" class="d-inline">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-outline-danger btn-sm uiverse-btn" title="Cancelar">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
-                            </form>
+                                {% if user.is_superuser or "Medico" in user.groups.all|join:"," or "Odontologo" in user.groups.all|join:"," or "Especialista" in user.groups.all|join:"," %}
+                                <form method="post" action="{% url 'atender_cita' cita.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-success btn-sm uiverse-btn" title="Atender">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'cancelar_cita' cita.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm uiverse-btn" title="Cancelar">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
                             {% else %}
                                 <span class="text-muted">—</span>
                             {% endif %}
