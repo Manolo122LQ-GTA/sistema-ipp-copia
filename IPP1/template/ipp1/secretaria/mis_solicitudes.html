@@ -36,7 +36,7 @@
                 {% for s in solicitudes %}
                 <tr>
                     <td>{{ s.paciente }}</td>
-                    <td>{{ s.especialista.get_full_name|default:s.especialista.username|default:"-" }}</td>
+                    <td>{% if s.especialista %}{{ s.especialista.get_full_name|default:s.especialista.username }}{% else %}<span class="text-muted">Sin asignar</span>{% endif %}</td>
                     <td>{{ s.fecha_cita|date:"d/m/Y" }}</td>
                     <td>{{ s.hora_cita|time:"H:i" }}</td>
                     <td>{{ s.motivo_consulta|default:"-"|truncatechars:40 }}</td>

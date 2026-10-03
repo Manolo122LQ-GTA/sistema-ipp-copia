@@ -81,4 +81,41 @@
             </div>
         </div>
     </div>
+
+    {% if citas_atendidas %}
+    <div class="uiverse-card shadow-sm mb-5">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-capsule-pill me-2"></i>Citas Atendidas</h5>
+            <span class="badge bg-light text-success fs-6 shadow-sm">{{ citas_atendidas.count }} para recetar</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light text-secondary fw-semibold">
+                        <tr>
+                            <th class="ps-4">Fecha</th>
+                            <th>Paciente</th>
+                            <th>Cédula</th>
+                            <th class="text-center pe-4">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cita in citas_atendidas %}
+                            <tr>
+                                <td class="ps-4">{{ cita.fecha_cita|date:"d/m/Y" }} {{ cita.hora_cita|time:"H:i" }}</td>
+                                <td class="fw-semibold">{{ cita.paciente.nombre }}</td>
+                                <td><span class="badge bg-primary text-white fw-medium">{{ cita.paciente.cedula }}</span></td>
+                                <td class="text-center pe-4">
+                                    <a href="{% url 'receta_crear' cita.id %}" class="btn btn-sm btn-success px-3 uiverse-btn">
+                                        <i class="bi bi-capsule me-1"></i>Recetar
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 {% endblock %}

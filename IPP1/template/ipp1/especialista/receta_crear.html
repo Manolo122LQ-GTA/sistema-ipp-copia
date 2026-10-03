@@ -56,8 +56,7 @@
                 {% elif "Especialista" in user.groups.all|join:"," %}
                     <a href="{% url 'citas_especialista' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a>
                 {% else %}
-                    <!-- <a href="{% url 'home' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a> -->
-                     <a href="{% url 'citas_especialista' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a>
+                    <a href="{% url 'reporte_admin' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a>
                 {% endif %}
             </div>
         </form>

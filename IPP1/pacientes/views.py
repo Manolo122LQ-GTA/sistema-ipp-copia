@@ -289,7 +289,7 @@ def medico_dashboard(request):
         'citas_atendidas_mes': SolicitudSecretaria.objects.filter(
             especialista=request.user, estado='Atendido',
             fecha_cita__year=hoy.year, fecha_cita__month=hoy.month
-        ).count(),
+        ).count()
     }
     return render(request, 'ipp1/medico/inicio_medic.html', ctx)
 
@@ -365,7 +365,18 @@ def citas_recibidas_medico(request):
             especialista=request.user
         )
     citas = citas.order_by('fecha_cita', 'hora_cita')
-    return render(request, 'ipp1/medico/citas_recibidas_medico.html', {'citas': citas})
+    if request.user.is_superuser:
+        citas_atendidas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
+            estado='Atendido',
+            especialista__groups__name='Medico'
+        )
+    else:
+        citas_atendidas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
+            estado='Atendido',
+            especialista=request.user
+        )
+    citas_atendidas = citas_atendidas.order_by('-fecha_cita', '-hora_cita')
+    return render(request, 'ipp1/medico/citas_recibidas_medico.html', {'citas': citas, 'citas_atendidas': citas_atendidas})
 
 @login_required
 def consulta_historial_medico(request):
@@ -442,7 +453,18 @@ def citas_recibidas(request):
             especialista=request.user
         )
     citas = citas.order_by('fecha_cita', 'hora_cita')
-    return render(request, 'ipp1/odontologia/citas_recibidas_odonto.html', {'citas': citas})
+    if request.user.is_superuser:
+        citas_atendidas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
+            estado='Atendido',
+            especialista__groups__name='Odontologo'
+        )
+    else:
+        citas_atendidas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(
+            estado='Atendido',
+            especialista=request.user
+        )
+    citas_atendidas = citas_atendidas.order_by('-fecha_cita', '-hora_cita')
+    return render(request, 'ipp1/odontologia/citas_recibidas_odonto.html', {'citas': citas, 'citas_atendidas': citas_atendidas})
 
 @login_required
 def consulta_historial_odonto(request):
@@ -497,7 +519,8 @@ def citas_especialista(request):
     
     # Filtramos citas asignadas a este usuario y que estén en espera
     citas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista=request.user, estado='En Espera').order_by('fecha_cita', 'hora_cita')
-    return render(request, 'ipp1/especialista/citas_especialista.html', {'citas': citas})
+    citas_atendidas = SolicitudSecretaria.objects.select_related('paciente', 'especialista').filter(especialista=request.user, estado='Atendido').order_by('-fecha_cita', '-hora_cita')
+    return render(request, 'ipp1/especialista/citas_especialista.html', {'citas': citas, 'citas_atendidas': citas_atendidas})
 
 @login_required
 def costos_especialista(request):

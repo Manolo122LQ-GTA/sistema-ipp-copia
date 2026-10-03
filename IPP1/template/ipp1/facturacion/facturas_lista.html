@@ -46,13 +46,15 @@
                         <td class="fw-semibold">#{{ c.id }}</td>
                         <td>{{ c.paciente.nombre }} {{ c.paciente.apellido }}</td>
                         <td><span class="badge bg-primary">{{ c.paciente.cedula }}</span></td>
-                        <td>{{ c.especialista.get_full_name|default:c.especialista.username }}</td>
+                        <td>{% if c.especialista %}{{ c.especialista.get_full_name|default:c.especialista.username }}{% else %}<em>Sin asignar</em>{% endif %}</td>
                         <td>{{ c.fecha_cita|date:"d/m/Y" }} {{ c.hora_cita|time:"H:i" }}</td>
                         <td class="fw-bold">${{ c.costo_consulta|floatformat:2|default:"0.00" }}</td>
                         <td>
-                            <a href="{% url 'factura_generar' c.id %}" class="uiverse-btn btn btn-sm btn-outline-success">
+                            {% if user.is_superuser or "Administracion" in user.groups.all|join:"," %}
+                                <a href="{% url 'factura_generar' c.id %}" class="uiverse-btn btn btn-sm btn-outline-success">
                                 <i class="bi bi-receipt me-1"></i>Generar Factura
-                            </a>
+                                </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}

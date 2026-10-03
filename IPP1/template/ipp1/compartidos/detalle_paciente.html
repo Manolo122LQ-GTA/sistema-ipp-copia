@@ -240,7 +240,7 @@
                     {% for cita in citas %}
                     <tr>
                         <th scope="row">{{ forloop.counter }}</th>
-                        <td>{{ cita.especialista.get_full_name|default:cita.especialista.username }}</td>
+                        <td>{% if cita.especialista %}{{ cita.especialista.get_full_name|default:cita.especialista.username }}{% else %}<em>Sin asignar</em>{% endif %}</td>
                         <td>{{ cita.fecha_cita|date:"d/m/Y" }}</td>
                         <td>{{ cita.hora_cita|time:"H:i" }}</td>
                         <td>{{ cita.motivo_consulta|default:"-"|truncatechars:40 }}</td>

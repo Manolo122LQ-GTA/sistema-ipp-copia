@@ -147,7 +147,7 @@
                         <th scope="row" class="text-muted">{{ forloop.counter }}</th>
                         <td class="fw-semibold">{{ cita.paciente.nombre }} {{ cita.paciente.apellido }}</td>
                         <td><span class="badge bg-secondary">{{ cita.paciente.get_categoria_afiliado_display }}</span></td>
-                        <td>{{ cita.especialista.get_full_name|default:cita.especialista.username }}</td>
+                        <td>{% if cita.especialista %}{{ cita.especialista.get_full_name|default:cita.especialista.username }}{% else %}<em>Sin asignar</em>{% endif %}</td>
                         <td>{{ cita.fecha_cita|date:"d/m/Y" }}</td>
                         <td class="fw-bold">${{ cita.costo_consulta|floatformat:2 }}</td>
                         <td class="text-success fw-semibold">${{ cita.monto_medico|floatformat:2 }}</td>
@@ -214,9 +214,11 @@
                         <td class="text-info fw-semibold">${{ cita.monto_medico|floatformat:2 }}</td>
                         <td class="text-secondary fw-semibold">${{ cita.monto_admin|floatformat:2 }}</td>
                         <td>
+                            {% if user.is_superuser %}
                             <a href="{% url 'receta_crear' cita.id %}" class="btn btn-sm btn-outline-primary uiverse-btn" title="Recetar">
                                 <i class="bi bi-capsule"></i>
                             </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}

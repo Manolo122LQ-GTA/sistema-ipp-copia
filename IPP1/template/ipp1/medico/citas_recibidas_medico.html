@@ -62,4 +62,43 @@
             {% endif %}
         </div>
     </div>
+
+    {% if citas_atendidas %}
+    <div class="uiverse-card shadow-sm">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="fw-bold h5 text-white px-2"><i class="bi bi-capsule-pill me-2"></i>Citas Atendidas</h5>
+            <span class="badge bg-light text-success fs-6 shadow-sm">{{ citas_atendidas.count }} para recetar</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-secondary fw-semibold">
+                            <tr>
+                                <th class="ps-4"><i class="bi bi-calendar3 me-1"></i>Fecha</th>
+                                <th><i class="bi bi-card-text me-1"></i>Cédula</th>
+                                <th><i class="bi bi-person me-1"></i>Paciente</th>
+                                <th><i class="bi bi-person-badge me-1"></i>Especialista</th>
+                                <th class="text-center pe-4">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cita in citas_atendidas %}
+                                <tr>
+                                    <td class="ps-4">{{ cita.fecha_cita|date:"d/m/Y" }} {{ cita.hora_cita|time:"H:i" }}</td>
+                                    <td><span class="badge bg-primary text-white fw-medium">{{ cita.paciente.cedula }}</span></td>
+                                    <td class="fw-semibold">{{ cita.paciente.nombre }} {{ cita.paciente.apellido }}</td>
+                                    <td class="text-muted small">{% if cita.especialista %}{{ cita.especialista.get_full_name|default:cita.especialista.username }}{% else %}<em>Sin asignar</em>{% endif %}</td>
+                                    <td class="text-center pe-4">
+                                        <a href="{% url 'receta_crear' cita.id %}" class="btn btn-primary btn-sm px-3 shadow-sm uiverse-btn">
+                                            <i class="bi bi-capsule me-1"></i>Recetar
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+        </div>
+    </div>
+    {% endif %}
 {% endblock %}
