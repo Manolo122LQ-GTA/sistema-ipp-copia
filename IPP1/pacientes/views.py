@@ -897,7 +897,8 @@ def ingresos_especialistas(request):
         return redirect('home')
     ingresos = (SolicitudSecretaria.objects
                 .filter(estado='Atendido', especialista__isnull=False)
-                .values('especialista__username', 'especialista__first_name', 'especialista__last_name')
+                # .values('especialista__username', 'especialista__first_name', 'especialista__last_name')
+                .values('especialista_id')
                 .annotate(
                     total_cobrado=Sum('costo_consulta'),
                     total_medico=Sum('monto_medico'),
@@ -910,17 +911,19 @@ def ingresos_especialistas(request):
         item['total_medico'] = item['total_medico'] or 0
         item['total_admin'] = item['total_admin'] or 0
 
-    # Determine specialty for each doctor
-    especialidad_map = {}
+    # Resolve display name and specialty for each doctor in one query
+    usuarios = list(User.objects
+                    .filter(id__in=[i['especialista_id'] for i in ingresos])
+                    .prefetch_related('groups'))
     for item in ingresos:
-        try:
-            u = User.objects.get(username=item['especialista__username'])
-            grupos = u.groups.values_list('name', flat=True)
-            esp = grupos[0] if grupos else 'Especialista'
-        except User.DoesNotExist:
-            esp = 'Especialista'
-        especialidad_map[item['especialista__username']] = esp
-        item['especialidad'] = esp
+        u = next((x for x in usuarios if x.id == item['especialista_id']), None)
+        if u:
+            item['nombre_completo'] = u.get_full_name() or u.username
+            grupos = list(u.groups.values_list('name', flat=True))
+            item['especialidad'] = grupos[0] if grupos else 'Especialista'
+        else:
+            item['nombre_completo'] = 'Sin asignar'
+            item['especialidad'] = 'Especialista'
 
     # Calculate per-specialty totals
     especialidad_totales = {}

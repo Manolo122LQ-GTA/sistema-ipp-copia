@@ -64,7 +64,7 @@
                     {% for item in ingresos %}
                     <tr>
                         <th scope="row">{{ forloop.counter }}</th>
-                        <td class="fw-semibold">{{ item.especialista__first_name|default:item.especialista__username }} {{ item.especialista__last_name }}</td>
+                        <td class="fw-semibold">{{ item.nombre_completo }}</td>
                         <td><span class="badge bg-secondary">{{ item.especialidad }}</span></td>
                         <td><span class="badge bg-primary">{{ item.total_citas }}</span></td>
                         <td class="fw-bold">${{ item.total_cobrado|floatformat:2 }}</td>
