@@ -11,7 +11,7 @@
         </div>
         <a href="{% url 'poliza_menu' %}" class="btn btn-outline-secondary uiverse-btn"><i class="bi bi-arrow-left me-1"></i>Volver</a>
         {% if not es_secretaria or request.user.is_superuser %}
-        <a href="{% url 'poliza_editar' poliza.id %}" class="btn btn-warning uiverse-btn"><i class="bi bi-pencil me-1"></i>Editar Póliza</a>
+        <a href="{% url 'poliza_editar' poliza.id %}" class="btn btn-outline-success uiverse-btn"><i class="bi bi-pencil me-1"></i>Editar Póliza</a>
         {% endif %}
     </div>
 

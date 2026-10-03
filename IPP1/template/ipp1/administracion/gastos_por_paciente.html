@@ -10,7 +10,7 @@
     </div>
     <div class="col-md-4 text-md-end">
         {% if user.is_superuser or "Administracion" in user.groups.all|join:"," %}
-        <a href="{% url 'exportar_gastos_excel' %}" class="btn btn-success btn-sm uiverse-btn">
+        <a href="{% url 'exportar_gastos_excel' %}" class="btn btn-outline-success btn-sm uiverse-btn">
         <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
         </a>
         {% endif %}

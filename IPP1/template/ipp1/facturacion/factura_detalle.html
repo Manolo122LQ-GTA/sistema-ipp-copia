@@ -10,10 +10,10 @@
         <h2 class="fw-bold text-dark"><i class="bi bi-receipt me-2"></i>Factura {{ factura.numero_factura }}</h2>
     </div>
     <div class="col-md-4 text-md-end">
-        <button class="uiverse-btn btn btn-primary" onclick="window.print()"><i class="bi bi-printer me-1"></i>Imprimir</button>
+        <button class="uiverse-btn btn btn-outline-primary" onclick="window.print()"><i class="bi bi-printer me-1"></i>Imprimir</button>
         {% if not factura.pagada %}
             {% if user.is_superuser or "Administracion" in user.groups.all|join:"," %}
-            <a href="{% url 'marcar_factura_pagada' factura.id %}" class="uiverse-btn btn btn-success"><i class="bi bi-credit-card me-1"></i>Registrar Pago</a>
+            <a href="{% url 'marcar_factura_pagada' factura.id %}" class="uiverse-btn btn btn-outline-success"><i class="bi bi-credit-card me-1"></i>Registrar Pago</a>
             {% endif %}
         {% endif %}
         {% if factura.pagada %}

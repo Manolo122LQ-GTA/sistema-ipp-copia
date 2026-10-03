@@ -10,7 +10,7 @@
     </div>
     <div class="col-md-6 text-md-end mt-3 mt-md-0">
         {% if user.is_superuser or "Secretaria" in user.groups.all|join:"," or "Administracion" in user.groups.all|join:"," %}
-            <a href="{% url 'editar_paciente' paciente.id %}" class="btn btn-outline-warning uiverse-btn">
+            <a href="{% url 'editar_paciente' paciente.id %}" class="btn btn-outline-success uiverse-btn">
                 <i class="bi bi-pencil me-1"></i>Editar
             </a>
         {% endif %}
