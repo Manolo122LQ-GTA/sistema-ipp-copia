@@ -51,8 +51,12 @@
 .btn-info {
   --bs-btn-bg: #4a90d9;
   --bs-btn-border-color: #4a90d9;
-  --bs-btn-hover-bg: #3a7bc4;
-  --bs-btn-hover-border-color: #3a7bc4;
+}
+.pw-wrap:focus-within #password-requisitos {
+max-height: 120px;
+opacity: 1;
+margin-top: 8px !important;
+margin-bottom: 8px !important;
 }
 
 .btn-outline-info {
@@ -447,5 +451,5 @@ select.uiverse-input {
 
 /* TIPOGRAFIA O FUENTE DE LETRA GENERAL */
 body, *, *::before, *::after {
-  font-family: 'Roboto', sans-serif !important;
+  font-family: 'Time New Roman', cursive, sans-serif !important;
 }

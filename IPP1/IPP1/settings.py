@@ -33,6 +33,10 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
+import sys
+TESTING = 'test' in sys.argv
+RUNNING_DEVSERVER = 'runserver' in sys.argv
+
 # PARA COLOCAR EL IP DE HOSTING
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
@@ -41,14 +45,23 @@ CSRF_TRUSTED_ORIGINS = [
     o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
 ]
 
-# Configuración SSL/HTTPS (descomentar cuando tengas certificado SSL)
-# SECURE_SSL_REDIRECT = True
-#  SECURE_HSTS_SECONDS = 31536000
-#  SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-#  SECURE_HSTS_PRELOAD = True
-#  SESSION_COOKIE_SECURE = True
-#  CSRF_COOKIE_SECURE = True
+# Configuración SSL/HTTPS
+# Solo forzar HTTPS en producción real, no en runserver local
+SECURE_SSL_REDIRECT = (not DEBUG and not TESTING and not RUNNING_DEVSERVER)
+SECURE_HSTS_SECONDS = 31536000 if not RUNNING_DEVSERVER else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SESSION_COOKIE_SECURE = not DEBUG and not RUNNING_DEVSERVER
+CSRF_COOKIE_SECURE = not DEBUG and not RUNNING_DEVSERVER
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
 
+# CORS (orígenes permitidos para peticiones cross-origin)
+CORS_ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()
+]
+CORS_ALLOW_CREDENTIALS = True
 
 # DEFINICIONES DE LA APLICACION
 
@@ -61,11 +74,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'pacientes',
     'axes',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -122,7 +137,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {'min_length': 8 },
+        'OPTIONS': {'min_length': 16 },
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -177,7 +192,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 AXES_ENABLED = True
-AXES_FAILURE_LIMIT = 5
+AXES_FAILURE_LIMIT = 3 # ANTES ERAN 5, AHORA LO CAMBIE A 3 PARA QUE BLOQUEE MAS RAPIDO
 AXES_COOLOFF_TIME = 0.5  # 30 minutos
 AXES_LOCKOUT_TEMPLATE = 'ipp1/compartidos/axes/lockout.html'
 AXES_RESET_ON_SUCCESS = True

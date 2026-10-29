@@ -1,6 +1,7 @@
 asgiref==3.11.1
 Django==6.0.4
 django-axes==8.3.1
+django-cors-headers==4.7.0
 et_xmlfile==2.0.0
 openpyxl==3.1.5
 psycopg2-binary==2.9.12

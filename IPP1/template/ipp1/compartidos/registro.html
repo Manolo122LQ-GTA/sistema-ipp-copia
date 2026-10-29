@@ -97,7 +97,8 @@
                 {% csrf_token %}
 
                 <!-- ICONO Y ENCABEZADO -->
-                <i class="bi bi-hospital text-primary" style="font-size: 3rem;"></i>
+                <img src="{% static 'img/ipp_logo.png' %}" width="200" height="128" class="mb-4 d-block mx-auto" alt="Logo IPP">
+                <!-- <i class="bi bi-hospital text-primary" style="font-size: 3rem;"></i> -->
                 <span class="title">Registro</span>
                 <span class="subtitle">Registra tus datos personales para acceder al sistema.</span>
 
@@ -113,20 +114,28 @@
                     <!-- Usuario -->
                     <input type="text" name="username" class="input" placeholder="Usuario" required value="{{ request.POST.username }}">
 
-                    <!-- Contraseña con validacion en tiempo real -->
-                    <div class="position-relative">
-                    <input type="password" name="password" id="id_password" class="input" placeholder="Contraseña" maxlength="8" required oninput="validarPassword()" style="padding-right: 40px;">
-                    <i class="bi bi-eye-slash" onclick="togglePassword(this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #6c757d;"></i>
-                    </div>
-
+                    <!-- VALIDACION DE CONTRASEÑA -->
+                    <div class="pw-wrap">
+                        <div class="position-relative">
+                            <input type="password" name="password" id="id_password" maxlength="16" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;">
+                            <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
+                        </div>
+                    
                     <!-- REQUISITOS DE CONTRASEÑA -->
                     <ul id="password-requisitos" class="text-start small px-3" style="list-style:none; padding:4px 12px; margin:0; font-size:11px;">
-                        <li id="req-long" class="text-muted">✗ Exactamente 8 caracteres</li>
+                        <li id="req-long" class="text-muted">✗ Exactamente 16 caracteres</li>
                         <li id="req-mayus" class="text-muted">✗ 1 letra mayúscula</li>
                         <li id="req-num" class="text-muted">✗ 1 número</li>
                         <li id="req-symbol" class="text-muted">✗ 1 símbolo</li>
                         <li id="req-numonly" class="text-muted">✗ No solo números</li>
                     </ul>
+                    </div>
+
+                    <!-- Confirmar Contraseña -->
+                     <div class="position-relative">
+                        <input type="password" name="password2" id="id_password2" maxlength="16" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;">
+                        <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
+                    </div>
 
                     <!-- Correo Electronico -->
                     <input type="email" name="email" class="input" placeholder="Correo Electrónico" required value="{{ request.POST.email }}">
@@ -139,6 +148,7 @@
                         <option value="Odontologo">Odontología</option>
                         <option value="Laboratorio">Laboratorio</option>
                         <option value="Especialista">Especialista</option>
+                        <option value="Poliza">Poliza</option>
                     </select>
                 </div>
 

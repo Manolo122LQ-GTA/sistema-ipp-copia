@@ -10,6 +10,8 @@ class SolicitudSecretaria(models.Model):
     fecha_cita = models.DateField()
     hora_cita = models.TimeField()
     motivo_consulta = models.TextField(blank=True, null=True)
+    cuanto_cobra = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Monto que se cobrará por esta consulta")
+    cuanto_cobro = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Monto que se cobró por esta consulta")
     cobro_nomina = models.BooleanField(default=False)
     cubierto_por_poliza = models.BooleanField(default=False, help_text="¿Esta consulta fue cubierta por la póliza?")
     poliza = models.ForeignKey('Poliza', on_delete=models.SET_NULL, null=True, blank=True, related_name='citas', help_text="Póliza que cubre esta consulta (si aplica)")

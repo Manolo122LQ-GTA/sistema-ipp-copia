@@ -25,7 +25,7 @@
 
             <!-- DATOS DE PACIENTES -->
             <div class="row g-4">
-                <div class="col-md-5">
+                <div class="col-md-4">
                     <label for="{{ form.paciente.id_for_label }}" class="form-label fw-semibold text-secondary">
                         <i class="bi bi-person me-1"></i>Paciente
                     </label>
@@ -45,6 +45,7 @@
                     <option value="Comunidad">Comunidad</option>
                     <option value="Afiliado">Afiliado (20% off)</option>
                     <option value="Particular">Particular</option>
+                    <option value="Convenio">Convenio</option>
                     </select>
                     </div>
 
@@ -59,7 +60,8 @@
                     {% endif %}
                 </div>
 
-                <div class="col-md-6">
+                <!-- EXAMEN DEL CATALOGO MENU -->
+                <div class="col-md-4">
                     <label for="{{ form.examen.id_for_label }}" class="form-label fw-semibold text-secondary">
                         <i class="bi bi-clipboard2-pulse me-1"></i>Examen del Catálogo
                     </label>
@@ -69,9 +71,20 @@
                     {% endif %}
                 </div>
 
-                <div class="col-md-6">
+                <!-- TIPOS DE PRUEBAS MENU -->
+                 <div class="col-md-4">
+                    <label for="{{ form.examen.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-clipboard2-pulse me-1"></i>Tipo de Prueba / Análisis
+                    </label>
+                    {{ form.examen }}
+                    {% if form.examen.errors %}
+                        <div class="text-danger small mt-1">{{ form.examen.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-4">
                     <label for="{{ form.prueba_laboratorio.id_for_label }}" class="form-label fw-semibold text-secondary">
-                        <i class="bi bi-pencil me-1"></i>Prueba / Análisis (opcional si selecciona examen)
+                        <i class="bi bi-pencil me-1"></i>Prueba / Análisis
                     </label>
                     {{ form.prueba_laboratorio }}
                     {% if form.prueba_laboratorio.errors %}

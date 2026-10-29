@@ -31,7 +31,7 @@ class BaseTest(TestCase):
         for nombre in ['Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio', 'Administracion']:
             Group.objects.get_or_create(name=nombre)
 
-    def _crear_usuario(self, username='testuser', password='Abc123!@', grupo=None):
+    def _crear_usuario(self, username='testuser', password='Abc123!@#$%xyz78', grupo=None):
         user = User.objects.create_user(username=username, password=password)
         if grupo:
             user.groups.add(Group.objects.get(name=grupo))
@@ -295,38 +295,38 @@ class ExamenLaboratorioModelTest(BaseTest):
 class ValidatorTest(BaseTest):
     def test_valida_password_valido(self):
         try:
-            self.validator.validate('Abc123!@')
+            self.validator.validate('Abc123!@#$%xyz78')
         except ValidationError:
             self.fail('Password válido lanzó ValidationError')
 
     def test_rechaza_corto(self):
         with self.assertRaises(ValidationError) as ctx:
             self.validator.validate('Ab1!')
-        self.assertIn('8 caracteres', str(ctx.exception))
+        self.assertIn('16 caracteres', str(ctx.exception))
 
     def test_rechaza_sin_mayuscula(self):
         with self.assertRaises(ValidationError) as ctx:
-            self.validator.validate('abcd12!@')
+            self.validator.validate('abcd1234!@#$%xyz')
         self.assertIn('mayúscula', str(ctx.exception))
 
     def test_rechaza_sin_minuscula(self):
         with self.assertRaises(ValidationError) as ctx:
-            self.validator.validate('ABCD12!@')
+            self.validator.validate('ABCD1234!@#$%XYZ')
         self.assertIn('minúscula', str(ctx.exception))
 
     def test_rechaza_sin_numero(self):
         with self.assertRaises(ValidationError) as ctx:
-            self.validator.validate('Abcdefg!')
+            self.validator.validate('Abcdefg!@#$%xyzW')
         self.assertIn('número', str(ctx.exception))
 
     def test_rechaza_sin_especial(self):
         with self.assertRaises(ValidationError) as ctx:
-            self.validator.validate('Abcdefg1')
+            self.validator.validate('Abcdefg123456789')
         self.assertIn('especial', str(ctx.exception))
 
     def test_help_text(self):
         texto = self.validator.get_help_text()
-        self.assertIn('8 caracteres', texto)
+        self.assertIn('16 caracteres', texto)
         self.assertIn('minúscula', texto)
         self.assertIn('mayúscula', texto)
         self.assertIn('número', texto)
@@ -471,7 +471,7 @@ class LoginViewTest(BaseTest):
     def test_login_valido(self):
         self._crear_usuario()
         response = self.client.post(reverse('login'), {
-            'username': 'testuser', 'password': 'Abc123!@'
+            'username': 'testuser', 'password': 'Abc123!@#$%xyz78'
         })
         self.assertRedirects(response, reverse('home'))
 
@@ -526,7 +526,8 @@ class RegistroViewTest(BaseTest):
     def test_registro_valido(self):
         response = self.client.post(reverse('registro'), {
             'username': 'nuevousuario',
-            'password': 'Abc123!@',
+            'password': 'Abc123!@#$%xyz78',
+            'password2': 'Abc123!@#$%xyz78',
             'name': 'Carlos',
             'last_name': 'Lopez',
             'email': 'carlos@test.com',
@@ -540,7 +541,7 @@ class RegistroViewTest(BaseTest):
     def test_registro_usuario_duplicado(self):
         self._crear_usuario(username='existente')
         response = self.client.post(reverse('registro'), {
-            'username': 'existente', 'password': 'Abc123!@'
+            'username': 'existente', 'password': 'Abc123!@', 'password2': 'Abc123!@'
         })
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'ya existe')
@@ -550,7 +551,7 @@ class RegistroViewTest(BaseTest):
             'username': 'nuevo', 'password': 'corta'
         })
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '8 caracteres')
+        self.assertContains(response, '16 caracteres')
 
 
 class AccessControlTest(BaseTest):

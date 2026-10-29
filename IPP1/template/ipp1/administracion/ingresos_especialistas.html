@@ -3,6 +3,7 @@
 {% block title %}Ingresos por Especialista - IPP{% endblock %}
 {% block content %}
 
+<!-- TITULO Y CUERPO DE PAGINA  -->
 <div class="row mb-4 align-items-center">
     <div class="col-md-8">
         <h2 class="fw-bold text-dark"><i class="bi bi-bar-chart-line me-2"></i>Ingresos por Especialista</h2>
@@ -15,6 +16,7 @@
     </div>
 </div>
 
+<!-- TARJETA DE INGRESOS POR ESPECIALIDAD -->
 <div class="row g-3 mb-4">
     {% for esp, totals in especialidad_totales.items %}
     <div class="col-md-3">
@@ -31,6 +33,8 @@
         </div>
     </div>
     {% endfor %}
+
+    <!-- GRAN TOTAL -->
     <div class="col-md-3">
         <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--warning">
             <div class="card-body text-center">
@@ -41,6 +45,7 @@
     </div>
 </div>
 
+<!-- TABLA CON DETALLES POR ESPECIALISTA -->
 <div class="uiverse-card shadow-sm">
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
         <h5 class="mb-0 fw-bold"><i class="bi bi-person-badge me-2"></i>Detalle por Especialista</h5>

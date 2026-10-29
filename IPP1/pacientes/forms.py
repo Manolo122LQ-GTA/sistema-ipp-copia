@@ -141,20 +141,24 @@ def _especialista_label(usuario):
     nombre = usuario.last_name or usuario.username
     return f"{nombre} ({especialidad})"
 
-# PACIENTE/ESPECIALISTA/FECHA/HORA/MOTIVO
+# PACIENTE/ESPECIALISTA/FECHA/HORA/MOTIVO/CUANTOCOBRO/CUANTOCOBRA
 
 class SolicitudSecretariaForm(forms.ModelForm):
     class Meta:
         model = SolicitudSecretaria
-        fields = ['paciente', 'especialista', 'fecha_cita', 'hora_cita', 'motivo_consulta']
+        fields = ['paciente', 'especialista', 'fecha_cita', 'hora_cita', 'motivo_consulta', 'cuanto_cobra', 'cuanto_cobro']
         labels = {
             'especialista': 'Médico General',
             'motivo_consulta': 'Motivo de Solicitud',
+            'cuanto_cobra': 'Monto a Cobrar',
+            'cuanto_cobro': 'Monto Cobrado',
         }
         widgets = {
             'fecha_cita': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
             'hora_cita': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control uiverse-input'}),
             'motivo_consulta': forms.Textarea(attrs={'class': 'form-control uiverse-input', 'rows': 3, 'placeholder': 'Describa el motivo de la consulta...'}),
+            'cuanto_cobra': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'min': '0'}),
+            'cuanto_cobro': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'min': '0'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -167,6 +171,12 @@ class SolicitudSecretariaForm(forms.ModelForm):
         ).distinct()
         self.fields['paciente'].label_from_instance = lambda obj: f"{obj.nombre} {obj.apellido} ({obj.cedula}) - {_tipo_paciente(obj)}"
         self.fields['especialista'].label_from_instance = _especialista_label
+        self.fields['cuanto_cobra'].required = False
+        self.fields['cuanto_cobro'].required = False
+        beneficiario = self.initial.get('beneficiario')
+        if beneficiario:
+            self.fields['paciente'].initial = beneficiario.poliza.paciente.id
+            self.fields['beneficiario'].initial = beneficiario.id
 
     # HACER QUE LA FECHA NO PUEDA SER LA MISMA DEL MISMO DIA DEL HOY
     def clean_fecha_cita(self):
@@ -408,4 +418,3 @@ class RecetaForm(forms.ModelForm):
         if valor is not None and valor < 1:
             raise forms.ValidationError('La cantidad debe ser al menos 1.')
         return valor
-

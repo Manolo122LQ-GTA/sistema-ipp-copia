@@ -112,16 +112,17 @@ def registro(request):
         username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()
         password = request.POST.get('password')
+        password2 = request.POST.get('password2')
         rol_elegido = request.POST.get('rol', '').strip()
 
         if not username or not password:
             messages.error(request, 'El nombre de usuario y la contraseña son obligatorios.')
+        elif password != password2:
+            messages.error(request, 'Las contraseñas no coinciden.')
         elif User.objects.filter(username=username).exists():
             messages.error(request, 'El nombre de usuario ya existe.')
         elif email and User.objects.filter(email=email).exists():
             messages.error(request, 'El correo electrónico ya está registrado.')
-        elif len(password) != 8:
-            messages.error(request, 'La contraseña debe tener exactamente 8 caracteres.')
         else:
             try:
                 validate_password(password)
@@ -788,6 +789,8 @@ def menu_admin(request):
 
     if request.method == 'POST':
         usuario_id = request.POST.get('usuario_id')
+        rol_nombre = request.POST.get('rol_nombre')
+        toggle_status = request.POST.get('toggle_status')
         user_to_update = get_object_or_404(User, id=usuario_id)
 
         # No permitir modificar superusuarios ni la propia cuenta
@@ -1292,18 +1295,20 @@ def landing_page(request):
         or request.user.groups.filter(name='Especialista').exists()
         or request.user.groups.filter(name='Laboratorio').exists()
     )
+    es_secretaria = request.user.groups.filter(name='Secretaria').exists() or is_admin
+    es_poliza = request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists()
 
     context = {
         'titulo': 'Sistema IPP - Inicio',
         'es_admin': is_admin,
-        'es_secretaria': request.user.groups.filter(name='Secretaria').exists() or is_admin,
+        'es_secretaria': es_secretaria,
+        'es_poliza': es_poliza,
         'puede_entrar_servicio_medico': puede_entrar_servicio_medico,
     }
     return render(request, 'ipp1/compartidos/selec_roles.html', context)
 
 
 #  EXPORTACIÓN DE DATOS (Solo Administración)
-
 def _es_admin(user):
     return user.is_superuser or user.groups.filter(name='Administracion').exists()
 

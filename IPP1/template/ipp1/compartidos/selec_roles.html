@@ -58,6 +58,8 @@
         </div>
     </div>
 
+    <img src="{% static 'img/ipp_logo.png' %}" width="300" height="190" class="mb-4 d-block mx-auto" alt="Logo IPP">
+
         <!-- TITULO -->
     <div class="main-content">
         <div class="container text-center">
@@ -89,17 +91,17 @@
                                 </div>
                             </a>
                         </div>
-                            <!-- BOTIB DE POLIZA -->
-                        <div class="col-md-3">
-                            <a href="{% if es_admin or es_secretaria %}{% url 'poliza_inicio' %}{% else %}#{% endif %}" 
-                               class="text-decoration-none {% if not es_admin and not es_secretaria %}disabled-link{% endif %}">
-                                <div class="card role-card shadow-sm bg-white h-100 d-flex flex-column align-items-center justify-content-center {% if not es_admin and not es_secretaria %}disabled{% endif %}">
-                                    <i class="bi bi-file-earmark-medical fs-1 text-primary mb-2"></i>
-                                    <h6 class="fw-bold mb-1">Póliza</h6>
-                                    <small class="text-muted">Gestión de planes y coberturas</small>
-                                </div>
-                            </a>
-                        </div>
+                            <!-- BOTON DE POLIZA -->
+<div class="col-md-3">
+    <a href="{% if es_admin or es_secretaria or es_poliza %}{% url 'poliza_inicio' %}{% else %}#{% endif %}" 
+       class="text-decoration-none {% if not es_admin and not es_secretaria and not es_poliza %}disabled-link{% endif %}">
+        <div class="card role-card shadow-sm bg-white h-100 d-flex flex-column align-items-center justify-content-center {% if not es_admin and not es_secretaria and not es_poliza %}disabled{% endif %}">
+            <i class="bi bi-file-earmark-medical fs-1 text-primary mb-2"></i>
+            <h6 class="fw-bold mb-1">Póliza</h6>
+            <small class="text-muted">Gestión de planes y coberturas</small>
+        </div>
+    </a>
+</div>
                             <!-- BOTON DE ADMIN -->
                         <div class="col-md-3">
                             <a href="{% if es_admin %}{% url 'inicio_admin' %}{% else %}#{% endif %}" 

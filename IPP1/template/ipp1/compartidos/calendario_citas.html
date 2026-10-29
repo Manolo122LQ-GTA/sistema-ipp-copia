@@ -17,7 +17,7 @@
         <div class="d-flex gap-3 justify-content-center flex-wrap">
             <span class="badge bg-primary text-white px-3 py-2">En Espera</span>
             <span class="badge bg-success px-3 py-2">Atendido</span>
-            <span class="badge bg-danger px-3 py-2">Cancelado</span>
+            <span class="badge bg-danger px-3 py-2">Referido</span>
         </div>
     </div>
 </div>
@@ -56,8 +56,8 @@
                         <td class="text-center">
                             {% if cita.estado == 'Atendido' %}
                                 <span class="badge bg-success">Atendido</span>
-                            {% elif cita.estado == 'Cancelado' %}
-                                <span class="badge bg-danger">Cancelado</span>
+                            {% elif cita.estado == 'referido' %}
+                                <span class="badge bg-danger">Referido</span>
                             {% else %}
                                 <span class="badge bg-primary text-white">En Espera</span>
                             {% endif %}

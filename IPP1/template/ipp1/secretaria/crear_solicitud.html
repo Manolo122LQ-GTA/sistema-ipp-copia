@@ -19,7 +19,7 @@
             {% csrf_token %}
 
             <div class="row g-4">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label for="{{ form.paciente.id_for_label }}" class="form-label fw-semibold text-secondary">
                         <i class="bi bi-person me-1"></i>Paciente
                     </label>
@@ -29,7 +29,7 @@
                     {% endif %}
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label for="{{ form.especialista.id_for_label }}" class="form-label fw-semibold text-secondary">
                         <i class="bi bi-person-badge me-1"></i>{{ form.especialista.label }}
                     </label>
@@ -39,19 +39,7 @@
                     {% endif %}
                 </div>
 
-                <!-- ELIMINADO POR ALGUNAS COSAS QUE NO SERVIAN -->
-                <!--div class="col-md-6">
-                    <label for="{{ form.especialista.id_for_label }}" class="form-label fw-semibold text-secondary">
-                        <i class="bi bi-person-badge me-1"></i>{{ form.especialista.label }}
-                    </label>
-                    {{ form.especialista }}
-                    {% if form.especialista.errors %}
-                        <div class="text-danger small mt-1">{{ form.especialista.errors }}</div>
-                    {% endif %}
-                </div-->
-
-
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label for="{{ form.fecha_cita.id_for_label }}" class="form-label fw-semibold text-secondary">
                         <i class="bi bi-calendar me-1"></i>Fecha de la Cita
                     </label>
@@ -61,7 +49,7 @@
                     {% endif %}
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label for="{{ form.hora_cita.id_for_label }}" class="form-label fw-semibold text-secondary">
                         <i class="bi bi-clock me-1"></i>Hora de la Cita
                     </label>
@@ -71,7 +59,7 @@
                     {% endif %}
                 </div>
 
-                <div class="col-12">
+                <div class="col-md-4">
                     <label for="{{ form.motivo_consulta.id_for_label }}" class="form-label fw-semibold text-secondary">
                         <i class="bi bi-journal-text me-1"></i>{{ form.motivo_consulta.label }}
                     </label>
@@ -79,6 +67,35 @@
                     {% if form.motivo_consulta.errors %}
                         <div class="text-danger small mt-1">{{ form.motivo_consulta.errors }}</div>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- APARTADO DE COBRO DEL SERVICIO -->
+            <div class="row g-4 mt-4 border-top pt-4 bg-light rounded">
+                <div class="col-12">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-cash-coin me-2"></i>Cobro del Servicio</h6>
+                    <p class="text-muted small mb-3">Registre los montos asociados a esta cita/servicio.</p>
+                </div>
+                <div class="col-md-4">
+                    <label for="{{ form.cuanto_cobra.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-currency-dollar me-1"></i>Monto a Cobrar
+                    </label>
+                    {{ form.cuanto_cobra }}
+                    {% if form.cuanto_cobra.errors %}
+                        <div class="text-danger small mt-1">{{ form.cuanto_cobra.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">Monto que se cobrará por esta consulta/servicio.</div>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="{{ form.cuanto_cobro.id_for_label }}" class="form-label fw-semibold text-secondary">
+                        <i class="bi bi-cash-coin me-1"></i>Monto Cobrado
+                    </label>
+                    {{ form.cuanto_cobro }}
+                    {% if form.cuanto_cobro.errors %}
+                        <div class="text-danger small mt-1">{{ form.cuanto_cobro.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">Monto efectivamente cobrado al paciente.</div>
                 </div>
             </div>
 

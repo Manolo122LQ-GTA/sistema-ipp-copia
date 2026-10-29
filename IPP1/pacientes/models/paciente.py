@@ -13,7 +13,7 @@ class Paciente(models.Model):
     codigo_afiliado = models.CharField(max_length=20, unique=True, blank=True, null=True, help_text="Código único de afiliado (se genera automáticamente)")
     status_afiliado = models.CharField(
         max_length=20,
-        choices=[('Afiliado', 'Afiliado'), ('Comunidad', 'Comunidad'), ('Particular', 'Particular')],
+        choices=[('Afiliado', 'Afiliado'), ('Comunidad', 'Comunidad'), ('Particular', 'Particular'), ('Convenio', 'Convenio')],
         default='Comunidad'
     )
     categoria_afiliado = models.CharField(
