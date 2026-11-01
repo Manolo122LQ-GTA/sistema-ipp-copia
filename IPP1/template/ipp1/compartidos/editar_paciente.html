@@ -11,15 +11,15 @@
 <form method="post">
     {% csrf_token %}
     <div class="row g-3">
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label fw-semibold">Nombre</label>
             {{ form.nombre }}
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label fw-semibold">Apellido</label>
             {{ form.apellido }}
         </div>
-        <div class="col-md-6">
+        <div class="col-md-2">
             <label class="form-label fw-semibold">Cédula</label>
             {{ form.cedula }}
         </div>
@@ -27,7 +27,7 @@
             <label class="form-label fw-semibold">Código</label>
             {{ form.codigo_telefono }}
         </div>
-        <div class="col-md-4">
+        <div class="col-md-2">
             <label class="form-label fw-semibold">Teléfono</label>
             {{ form.numero_telefono }}
         </div>
@@ -35,7 +35,7 @@
             <label class="form-label fw-semibold">Dirección</label>
             {{ form.direccion }}
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label fw-semibold">Fecha de Nacimiento</label>
             {{ form.fecha_nacimiento }}
         </div>

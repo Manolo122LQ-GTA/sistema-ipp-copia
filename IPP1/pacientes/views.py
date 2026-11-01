@@ -1,5 +1,6 @@
 # MODELOS IMPORTADOS EN VISTAS
 
+from django.contrib.auth import get_user_model
 from decimal import Decimal
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -165,6 +166,18 @@ def registro(request):
             else:
                 messages.success(request, 'Usuario registrado con éxito.')
             _registrar_log(request, f'Registró usuario {username}', 'User', user.id)
+
+            # NOTIFICAR A ADMINISTRADORES SOBRE NUEVO USUARIO PENDIENTE DE APROBACIÓN
+            from django.contrib.auth.models import User as DjangoUser
+            admins = DjangoUser.objects.filter(is_superuser=True)
+            for admin in admins:
+                if admin.id != request.user.id if request.user.is_authenticated else True:
+                    _crear_notificacion(
+                        admin,
+                        f"Nuevo usuario pendiente de aprobación: {username} ({rol_elegido or 'Sin rol'})",
+                        reverse('usuarios_pendientes')
+                    )
+
             return redirect('login')
     
     return render(request, 'ipp1/compartidos/registro.html')
