@@ -125,6 +125,8 @@ urlpatterns = [
     # Importar desde Excel
     path('importar/pacientes/', views.importar_pacientes_excel, name='importar_pacientes_excel'),
     path('importar/gastos/', views.importar_gastos_excel, name='importar_gastos_excel'),
+    path('importar/medicamentos/', views.importar_medicamentos_excel, name='importar_medicamentos_excel'),
+    path('importar/nomina/poliza/<int:poliza_id>/', views.importar_nomina_poliza, name='importar_nomina_poliza'),
 
     # Facturación
     path('facturas/', views.facturas_lista, name='facturas_lista'),
@@ -149,6 +151,7 @@ urlpatterns = [
 
     # Recetas
     path('cita/<int:cita_id>/receta/', views.receta_crear, name='receta_crear'),
+    path('receta/<int:receta_id>/print/', views.receta_print, name='receta_print'),
 
     # Vista compartida Secretaría-Póliza (estado de póliza del paciente)
     path('poliza/estado-paciente/<int:paciente_id>/', views.estado_poliza_paciente, name='estado_poliza_paciente'),
@@ -158,6 +161,9 @@ urlpatterns = [
 
     # Visualización cruzada Admin-Póliza
     path('administracion/resumen-afiliados/', views.resumen_afiliados, name='resumen_afiliados'),
+
+    # Tasa de Cambio
+    path('administracion/tasa-cambio/', views.tasa_cambio_lista, name='tasa_cambio_lista'),
 
     # Exportación múltiple de pacientes seleccionados
     path('exportar/pacientes/seleccionados/', views.exportar_pacientes_seleccionados, name='exportar_pacientes_seleccionados'),

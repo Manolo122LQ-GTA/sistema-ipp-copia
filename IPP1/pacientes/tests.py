@@ -133,8 +133,8 @@ class PlanSaludModelTest(BaseTest):
             nombre='Plan Básico', costo_mensual=Decimal('25.00'),
             descripcion='Cobertura básica'
         )
-        self.assertEqual(str(plan), 'Plan Básico - $25.00/mes (4 consultas/año)')
-        self.assertEqual(plan.consultas_maximas_anuales, 4)
+        self.assertEqual(str(plan), 'Plan Básico - $25.00/mes (4 servicios/año)')
+        self.assertEqual(plan.servicios_maximos_anuales, 4)
 
 
 class PolizaModelTest(BaseTest):
@@ -175,7 +175,7 @@ class PolizaModelTest(BaseTest):
         self.assertEqual(p.consultas_restantes(), 4)
 
     def test_consultas_restantes_ilimitado(self):
-        self.plan.consultas_maximas_anuales = 0
+        self.plan.servicios_maximos_anuales = 0
         self.plan.save()
         p = Poliza.objects.create(
             paciente=self.paciente, plan=self.plan,
@@ -197,7 +197,7 @@ class PolizaModelTest(BaseTest):
         self.assertEqual(p.consultas_usadas_anuales(), 1)
 
     def test_consultas_restantes_agotado(self):
-        self.plan.consultas_maximas_anuales = 1
+        self.plan.servicios_maximos_anuales = 1
         self.plan.save()
         medico = self._crear_usuario('dr_cons2', 'Abc123!@', 'Medico')
         p = Poliza.objects.create(
@@ -411,7 +411,7 @@ class SolicitudLaboratorioFormTest(BaseTest):
     def test_form_valido(self):
         form = SolicitudLaboratorioForm(data={
             'paciente': self.paciente.id,
-            'prueba_laboratorio': 'Hemograma',
+            'examen': 1,
             'fecha_solicitud': '2026-07-05'
         })
         self.assertTrue(form.is_valid())
@@ -420,7 +420,7 @@ class SolicitudLaboratorioFormTest(BaseTest):
         form = SolicitudLaboratorioForm(data={})
         self.assertFalse(form.is_valid())
         self.assertIn('paciente', form.errors)
-        self.assertIn('prueba_laboratorio', form.errors)
+        self.assertIn('examen', form.errors)
 
 
 class ProcesarLaboratorioFormTest(BaseTest):
@@ -503,10 +503,11 @@ class LoginViewTest(BaseTest):
 
 
 class LogoutViewTest(BaseTest):
-    def test_logout_requiere_post(self):
+    def test_logout_acepta_get(self):
         self._login()
         response = self.client.get(reverse('logout'))
-        self.assertEqual(response.status_code, 405)
+        self.assertRedirects(response, reverse('login'))
+        self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_logout_requiere_autenticacion(self):
         response = self.client.get(reverse('logout'))
@@ -656,7 +657,7 @@ class CitaFlowTest(BaseTest):
         self.assertEqual(cita.estado, 'Cancelado')
 
     def test_crear_solicitud_con_poliza_cubre_cita(self):
-        plan = PlanSalud.objects.create(nombre='Test', costo_mensual=Decimal('10'), consultas_maximas_anuales=4)
+        plan = PlanSalud.objects.create(nombre='Test', costo_mensual=Decimal('10'), servicios_maximos_anuales=4)
         Poliza.objects.create(
             paciente=self.paciente, plan=plan,
             fecha_inicio=date(2026, 1, 1), estado='Activo'
@@ -674,7 +675,7 @@ class CitaFlowTest(BaseTest):
         self.assertIsNotNone(cita.poliza)
 
     def test_crear_solicitud_poliza_agotada_muestra_warning(self):
-        plan = PlanSalud.objects.create(nombre='Test', costo_mensual=Decimal('10'), consultas_maximas_anuales=1)
+        plan = PlanSalud.objects.create(nombre='Test', costo_mensual=Decimal('10'), servicios_maximos_anuales=1)
         poliza = Poliza.objects.create(
             paciente=self.paciente, plan=plan,
             fecha_inicio=date(2026, 1, 1), estado='Activo'
@@ -751,7 +752,7 @@ class LaboratorioFlowTest(BaseTest):
         self._login(grupo='Laboratorio')
         response = self.client.post(reverse('registrar_laboratorio'), {
             'paciente': self.paciente.id,
-            'prueba_laboratorio': 'Urianálisis',
+            'examen': 1,
             'fecha_solicitud': '2026-07-05'
         }, follow=True)
         self.assertContains(response, 'exitosamente')
@@ -864,6 +865,7 @@ class PolizaFlowTest(BaseTest):
             'plan': self.plan.id,
             'fecha_inicio': '2026-01-01',
             'cuota_inicial': '10.00',
+            'saldo_restante': '10.00',
             'estado': 'Activo',
         }, follow=True)
         self.assertContains(response, 'creada')
@@ -876,6 +878,7 @@ class PolizaFlowTest(BaseTest):
             'plan': '',
             'fecha_inicio': '2026-01-01',
             'cuota_inicial': '10.00',
+            'saldo_restante': '10.00',
             'estado': 'Activo',
         }, follow=True)
         self.assertEqual(Poliza.objects.count(), 0)
@@ -1227,17 +1230,17 @@ class FacturaTest(BaseTest):
     def test_factura_generar_y_detalle(self):
         self._login(grupo='Administracion')
         response = self.client.post(reverse('factura_generar', args=[self.cita.id]), {
-            'iva': '16', 'descripcion': 'Consulta general'
+            'descripcion': 'Consulta general'
         })
         factura = Factura.objects.get(cita=self.cita)
         self.assertRedirects(response, reverse('factura_detalle', args=[factura.id]))
         self.assertEqual(factura.subtotal, Decimal('30.00'))
-        self.assertEqual(factura.iva, Decimal('4.80'))
-        self.assertEqual(factura.total, Decimal('34.80'))
+        self.assertEqual(factura.iva, Decimal('0.00'))
+        self.assertEqual(factura.total, Decimal('30.00'))
         self.assertEqual(factura.paciente_nombre, 'Juan Perez')
         response = self.client.get(reverse('factura_detalle', args=[factura.id]))
         self.assertContains(response, factura.numero_factura)
-        self.assertContains(response, '34')
+        self.assertContains(response, '30')
 
     def test_factura_duplicada_rechazada(self):
         Factura.objects.create(

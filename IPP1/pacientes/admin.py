@@ -29,7 +29,7 @@ class SolicitudLaboratorioAdmin(admin.ModelAdmin):
 
 @admin.register(PlanSalud)
 class PlanSaludAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'costo_mensual', 'consultas_maximas_anuales')
+    list_display = ('nombre', 'costo_mensual', 'servicios_maximos_anuales')
 
 @admin.register(Poliza)
 class PolizaAdmin(admin.ModelAdmin):

@@ -13,7 +13,7 @@
             {% csrf_token %}
             <!-- NOMBRE -->
             <div class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Nombre</label>
                     {{ form.nombre }}
                     {% if form.nombre.errors %}
@@ -21,7 +21,7 @@
                     {% endif %}
                 </div>
                 <!-- APELLIDO -->
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Apellido</label>
                     {{ form.apellido }}
                     {% if form.apellido.errors %}
@@ -29,7 +29,7 @@
                     {% endif %}
                 </div>
                 <!-- FECHA DE NACIMIENTO -->
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Fecha de Nacimiento</label>
                     {{ form.fecha_nacimiento }}
                     {% if form.fecha_nacimiento.errors %}
@@ -39,7 +39,7 @@
             </div>
             <!-- CEDULA -->
             <div class="row g-3 mt-1">
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Cédula</label>
                     {{ form.cedula }}
                     {% if form.cedula.errors %}
@@ -55,7 +55,7 @@
                     {% endif %}
                 </div>
                 <!-- TELEFONO -->
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Teléfono</label>
                     {{ form.numero_telefono }}
                     {% if form.numero_telefono.errors %}
@@ -73,7 +73,7 @@
             </div>
             <!-- TIPOS DE PACIENTE POR CATEGORIAS -->
             <div class="row g-3 mt-1">
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Tipo de Paciente</label>
                     {{ form.status_afiliado }}
                     {% if form.status_afiliado.errors %}
@@ -81,7 +81,7 @@
                     {% endif %}
                 </div>
                 <!-- CATEGORIA -->
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Categoría</label>
                     {{ form.categoria_afiliado }}
                     {% if form.categoria_afiliado.errors %}
@@ -141,10 +141,10 @@
                         <a href="{% url 'editar_paciente' paciente.id %}" class="btn btn-outline-success uiverse-btn" title="Editar">
                             <i class="bi bi-pencil"></i>
                         </a>
-                        <form method="post" action="{% url 'eliminar_paciente' paciente.id %}" class="d-inline" onsubmit="return confirm('¿Eliminar a {{ paciente.nombre }} {{ paciente.apellido }}? Esta acción no se puede deshacer.');">
+                        <form method="post" action="{% url 'eliminar_paciente' paciente.id %}" class="d-inline" onsubmit="return confirm('¿Desactivar a {{ paciente.nombre|escapejs }} {{ paciente.apellido|escapejs }}? Podrás reactivarlo desde Administración.');">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-danger uiverse-btn" title="Eliminar">
-                                <i class="bi bi-trash"></i>
+                            <button type="submit" class="btn btn-outline-danger uiverse-btn" title="Desactivar">
+                                <i class="bi bi-power"></i>
                             </button>
                         </form>
                     </td>

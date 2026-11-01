@@ -1,3 +1,5 @@
+# MODELOS IMPORTADOS EN VISTAS
+
 from decimal import Decimal
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -9,7 +11,7 @@ from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group, User
 from django.contrib import messages
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.conf import settings
 from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura, PerfilUsuario
 from .forms import PacienteForm, LoginForm, PerfilForm, SolicitudSecretariaForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm
@@ -23,11 +25,13 @@ import csv
 # SOLICITUD DE CITA
 @login_required
 def crear_solicitud_view(request):
-    if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists()):
+    es_secretaria = request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists()
+    es_medico = request.user.is_superuser or request.user.groups.filter(name='Medico').exists()
+    if not (es_secretaria or es_medico):
         messages.error(request, "Acceso denegado.")
         return redirect('home')
     if request.method == 'POST':
-        form = SolicitudSecretariaForm(request.POST)
+        form = SolicitudSecretariaForm(request.POST, user=request.user)
         if form.is_valid():
             cita = form.save(commit=False)
             cita.creada_por = request.user
@@ -48,14 +52,23 @@ def crear_solicitud_view(request):
                 messages.success(request, 'Solicitud de cita creada exitosamente.')
             return redirect('crear_solicitud')
     else:
-        form = SolicitudSecretariaForm()
+        form = SolicitudSecretariaForm(user=request.user)
+
+    # Historial de meses en que el paciente ha tenido citas
+    from collections import defaultdict
+    meses_visita = defaultdict(int)
+    citas_historial = SolicitudSecretaria.objects.filter(estado='Atendido').select_related('paciente').order_by('-fecha_cita')
+    for c in citas_historial:
+        meses_visita[c.paciente.id] += 1
 
     ctx = {
         'form': form,
+        'meses_visita': dict(meses_visita),
+        'es_medico_creando': es_medico and not es_secretaria,
     }
     return render(request, 'ipp1/secretaria/crear_solicitud.html', ctx)
 
-# LO DEL LOGIN
+# LOGIN
 def login_view(request):
     """Vista para el inicio de sesión sin redirecciones ciegas en errores."""
     if request.user.is_authenticated:
@@ -83,8 +96,9 @@ def login_view(request):
             if usuario_autenticado is not None:
                 login(request, usuario_autenticado)
                 next_url = request.POST.get('next') or request.GET.get('next') or ''
-                siguiente = next_url if next_url.startswith('/') else 'home'
-                return redirect(siguiente)
+                if not _is_safe_redirect_url(next_url, allowed_hosts={request.get_host()}):
+                    next_url = 'home'
+                return redirect(next_url)
 
             messages.error(request, 'Usuario o contraseña incorrectos.')
             return render(request, 'ipp1/compartidos/login.html', {'form': form})
@@ -94,7 +108,7 @@ def login_view(request):
     return render(request, 'ipp1/compartidos/login.html', {'form': form})
 
 @login_required
-@require_POST
+@require_http_methods(["GET", "POST"])
 def logout_view(request):
     """Cierra la sesión y redirige al login con un mensaje de éxito."""
     logout(request)
@@ -102,7 +116,7 @@ def logout_view(request):
     return redirect('login')
 
 # VISTA REGISTRO USUARIO/ROLES
-ROLES_PERMITIDOS_REGISTRO = ['Secretaria', 'Medico', 'Odontologo', 'Laboratorio', 'Especialista']
+ROLES_PERMITIDOS_REGISTRO = ['Secretaria', 'Medico', 'Odontologo', 'Laboratorio', 'Especialista', 'Poliza']
 
 def registro(request):
     """Vista para el registro de nuevos usuarios del sistema."""
@@ -316,7 +330,7 @@ def atender_cita(request, cita_id):
     cita.monto_admin = m_admin
     cita.save()
     _registrar_log(request, f'Atendió cita de {cita.paciente}', 'SolicitudSecretaria', cita.id)
-    tipo = 'cubierta por póliza' if cita.cubierto_por_poliza else 'particular'
+    tipo = 'cubierta por póliza' if cita.cubierto_por_poliza else 'comunidad'
     messages.success(request, f"Paciente {cita.paciente} atendido ({tipo}, ${costo:.2f}).")
     if request.user.groups.filter(name='Odontologo').exists():
         return redirect('citas_odonto')
@@ -1028,11 +1042,9 @@ def poliza_crear(request):
         form = PolizaForm(request.POST)
         if form.is_valid():
             poliza = form.save(commit=False) 
-            if poliza.plan:
-                poliza.saldo_restante = max(
-                    poliza.plan.costo_mensual - form.cleaned_data['cuota_inicial'],
-                    Decimal('0.00')
-                    )
+            # Para plan único: saldo_restante se toma del formulario
+            if not poliza.saldo_restante:
+                poliza.saldo_restante = form.cleaned_data.get('cuota_inicial', 0)
             poliza.save()
             _registrar_log(request, f'Creó póliza para {poliza.paciente}', 'Poliza', poliza.id)
             messages.success(request, f"Póliza creada para {poliza.paciente.nombre} {poliza.paciente.apellido}.")
@@ -1104,11 +1116,9 @@ def poliza_registrar_gasto(request, poliza_id):
             gasto.poliza = poliza
             with transaction.atomic():
                 poliza = Poliza.objects.select_for_update().get(id=poliza.id)
-                if gasto.monto > poliza.saldo_restante:
-                    messages.error(request, "El gasto supera el saldo restante de la póliza.")
-                    return redirect('poliza_registrar_gasto', poliza_id=poliza.id)
                 gasto.save()
                 poliza.saldo_restante -= gasto.monto
+                poliza.actualizar_estado_por_saldo()
                 poliza.save(update_fields=['saldo_restante'])
             _registrar_log(request, f'Registró gasto ${gasto.monto} en póliza de {poliza.paciente}', 'GastoPaciente', gasto.id)
             messages.success(request, f"Gasto registrado en la póliza de {poliza.paciente}.")
@@ -1331,9 +1341,6 @@ def _vincular_poliza(cita):
     from .models import Poliza
     if cita.poliza_id:
         return
-    if cita.paciente.status_afiliado == 'Particular':
-        cita.cubierto_por_poliza = False
-        return
     if cita.especialista and cita.especialista.groups.filter(name='Medico').exists():
         cita.cubierto_por_poliza = False
         return
@@ -1464,6 +1471,7 @@ def exportar_reporte_csv(request):
         ])
     return response
 
+# IMPORTAR INFORMACION DE PACIENTES EXCEL
 @login_required
 def importar_pacientes_excel(request):
     """Importa pacientes desde un archivo Excel."""
@@ -1514,6 +1522,7 @@ def importar_pacientes_excel(request):
             messages.error(request, f'Error al procesar el archivo: {e}')
     return render(request, 'ipp1/administracion/importar_pacientes.html', {'modo': 'Pacientes'})
 
+# IMPORTACION DE ARCHIVOS EXCEL
 @login_required
 def importar_gastos_excel(request):
     """Importa gastos desde un archivo Excel (cédula, concepto, monto, fecha, factura)."""
@@ -1559,6 +1568,110 @@ def importar_gastos_excel(request):
         _registrar_log(request, f'Importó {creados} gastos desde Excel', 'GastoPaciente')
     return render(request, 'ipp1/administracion/importar_pacientes.html', {'modo': 'Gastos'})
 
+
+@login_required
+def importar_medicamentos_excel(request):
+    """Importa medicamentos desde un archivo Excel."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('home')
+    if request.method == 'POST' and request.FILES.get('archivo'):
+        import openpyxl
+        archivo = request.FILES['archivo']
+        try:
+            wb = openpyxl.load_workbook(archivo, read_only=True)
+            ws = wb.active
+            creados = 0
+            errores = []
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                try:
+                    nombre, descripcion, precio, stock, lote, fecha_venc = (row + (None,)*6)[:6]
+                    if not nombre:
+                        errores.append(f"Fila {i}: falta el nombre del medicamento")
+                        continue
+                    if isinstance(fecha_venc, str):
+                        from datetime import datetime
+                        fecha_venc = datetime.strptime(str(fecha_venc).strip(), '%d/%m/%Y').date()
+                    medicamento, created = Medicamento.objects.update_or_create(
+                        nombre=str(nombre).strip(),
+                        lote=str(lote).strip() if lote else '',
+                        defaults={
+                            'descripcion': str(descripcion).strip() if descripcion else '',
+                            'precio': Decimal(str(precio)) if precio else Decimal('0.00'),
+                            'cantidad_stock': int(stock) if stock else 0,
+                            'fecha_vencimiento': fecha_venc,
+                            'activo': True,
+                        }
+                    )
+                    creados += 1
+                except Exception as e:
+                    errores.append(f"Fila {i}: {e}")
+            if creados:
+                messages.success(request, f"{creados} medicamento(s) importado(s) correctamente.")
+            for err in errores[:5]:
+                messages.warning(request, err)
+            if len(errores) > 5:
+                messages.warning(request, f"...y {len(errores)-5} error(es) más.")
+            _registrar_log(request, f'Importó {creados} medicamentos desde Excel', 'Medicamento')
+        except Exception as e:
+            messages.error(request, f'Error al procesar el archivo: {e}')
+    return render(request, 'ipp1/especialista/importar_medicamentos.html')
+
+
+@login_required
+def importar_nomina_poliza(request, poliza_id):
+    """Importa nómina (gastos) dentro de una póliza desde Excel."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('home')
+    poliza = get_object_or_404(Poliza, id=poliza_id)
+    if request.method == 'POST' and request.FILES.get('archivo'):
+        import openpyxl
+        archivo = request.FILES['archivo']
+        try:
+            wb = openpyxl.load_workbook(archivo, read_only=True)
+            ws = wb.active
+            creados = 0
+            errores = []
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                try:
+                    cedula, concepto, monto, fecha = (row + (None,)*4)[:4]
+                    if not all([cedula, concepto, monto, fecha]):
+                        errores.append(f"Fila {i}: faltan datos obligatorios")
+                        continue
+                    if isinstance(fecha, str):
+                        from datetime import datetime
+                        fecha = datetime.strptime(str(fecha).strip(), '%d/%m/%Y').date()
+                    # Buscar familiar por cédula en esta póliza
+                    familiar = Familiar.objects.filter(poliza=poliza, cedula=str(cedula).strip()).first()
+                    if not familiar:
+                        errores.append(f"Fila {i}: cédula {cedula} no es familiar de esta póliza")
+                        continue
+                    GastoPaciente.objects.create(
+                        poliza=poliza,
+                        concepto=str(concepto).strip(),
+                        monto=Decimal(str(monto)),
+                        fecha=fecha,
+                        beneficiario=familiar,
+                    )
+                    poliza.saldo_restante -= Decimal(str(monto))
+                    poliza.actualizar_estado_por_saldo()
+                    poliza.save(update_fields=['saldo_restante', 'estado'])
+                    creados += 1
+                except Exception as e:
+                    errores.append(f"Fila {i}: {e}")
+            if creados:
+                messages.success(request, f"{creados} registro(s) de nómina importado(s) correctamente.")
+            for err in errores[:5]:
+                messages.warning(request, err)
+            if len(errores) > 5:
+                messages.warning(request, f"...y {len(errores)-5} error(es) más.")
+            _registrar_log(request, f'Importó {creados} registros de nómina en póliza {poliza.id}', 'GastoPaciente')
+        except Exception as e:
+            messages.error(request, f'Error al procesar el archivo: {e}')
+    return render(request, 'ipp1/poliza/importar_nomina.html', {'poliza': poliza})
+
+
 @login_required
 def facturas_lista(request):
     """Listado de facturas generadas."""
@@ -1597,16 +1710,10 @@ def factura_generar(request, cita_id):
         messages.info(request, "Esta cita ya tiene una factura.")
         return redirect('factura_detalle', factura_id=cita.factura.id)
     if request.method == 'POST':
-        try:
-            iva = Decimal(request.POST.get('iva', '0'))
-        except Exception:
-            iva = settings.IVA_DEFAULT
-        if not iva.is_finite() or iva < 0 or iva > 100:
-            iva = settings.IVA_DEFAULT
         descripcion = request.POST.get('descripcion', '')
         subtotal = cita.costo_consulta or Decimal('0.00')
-        iva_monto = (subtotal * iva / Decimal('100')).quantize(Decimal('0.01'))
-        total = (subtotal + iva_monto).quantize(Decimal('0.01'))
+        iva_monto = Decimal('0.00')
+        total = subtotal
         factura = Factura.objects.create(
             cita=cita,
             paciente_nombre=f"{cita.paciente.nombre} {cita.paciente.apellido}",
@@ -1622,7 +1729,6 @@ def factura_generar(request, cita_id):
         return redirect('factura_detalle', factura_id=factura.id)
     return render(request, 'ipp1/facturacion/factura_generar.html', {
         'cita': cita,
-        'iva_default': settings.IVA_DEFAULT,
     })
 
 
@@ -1644,7 +1750,7 @@ def historia_clinica_print(request, paciente_id):
     })
 
 
-#  EDITAR / ELIMINAR PACIENTE 
+#  EDITAR / DESACTIVAR PACIENTE 
 @login_required
 def editar_paciente(request, paciente_id):
     if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists() or request.user.groups.filter(name='Administracion').exists()):
@@ -1790,17 +1896,27 @@ def receta_crear(request, cita_id):
                     )
             _registrar_log(request, f'Creó receta para {cita.paciente}', 'Receta', receta.id)
             messages.success(request, "Receta registrada exitosamente.")
-            if request.user.groups.filter(name='Medico').exists():
-                return redirect('citas_recibidas_medico')
-            if request.user.groups.filter(name='Odontologo').exists():
-                return redirect('citas_odonto')
-            if request.user.groups.filter(name='Especialista').exists():
-                return redirect('citas_especialista')
-            return redirect('reporte_admin')
+            return redirect('receta_print', receta_id=receta.id)
         return render(request, 'ipp1/especialista/receta_crear.html', _ctx(form))
     else:
         form = RecetaForm()
     return render(request, 'ipp1/especialista/receta_crear.html', _ctx(form))
+
+
+@login_required
+def receta_print(request, receta_id):
+    """Vista imprimible de una receta médica."""
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Medico', 'Odontologo', 'Especialista', 'Secretaria', 'Administracion']).exists()):
+        messages.error(request, 'No tienes permisos para ver esta receta.')
+        return redirect('home')
+    receta = get_object_or_404(Receta.objects.select_related('cita__paciente', 'cita__especialista', 'medicamento'), id=receta_id)
+    if not request.user.is_superuser and receta.cita.especialista != request.user:
+        messages.error(request, 'Esta receta no le pertenece.')
+        return redirect('home')
+    return render(request, 'ipp1/especialista/receta_print.html', {
+        'receta': receta,
+    })
+
 
 # VISTAS COMPARTIDAS
 @login_required
@@ -2202,4 +2318,59 @@ def catalogo_examenes(request):
     return render(request, 'ipp1/laboratorio/catalogo_examenes.html', {
         'examenes': examenes,
         'q': q,
+    })
+
+
+def _is_safe_redirect_url(url, allowed_hosts=None, require_https=False):
+    """
+    Reemplazo local de django.utils.http.is_safe_url (eliminado en Django 6.x).
+    Verifica que la URL de redireccionamiento sea interna y segura.
+    """
+    if not url:
+        return False
+
+    # Rechazar URLs con esquema absoluto (http://, https://, etc.)
+    if '://' in url:
+        return False
+
+    # Rechazar URLs relativas al protocolo (//evil.com)
+    if url.startswith('//'):
+        return False
+
+    # Rechazar schemes peligrosos
+    dangerous_schemes = ('javascript:', 'data:', 'vbscript:', 'file:')
+    if url.lower().startswith(dangerous_schemes):
+        return False
+
+    # Rutas internas que empiezan con / son seguras
+    if url.startswith('/'):
+        return True
+
+    # Rutas relativas simples (sin / inicial) se consideran internas
+    return True
+
+
+# TASA DE CAMBIO
+
+@login_required
+def tasa_cambio_lista(request):
+    """Lista y crea tasas de cambio del día."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('home')
+    tasas = TasaCambio.objects.all().order_by('-fecha')
+    if request.method == 'POST':
+        form = TasaCambioForm(request.POST)
+        if form.is_valid():
+            tasa = form.save(commit=False)
+            tasa.actualizado_por = request.user
+            tasa.save()
+            _registrar_log(request, f'Actualizó tasa de cambio: 1 USD = {tasa.tasa} VES', 'TasaCambio', tasa.id)
+            messages.success(request, f"Tasa de cambio actualizada: 1 USD = {tasa.tasa} VES.")
+            return redirect('tasa_cambio_lista')
+    else:
+        form = TasaCambioForm()
+    return render(request, 'ipp1/administracion/tasa_cambio.html', {
+        'tasas': tasas,
+        'form': form,
     })

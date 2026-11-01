@@ -1,7 +1,7 @@
 
 # MODELOS IMPORTADOS
 
-from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, TarifaEspecialidad, Medicamento, Receta, PlanSalud, Poliza, GastoPaciente, Familiar
+from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, TarifaEspecialidad, Medicamento, Receta, PlanSalud, Poliza, GastoPaciente, Familiar, TasaCambio
 from django import forms
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -148,7 +148,7 @@ class SolicitudSecretariaForm(forms.ModelForm):
         model = SolicitudSecretaria
         fields = ['paciente', 'especialista', 'fecha_cita', 'hora_cita', 'motivo_consulta', 'cuanto_cobra', 'cuanto_cobro']
         labels = {
-            'especialista': 'Médico General',
+            'especialista': 'Médico Especialista',
             'motivo_consulta': 'Motivo de Solicitud',
             'cuanto_cobra': 'Monto a Cobrar',
             'cuanto_cobro': 'Monto Cobrado',
@@ -162,6 +162,7 @@ class SolicitudSecretariaForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.current_user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         self.fields['paciente'].widget.attrs.update({'class': 'form-control uiverse-input'})
         self.fields['especialista'].widget.attrs.update({'class': 'form-control uiverse-input'})
@@ -177,6 +178,12 @@ class SolicitudSecretariaForm(forms.ModelForm):
         if beneficiario:
             self.fields['paciente'].initial = beneficiario.poliza.paciente.id
             self.fields['beneficiario'].initial = beneficiario.id
+
+        # Si el usuario actual es Medico (y no Secretaria), bloquear el especialista a sí mismo
+        if self.current_user and self.current_user.groups.filter(name='Medico').exists() and not self.current_user.is_superuser:
+            self.fields['especialista'].initial = self.current_user
+            self.fields['especialista'].widget.attrs['readonly'] = True
+            self.fields['especialista'].widget.attrs['disabled'] = True
 
     # HACER QUE LA FECHA NO PUEDA SER LA MISMA DEL MISMO DIA DEL HOY
     def clean_fecha_cita(self):
@@ -206,17 +213,15 @@ class SolicitudSecretariaForm(forms.ModelForm):
 class SolicitudLaboratorioForm(forms.ModelForm):
     class Meta:
         model = SolicitudLaboratorio
-        fields = ['paciente', 'examen', 'prueba_laboratorio', 'fecha_solicitud']
+        fields = ['paciente', 'examen', 'fecha_solicitud']
         widgets = {
             'paciente': forms.Select(attrs={'class': 'form-control uiverse-input'}),
             'examen': forms.Select(attrs={'class': 'form-control uiverse-input', 'id': 'id_examen'}),
-            'prueba_laboratorio': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ej. Hemograma, Urianálisis, Perfil 20...'}),
             'fecha_solicitud': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['prueba_laboratorio'].required = False
 
     def clean(self):
         cleaned = super().clean()
@@ -225,7 +230,7 @@ class SolicitudLaboratorioForm(forms.ModelForm):
         if examen and not prueba:
             cleaned['prueba_laboratorio'] = examen.nombre
         if not examen and not cleaned.get('prueba_laboratorio'):
-            self.add_error('prueba_laboratorio', 'Seleccione un examen del catálogo o escriba la Prueba/Análisis.')
+            self.add_error('examen', 'Seleccione un examen del catálogo.')
         return cleaned
 
 # PROCESAR LABORATORIO
@@ -293,20 +298,20 @@ class MedicamentoForm(forms.ModelForm):
 class PlanSaludForm(forms.ModelForm):
     class Meta:
         model = PlanSalud
-        fields = ['nombre', 'descripcion', 'costo_mensual', 'cobertura', 'consultas_maximas_anuales']
+        fields = ['nombre', 'descripcion', 'costo_mensual', 'cobertura', 'servicios_maximos_anuales']
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control uiverse-input'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control uiverse-input', 'rows': 3}),
             'costo_mensual': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01'}),
             'cobertura': forms.Textarea(attrs={'class': 'form-control uiverse-input', 'rows': 3}),
-            'consultas_maximas_anuales': forms.NumberInput(attrs={'class': 'form-control uiverse-input'}),
+            'servicios_maximos_anuales': forms.NumberInput(attrs={'class': 'form-control uiverse-input'}),
         }
 
     def clean_costo_mensual(self):
         return _no_negativo(self.cleaned_data.get('costo_mensual'), 'El costo mensual')
 
-    def clean_consultas_maximas_anuales(self):
-        return _no_negativo(self.cleaned_data.get('consultas_maximas_anuales'), 'Las consultas máximas')
+    def clean_servicios_maximos_anuales(self):
+        return _no_negativo(self.cleaned_data.get('servicios_maximos_anuales'), 'Los servicios máximos')
 
 # PÓLIZA
 
@@ -328,8 +333,11 @@ class PolizaForm(forms.ModelForm):
         self.fields['estado'].widget.attrs.update({'class': 'form-control uiverse-input'})
         self.fields['cuota_inicial'].widget.attrs.update({'class': 'form-control uiverse-input', 'step': '0.01'})
         if not self.instance.pk:
-            self.fields['saldo_restante'].widget = forms.HiddenInput()
-            self.fields['saldo_restante'].required = False
+            # Para póliza nueva: saldo_restante visible y editable (plan único)
+            self.fields['saldo_restante'].required = True
+            self.fields['cuota_inicial'].required = True
+            self.fields['saldo_restante'].help_text = "Saldo restante inicial (ej: $100.00)"
+            self.fields['cuota_inicial'].help_text = "Cuota inicial pagada (ej: $100.00)"
         else:
             self.fields['cuota_inicial'].widget = forms.HiddenInput()
             self.fields['saldo_restante'].disabled = True
@@ -338,6 +346,7 @@ class PolizaForm(forms.ModelForm):
         cleaned = super().clean()
         plan = cleaned.get('plan')
         cuota = cleaned.get('cuota_inicial')
+        saldo = cleaned.get('saldo_restante')
         if plan and cuota is not None and cuota > plan.costo_mensual:
             self.add_error(
                 'cuota_inicial',
@@ -345,6 +354,8 @@ class PolizaForm(forms.ModelForm):
             )
         if cuota is not None and cuota < 0:
             self.add_error('cuota_inicial', 'La cuota inicial no puede ser negativa.')
+        if saldo is not None and saldo < 0:
+            self.add_error('saldo_restante', 'El saldo restante no puede ser negativo.')
         return cleaned
 
 # GASTO DEL PACIENTE
@@ -399,19 +410,46 @@ class FamiliarForm(forms.ModelForm):
     def clean_cedula(self):
         return _solo_digitos(self.cleaned_data.get('cedula'), 'La cédula')
 
+# TASA DE CAMBIO
+
+class TasaCambioForm(forms.ModelForm):
+    class Meta:
+        model = TasaCambio
+        fields = ['tasa', 'actualizado_por']
+        widgets = {
+            'tasa': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'placeholder': 'Ej: 36.50'}),
+            'actualizado_por': forms.HiddenInput(),
+        }
+
 # RECETAS
 
 class RecetaForm(forms.ModelForm):
     class Meta:
         model = Receta
-        fields = ['medicamento', 'cantidad', 'dosis', 'duracion', 'indicaciones']
+        fields = ['medicamento', 'examen', 'cantidad', 'dosis', 'duracion', 'indicaciones']
         widgets = {
-            'medicamento': forms.Select(attrs={'class': 'form-control uiverse-input'}),
+            'medicamento': forms.Select(attrs={'class': 'form-control uiverse-input', 'id': 'id_medicamento'}),
+            'examen': forms.Select(attrs={'class': 'form-control uiverse-input', 'id': 'id_examen_receta'}),
             'cantidad': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'min': '1'}),
             'dosis': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ej: 1 tableta cada 8 horas'}),
             'duracion': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ej: 7 días'}),
             'indicaciones': forms.Textarea(attrs={'class': 'form-control uiverse-input', 'rows': 3, 'placeholder': 'Instrucciones adicionales...'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['medicamento'].queryset = Medicamento.objects.filter(activo=True)
+        self.fields['examen'].queryset = ExamenLaboratorio.objects.filter(activo=True)
+        self.fields['medicamento'].required = False
+        self.fields['examen'].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        medicamento = cleaned.get('medicamento')
+        examen = cleaned.get('examen')
+        if not medicamento and not examen:
+            raise forms.ValidationError('Debe seleccionar al menos un medicamento o un examen de laboratorio.')
+        return cleaned
 
     def clean_cantidad(self):
         valor = self.cleaned_data.get('cantidad')

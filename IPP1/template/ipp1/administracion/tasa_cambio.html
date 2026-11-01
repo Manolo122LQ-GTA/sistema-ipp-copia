@@ -1,0 +1,101 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Administración{% endblock %}
+{% block title %}Tasa de Cambio - IPP{% endblock %}
+{% block content %}
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-currency-exchange me-2"></i>Tasa de Cambio del Día</h2>
+        <p class="text-muted">Gestión de la tasa de cambio Dólar (USD) a Bolívar (VES).</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary uiverse-btn">
+            <i class="bi bi-arrow-left me-1"></i>Volver Atrás
+        </a>
+    </div>
+</div>
+
+<!-- TARJETA DE TASA ACTUAL -->
+{% if tasas.first %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100 uiverse-card-metric uiverse-card-metric--success">
+            <div class="card-body text-center">
+                <div class="d-flex align-items-center gap-3 justify-content-center">
+                    <div class="rounded-3 p-3 uiverse-metric-box uiverse-metric-box--success">
+                        <i class="bi bi-currency-dollar fs-3 text-success"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">Tasa Actual (USD → VES)</small>
+                        <span class="fs-3 fw-bold text-success">Bs {{ tasas.first.tasa }}</span>
+                        <small class="d-block text-muted">{{ tasas.first.fecha|date:"d/m/Y" }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- FORMULARIO PARA ACTUALIZAR TASA -->
+<div class="uiverse-card shadow-sm">
+    <div class="card-header bg-primary text-white py-3">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-pencil-square me-2"></i>Actualizar Tasa de Cambio</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" class="row g-3">
+            {% csrf_token %}
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Tasa (1 USD = ? VES)</label>
+                {{ form.tasa }}
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-success w-100 uiverse-btn">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- HISTORIAL DE TASAS -->
+<div class="uiverse-card shadow-sm mt-4">
+    <div class="card-header bg-info text-white py-3">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2"></i>Historial de Tasas</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Moneda Origen</th>
+                        <th>Moneda Destino</th>
+                        <th>Tasa</th>
+                        <th>Fecha</th>
+                        <th>Actualizado Por</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tasa in tasas %}
+                    <tr>
+                        <th scope="row">{{ forloop.counter }}</th>
+                        <td class="fw-semibold">{{ tasa.moneda_origen }}</td>
+                        <td>{{ tasa.moneda_destino }}</td>
+                        <td class="fw-bold text-primary">${{ tasa.tasa }}</td>
+                        <td>{{ tasa.fecha|date:"d/m/Y H:i" }}</td>
+                        <td>{{ tasa.actualizado_por.username|default:"Sistema" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="bi bi-clock-history fs-1 d-block mb-2 text-secondary"></i>
+                            No hay tasas de cambio registradas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Receta{% endblock %}
+{% block title %}Receta Médica - Imprimir{% endblock %}
+{% block content %}
+
+<style>
+    @media print {
+        .no-print, .no-print * {
+            display: none !important;
+        }
+        body {
+            background: white !important;
+            color: black !important;
+        }
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        .print-header {
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+    }
+</style>
+
+<div class="no-print">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-dark"><i class="bi bi-capsule me-2"></i>Receta Médica</h2>
+            <p class="text-muted">{{ receta.cita.paciente.nombre }} {{ receta.cita.paciente.apellido }}</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <button onclick="window.print()" class="btn btn-primary uiverse-btn"><i class="bi bi-printer me-1"></i>Imprimir Receta</button>
+            <a href="{% if receta.cita.especialista.groups.filter(name='Medico').exists %}{% url 'citas_recibidas_medico' %}{% elif receta.cita.especialista.groups.filter(name='Odontologo').exists %}{% url 'citas_odonto' %}{% else %}{% url 'citas_especialista' %}{% endif %}" class="btn btn-outline-secondary uiverse-btn">
+                <i class="bi bi-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- VERSION IMPRIMIBLE -->
+<div class="card shadow-sm print-version">
+    <div class="card-body p-4">
+        <div class="print-header text-center">
+            <h1 class="fw-bold text-dark">SISTEMA IPP - IUTAG</h1>
+            <p class="text-muted mb-0">Receta Médica</p>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <p class="mb-1"><strong>Paciente:</strong> {{ receta.cita.paciente.nombre }} {{ receta.cita.paciente.apellido }}</p>
+                <p class="mb-1"><strong>Cédula:</strong> {{ receta.cita.paciente.cedula }}</p>
+            </div>
+            <div class="col-md-6">
+                <p class="mb-1"><strong>Fecha:</strong> {{ receta.fecha_prescrita|date:"d/m/Y" }}</p>
+                <p class="mb-0"><strong>Médico:</strong> {% if receta.cita.especialista %}{{ receta.cita.especialista.get_full_name|default:receta.cita.especialista.username }}{% else %}—{% endif %}</p>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="border p-3 rounded bg-light">
+                    <h5 class="fw-bold text-primary mb-3">Receta Médica</h5>
+                    {% if receta.medicamento %}
+                    <p class="mb-1"><strong>Medicamento:</strong> {{ receta.medicamento.nombre }}</p>
+                    <p class="mb-1"><strong>Cantidad:</strong> {{ receta.cantidad }}</p>
+                    <p class="mb-1"><strong>Dosis:</strong> {{ receta.dosis|default:"—" }}</p>
+                    <p class="mb-0"><strong>Duración:</strong> {{ receta.duracion|default:"—" }}</p>
+                    {% endif %}
+                    {% if receta.examen %}
+                    <p class="mb-1"><strong>Examen de Laboratorio:</strong> {{ receta.examen.nombre }}</p>
+                    <p class="mb-0"><strong>Costo del Examen:</strong> ${{ receta.examen.costo|floatformat:2 }}</p>
+                    {% endif %}
+                    {% if receta.indicaciones %}
+                    <p class="mb-0"><strong>Indicaciones:</strong> {{ receta.indicaciones }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if receta.indicaciones %}
+        <div class="mb-4">
+            <h5 class="fw-bold text-primary mb-2">Indicaciones Adicionales</h5>
+            <div class="border p-3 rounded bg-light">{{ receta.indicaciones }}</div>
+        </div>
+        {% endif %}
+
+        <div class="text-center mt-5 pt-3 border-top">
+            <p class="text-muted small mb-0">Firma del Médico: _________________________________</p>
+            <p class="text-muted small mb-0">Sistema IPP - {{ receta.fecha_prescrita|date:"d/m/Y H:i" }}</p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

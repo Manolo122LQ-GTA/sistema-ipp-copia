@@ -57,9 +57,9 @@
                     <strong>{{ d.citas_usadas }}</strong>
                 </div>
 
-                {% if d.poliza.plan and d.poliza.plan.consultas_maximas_anuales > 0 %}
+                {% if d.poliza.plan and d.poliza.plan.servicios_maximos_anuales > 0 %}
                 <div class="mt-2">
-                    {% with usadas=d.citas_usadas max_c=d.poliza.plan.consultas_maximas_anuales %}
+                    {% with usadas=d.citas_usadas max_c=d.poliza.plan.servicios_maximos_anuales %}
                     <small class="text-muted">Consumo: {{ usadas }}/{{ max_c }}</small>
                     <div class="progress" style="height: 5px;">
                         <div class="progress-bar {% if usadas >= max_c %}bg-danger{% else %}bg-success{% endif %}"

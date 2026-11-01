@@ -17,12 +17,14 @@
     <div class="uiverse-card shadow-sm mb-4">
         <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center py-3">
             <span><i class="bi bi-box-seam me-2"></i>Catálogo de Medicamentos</span>
-            <button class="btn btn-light btn-sm uiverse-btn" data-bs-toggle="modal" data-bs-target="#modalCrear">
-            <i class="bi bi-plus-circle me-1"></i>Nuevo Medicamento
-            </button>
-            <a href="#" class="btn btn-outline-primary btn-sm uiverse-btn">
+            <!-- IMPORTAR MEDICAMENTOS POR EXCEL -->
+            <a href="{% url 'importar_medicamentos_excel' %}" class="btn btn-light btn-sm uiverse-btn">
             <i class="bi bi-upload me-1"></i>Importar
             </a>
+            <!-- NUEVO MEDICAMENTO -->
+            <button class="btn btn-light btn-sm uiverse-btn" data-bs-toggle="modal" data-bs-target="#modalCrear">
+            <i class="bi bi-plus-circle me-1"></i>Nueva Tarifa
+            </button>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">

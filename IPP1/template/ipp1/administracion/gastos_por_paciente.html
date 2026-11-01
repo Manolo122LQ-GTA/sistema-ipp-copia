@@ -65,8 +65,8 @@
                         <td>
                             {% if d.paciente.status_afiliado == 'Afiliado' %}
                                 <span class="badge bg-success">Afiliado</span>
-                            {% elif d.paciente.status_afiliado == 'Particular' %}
-                                <span class="badge bg-warning text-dark">Particular</span>
+                            {% elif d.paciente.status_afiliado == 'Convenio' %}
+                                <span class="badge bg-warning text-dark">Convenio</span>
                             {% else %}
                                 <span class="badge bg-info text-white">Comunidad</span>
                             {% endif %}

@@ -61,11 +61,11 @@
             </div>
         </div>
 
-        {% if poliza.plan and poliza.plan.consultas_maximas_anuales > 0 %}
+        {% if poliza.plan and poliza.plan.servicios_maximos_anuales > 0 %}
         <hr>
         <div class="row">
             <div class="col-md-6">
-                {% with usadas=poliza.consultas_usadas_anuales max_consultas=poliza.plan.consultas_maximas_anuales %}
+                {% with usadas=poliza.consultas_usadas_anuales max_consultas=poliza.plan.servicios_maximos_anuales %}
                 <small class="text-muted">Consultas usadas este año: <strong>{{ usadas }}</strong> de <strong>{{ max_consultas }}</strong></small>
                 <div class="progress" style="height: 8px;">
                     <div class="progress-bar {% if usadas >= max_consultas %}bg-danger{% elif usadas >= max_consultas|add:"-1" %}bg-warning{% else %}bg-success{% endif %}"

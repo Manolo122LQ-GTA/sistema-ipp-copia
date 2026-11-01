@@ -47,7 +47,7 @@ class SolicitudSecretaria(models.Model):
         from decimal import Decimal
 
         from .tarifas import TarifaEspecialidad
-        if self.cubierto_por_poliza and self.paciente.status_afiliado in ('Afiliado',):
+        if self.cubierto_por_poliza:
             return (Decimal('0.00'), Decimal('0.00'), Decimal('0.00'))
         tarifa = None
         if self.especialista:

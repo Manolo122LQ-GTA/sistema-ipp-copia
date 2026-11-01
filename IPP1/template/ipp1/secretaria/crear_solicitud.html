@@ -6,9 +6,20 @@
 <div class="row mb-4 align-items-center">
     <div class="col-md-8">
         <h2 class="fw-bold text-dark"><i class="bi bi-file-earmark-plus me-2"></i>Crear Solicitud de Servicio</h2>
-        <p class="text-muted">Complete los datos para generar una nueva solicitud de cita médica.</p>
+        <p class="text-muted">{% if es_medico_creando %}Registre una nueva cita como médico tratante.{% else %}Complete los datos para generar una nueva solicitud de cita médica.{% endif %}</p>
     </div>
-       </div>
+    <div class="col-md-4 text-md-end">
+        {% if not es_medico_creando %}
+        <a href="{% url 'secretaria' %}" class="btn btn-outline-secondary uiverse-btn">
+            <i class="bi bi-arrow-left me-1"></i>Volver Atrás
+        </a>
+        {% else %}
+        <a href="{% url 'medico_panel' %}" class="btn btn-outline-secondary uiverse-btn">
+            <i class="bi bi-arrow-left me-1"></i>Volver al Panel Médico
+        </a>
+        {% endif %}
+    </div>
+</div>
 
 <div class="uiverse-card shadow-sm mx-auto" style="max-width: 1000px;">
     <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
@@ -111,5 +122,31 @@
     </div>
 </div>
 <script>window.addEventListener('pageshow', function(e){ if(e.persisted){ document.getElementById('solicitudForm').reset(); } });</script>
+
+<script>
+    // Historial de meses de visita por paciente
+    const mesesVisita = JSON.parse('{{ meses_visita|escapejs }}');
+    const pacienteSelect = document.getElementById('{{ form.paciente.id_for_label }}');
+    const historialDiv = document.createElement('div');
+    historialDiv.id = 'historial-meses-visita';
+    historialDiv.className = 'mt-2 p-3 bg-info bg-opacity-10 rounded border border-info';
+    historialDiv.style.display = 'none';
+    pacienteSelect.parentElement.appendChild(historialDiv);
+
+    function actualizarHistorial() {
+        const pacienteId = pacienteSelect.value;
+        const div = document.getElementById('historial-meses-visita');
+        if (pacienteId && mesesVisita[pacienteId] !== undefined) {
+            div.innerHTML = `<strong><i class="bi bi-clock-history me-2"></i>Historial de Visitas:</strong> ${mesesVisita[pacienteId]} cita(s) atendida(s) registrada(s).`;
+            div.style.display = 'block';
+        } else {
+            div.style.display = 'none';
+        }
+    }
+
+    pacienteSelect.addEventListener('change', actualizarHistorial);
+    // Ejecutar al cargar si ya hay un paciente seleccionado
+    document.addEventListener('DOMContentLoaded', actualizarHistorial);
+</script>
 {% endblock %}
 <!-- tu no deberias de estar leyendo esto ¿sabes? -->

@@ -9,14 +9,14 @@ class PlanSalud(models.Model):
     descripcion = models.TextField(blank=True, null=True)
     costo_mensual = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     cobertura = models.TextField(blank=True, null=True, help_text="Servicios cubiertos por el plan")
-    consultas_maximas_anuales = models.IntegerField(default=4, help_text="Número máximo de consultas cubiertas por año (0 = ilimitado)")
+    servicios_maximos_anuales = models.IntegerField(default=4, help_text="Número máximo de servicios cubiertos por año (0 = ilimitado)")
 
     class Meta:
         verbose_name = "Plan de Salud"
         verbose_name_plural = "Planes de Salud"
 
     def __str__(self):
-        return f"{self.nombre} - ${self.costo_mensual}/mes ({self.consultas_maximas_anuales} consultas/año)"
+        return f"{self.nombre} - ${self.costo_mensual}/mes ({self.servicios_maximos_anuales} servicios/año)"
 
 
 class Poliza(models.Model):
@@ -48,9 +48,22 @@ class Poliza(models.Model):
         ).exclude(estado='Cancelado').count()
 
     def consultas_restantes(self):
-        if not self.plan or self.plan.consultas_maximas_anuales == 0:
+        if not self.plan or self.plan.servicios_maximos_anuales == 0:
             return None
-        return max(0, self.plan.consultas_maximas_anuales - self.consultas_usadas_anuales())
+        return max(0, self.plan.servicios_maximos_anuales - self.consultas_usadas_anuales())
+
+    @property
+    def debe_dinero(self):
+        """Retorna True si el saldo restante es negativo (debe dinero)."""
+        return self.saldo_restante < 0
+
+    def actualizar_estado_por_saldo(self):
+        """Actualiza el estado de la póliza basado en el saldo restante."""
+        if self.debe_dinero:
+            self.estado = 'Inactivo'
+        else:
+            self.estado = 'Activo'
+        self.save(update_fields=['estado'])
 
 
 class GastoPaciente(models.Model):
@@ -83,3 +96,20 @@ class Familiar(models.Model):
 
     def __str__(self):
         return f"{self.nombre} {self.apellido} ({self.parentesco})"
+
+
+class TasaCambio(models.Model):
+    """Tasa de cambio del día: Dólar a Bolívar."""
+    moneda_origen = models.CharField(max_length=10, default='USD')
+    moneda_destino = models.CharField(max_length=10, default='VES')
+    tasa = models.DecimalField(max_digits=12, decimal_places=2, help_text="1 USD = X VES")
+    fecha = models.DateField(auto_now_add=True)
+    actualizado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Tasa de Cambio"
+        verbose_name_plural = "Tasas de Cambio"
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"1 {self.moneda_origen} = {self.tasa} {self.moneda_destino} ({self.fecha})"

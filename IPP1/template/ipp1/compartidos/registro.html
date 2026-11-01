@@ -117,13 +117,13 @@
                     <!-- VALIDACION DE CONTRASEÑA -->
                     <div class="pw-wrap">
                         <div class="position-relative">
-                            <input type="password" name="password" id="id_password" maxlength="16" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;">
+                            <input type="password" name="password" id="id_password" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;">
                             <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
                         </div>
                     
                     <!-- REQUISITOS DE CONTRASEÑA -->
                     <ul id="password-requisitos" class="text-start small px-3" style="list-style:none; padding:4px 12px; margin:0; font-size:11px;">
-                        <li id="req-long" class="text-muted">✗ Exactamente 16 caracteres</li>
+                        <li id="req-long" class="text-muted">✗ Al menos 16 caracteres</li>
                         <li id="req-mayus" class="text-muted">✗ 1 letra mayúscula</li>
                         <li id="req-num" class="text-muted">✗ 1 número</li>
                         <li id="req-symbol" class="text-muted">✗ 1 símbolo</li>
@@ -133,7 +133,7 @@
 
                     <!-- Confirmar Contraseña -->
                      <div class="position-relative">
-                        <input type="password" name="password2" id="id_password2" maxlength="16" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;">
+                        <input type="password" name="password2" id="id_password2" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;">
                         <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
                     </div>
 
@@ -172,7 +172,7 @@ function validarPassword() {
         el.className = cond ? 'text-success' : 'text-danger';
         el.innerHTML = (cond ? '✓' : '✗') + ' ' + el.innerHTML.substring(2);
     };
-    req('req-long', pwd.length === 8);
+    req('req-long', pwd.length >= 16);
     req('req-mayus', /[A-Z]/.test(pwd));
     req('req-num', /[0-9]/.test(pwd));
     req('req-symbol', /[^A-Za-z0-9]/.test(pwd));

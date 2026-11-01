@@ -30,11 +30,7 @@
                 <label class="form-label fw-semibold">Descripción adicional</label>
                 <textarea name="descripcion" class="uiverse-input form-control" rows="3" placeholder="Opcional"></textarea>
             </div>
-            <div class="mb-3">
-                <label class="form-label fw-semibold">IVA (%)</label>
-                <input type="number" name="iva" class="uiverse-input form-control" step="0.01" value="{{ iva_default }}" min="0" max="100">
-                <div class="form-text">Porcentaje de IVA a aplicar (ej: 16).</div>
-            </div>
+            <input type="hidden" name="iva" value="0">
             <button type="submit" class="uiverse-btn btn btn-primary"><i class="bi bi-check-lg me-1"></i>Generar Factura</button>
         </form>
     </div>

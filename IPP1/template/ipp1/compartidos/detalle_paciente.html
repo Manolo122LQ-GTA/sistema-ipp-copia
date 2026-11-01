@@ -87,10 +87,10 @@
                         <div>
                             {% if paciente.status_afiliado == 'Afiliado' %}
                                 <span class="badge bg-success fs-6">Afiliado</span>
-                            {% elif paciente.status_afiliado == 'No Afiliado' %}
-                                <span class="badge bg-primary fs-6">Particular</span>
                             {% elif paciente.status_afiliado == 'Comunidad' %}
                                 <span class="badge bg-primary fs-6">Comunidad</span>
+                            {% elif paciente.status_afiliado == 'Convenio' %}
+                                <span class="badge bg-warning text-dark fs-6">Convenio</span>
                             {% endif %}
                         </div>
                     </div>
@@ -169,8 +169,8 @@
                     <div>
                         <small class="text-muted d-block">Consultas</small>
                         <div>
-                            {% if poliza_activa.plan.consultas_maximas_anuales %}
-                                {{ poliza_activa.consultas_usadas_anuales }} / {{ poliza_activa.plan.consultas_maximas_anuales }} usadas
+                            {% if poliza_activa.plan.servicios_maximos_anuales %}
+                                {{ poliza_activa.consultas_usadas_anuales }} / {{ poliza_activa.plan.servicios_maximos_anuales }} usadas
                                 {% with rest=poliza_activa.consultas_restantes %}
                                     {% if rest == 0 %}
                                         <span class="badge bg-danger">Agotado</span>
@@ -196,9 +196,9 @@
                 {% endif %}
             </div>
         </div>
-        {% if poliza_activa.plan and poliza_activa.plan.consultas_maximas_anuales > 0 %}
+        {% if poliza_activa.plan and poliza_activa.plan.servicios_maximos_anuales > 0 %}
         <div class="mt-3">
-            {% with usadas=poliza_activa.consultas_usadas_anuales max_c=poliza_activa.plan.consultas_maximas_anuales %}
+            {% with usadas=poliza_activa.consultas_usadas_anuales max_c=poliza_activa.plan.servicios_maximos_anuales %}
             <small class="text-muted">Consumo de consultas: {{ usadas }}/{{ max_c }}</small>
             <div class="progress" style="height: 6px;">
                 <div class="progress-bar {% if usadas >= max_c %}bg-danger{% elif usadas >= max_c|add:"-1" %}bg-warning{% else %}bg-success{% endif %}"
