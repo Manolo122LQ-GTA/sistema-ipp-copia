@@ -21,7 +21,15 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     {% if user.is_authenticated %}
-                        {% if user.is_superuser %}
+                        {% if "Administracion" in user.groups.all|join:"," %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'inicio_admin' %}">Panel</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'menu_admin' %}">Usuarios</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'usuarios_pendientes' %}">Pendientes</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'saldos_admin' %}">Saldos</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'reporte_admin' %}">Reportes</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'facturas_lista' %}">Facturación</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'tasa_cambio_lista' %}">Tasa de Cambio</a></li>
+                        {% elif user.is_superuser %}
                             <li class="nav-item"><a class="nav-link" href="{% url 'registrar_paciente' %}">Registrar Pacientes</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'medico' %}">Servicio Médico</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'inicio_admin' %}">Administración</a></li>
@@ -51,14 +59,6 @@
                             <li class="nav-item"><a class="nav-link" href="{% url 'registrar_laboratorio' %}">Registrar</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'solicitudes_pendientes_laboratorio' %}">Pendientes</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'resultados_laboratorio' %}">Resultados</a></li>
-                        {% elif "Administracion" in user.groups.all|join:"," %}
-                            <li class="nav-item"><a class="nav-link" href="{% url 'inicio_admin' %}">Panel</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'menu_admin' %}">Usuarios</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'usuarios_pendientes' %}">Pendientes</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'saldos_admin' %}">Saldos</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'reporte_admin' %}">Reportes</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'facturas_lista' %}">Facturación</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'poliza_inicio' %}">Póliza</a></li>
                         {% else %}
                             <li class="nav-item"><span class="nav-link text-warning">Rol no asignado</span></li>
                         {% endif %}

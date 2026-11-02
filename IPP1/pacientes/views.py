@@ -117,7 +117,7 @@ def logout_view(request):
     return redirect('login')
 
 # VISTA REGISTRO USUARIO/ROLES
-ROLES_PERMITIDOS_REGISTRO = ['Secretaria', 'Medico', 'Odontologo', 'Laboratorio', 'Especialista', 'Poliza']
+ROLES_PERMITIDOS_REGISTRO = ['Secretaria', 'Medico', 'Odontologo', 'Laboratorio', 'Especialista', 'Poliza', 'Administracion']
 
 def registro(request):
     """Vista para el registro de nuevos usuarios del sistema."""
@@ -258,6 +258,10 @@ def perfil_usuario(request):
 # VISTA SECRETARIA
 @login_required
 def secretaria(request):    
+    # Bloquear acceso a usuarios del rol Administración
+    if request.user.groups.filter(name='Administracion').exists() and not request.user.is_superuser:
+        messages.error(request, "Acceso denegado: El rol de Administración solo puede acceder al área administrativa.")
+        return redirect('inicio_admin')
     if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists()):
         messages.error(request, "Acceso denegado: No tienes el rol de Secretaria.")
         return redirect('home')
@@ -280,6 +284,10 @@ def mis_solicitudes(request):
 @login_required
 def medico(request):
     """Selector de áreas dentro del Servicio Médico."""
+    # Bloquear acceso a usuarios del rol Administración
+    if request.user.groups.filter(name='Administracion').exists() and not request.user.is_superuser:
+        messages.error(request, "Acceso denegado: El rol de Administración solo puede acceder al área administrativa.")
+        return redirect('inicio_admin')
     es_medico_real = request.user.groups.filter(name='Medico').exists()
     puede_acceder = (
         request.user.is_superuser
@@ -303,6 +311,10 @@ def medico(request):
 @login_required
 def medico_dashboard(request):
     """Panel operativo de Medicina General."""
+    # Bloquear acceso a usuarios del rol Administración
+    if request.user.groups.filter(name='Administracion').exists() and not request.user.is_superuser:
+        messages.error(request, "Acceso denegado: El rol de Administración solo puede acceder al área administrativa.")
+        return redirect('inicio_admin')
     if not (request.user.is_superuser or request.user.groups.filter(name='Medico').exists()):
         messages.error(request, "Acceso denegado.")
         return redirect('home')
@@ -445,6 +457,10 @@ def consulta_historial_medico(request):
 @login_required
 def odontologo(request):
     """Vista principal para el área de Odontología."""
+    # Bloquear acceso a usuarios del rol Administración
+    if request.user.groups.filter(name='Administracion').exists() and not request.user.is_superuser:
+        messages.error(request, "Acceso denegado: El rol de Administración solo puede acceder al área administrativa.")
+        return redirect('inicio_admin')
     if not (request.user.is_superuser or request.user.groups.filter(name='Odontologo').exists()):
         messages.error(request, "No tienes permiso para acceder a Odontología.")
         return redirect('home')
@@ -533,6 +549,10 @@ def consulta_historial_odonto(request):
 @login_required
 def especialista(request):
     """Vista principal para el Médico Especialista."""
+    # Bloquear acceso a usuarios del rol Administración
+    if request.user.groups.filter(name='Administracion').exists() and not request.user.is_superuser:
+        messages.error(request, "Acceso denegado: El rol de Administración solo puede acceder al área administrativa.")
+        return redirect('inicio_admin')
     if not (request.user.is_superuser or request.user.groups.filter(name='Especialista').exists()):
         messages.error(request, "No tienes permiso para acceder a esta área.")
         return redirect('home')
@@ -713,6 +733,10 @@ def consulta_historial_especialista(request):
 @login_required
 def laboratorista(request):
     """Panel principal para el área de Laboratorio."""
+    # Bloquear acceso a usuarios del rol Administración
+    if request.user.groups.filter(name='Administracion').exists() and not request.user.is_superuser:
+        messages.error(request, "Acceso denegado: El rol de Administración solo puede acceder al área administrativa.")
+        return redirect('inicio_admin')
     if not (request.user.is_superuser or request.user.groups.filter(name='Laboratorio').exists()):
         messages.error(request, "No tienes permiso para acceder al área de Laboratorio.")
         return redirect('home')
@@ -980,7 +1004,11 @@ def ingresos_especialistas(request):
 @login_required
 def poliza_inicio(request):
     """Panel principal del módulo Póliza."""
-    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+    # Bloquear acceso a usuarios del rol Administración (por ahora)
+    if request.user.groups.filter(name='Administracion').exists() and not request.user.is_superuser:
+        messages.error(request, "Acceso denegado: El módulo de Póliza no está disponible para el rol de Administración.")
+        return redirect('inicio_admin')
+    if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists()):
         messages.error(request, "No tienes permisos para acceder a esta área.")
         return redirect('home')
 
@@ -1004,7 +1032,11 @@ def poliza_inicio(request):
 @login_required
 def poliza_menu(request):
     """Listado y gestión de pólizas."""
-    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+    # Bloquear acceso a usuarios del rol Administración (por ahora)
+    if request.user.groups.filter(name='Administracion').exists() and not request.user.is_superuser:
+        messages.error(request, "Acceso denegado: El módulo de Póliza no está disponible para el rol de Administración.")
+        return redirect('inicio_admin')
+    if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
