@@ -28,6 +28,7 @@
                             <li class="nav-item"><a class="nav-link" href="{% url 'saldos_admin' %}">Saldos</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'reporte_admin' %}">Reportes</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'facturas_lista' %}">Facturación</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'reporte_caja' %}">Caja</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'tasa_cambio_lista' %}">Tasa de Cambio</a></li>
                         {% elif user.is_superuser %}
                             <li class="nav-item"><a class="nav-link" href="{% url 'registrar_paciente' %}">Registrar Pacientes</a></li>
@@ -59,6 +60,10 @@
                             <li class="nav-item"><a class="nav-link" href="{% url 'registrar_laboratorio' %}">Registrar</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'solicitudes_pendientes_laboratorio' %}">Pendientes</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'resultados_laboratorio' %}">Resultados</a></li>
+                        {% elif "Poliza" in user.groups.all|join:"," or "Póliza" in user.groups.all|join:"," %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'poliza_inicio' %}">Panel</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'poliza_menu' %}">Pólizas</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'registrar_paciente' %}">Ver Ficha Paciente</a></li>
                         {% else %}
                             <li class="nav-item"><span class="nav-link text-warning">Rol no asignado</span></li>
                         {% endif %}

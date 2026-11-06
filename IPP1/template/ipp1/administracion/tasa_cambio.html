@@ -81,8 +81,10 @@
                         <td class="fw-semibold">{{ tasa.moneda_origen }}</td>
                         <td>{{ tasa.moneda_destino }}</td>
                         <td class="fw-bold text-primary">${{ tasa.tasa }}</td>
-                        <td>{{ tasa.fecha|date:"d/m/Y H:i" }}</td>
-                        <td>{{ tasa.actualizado_por.username|default:"Sistema" }}</td>
+                        <td>{{ tasa.fecha|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if tasa.actualizado_por %}{{ tasa.actualizado_por.username }}{% else %}Sistema{% endif %}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>

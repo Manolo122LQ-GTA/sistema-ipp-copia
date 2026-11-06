@@ -29,9 +29,9 @@
                     <!-- ACEPTAMOS LA CREACION DE POLIZA -->
                     <button type="submit" class="btn btn-outline-primary mt-3 uiverse-btn"><i class="bi bi-save me-1"></i>Crear Póliza</button>
                     <!-- CANCELAMOS LA CREACION DE POLIZA PORQUE NO SE PUEDE CREAR UNA POLIZA SI EL PACIENTE NO EXISTE, SE DEBE CREAR EL PACIENTE PRIMERO -->
-                    <a href="{% url 'poliza_inicio' %}" class="btn btn-outline-danger mt-3 uiverse-btn"
+                    <a href="{% url 'poliza_menu' %}" class="btn btn-outline-danger mt-3 uiverse-btn"
                     onclick="return confirm('¿Seguro que deseas cancelar? Los datos no guardados se perderán.');">
-                    <i class="bi bi-arrow-left me-1"></i>Cancelar
+                    <i class="bi bi-x me-1"></i>Cancelar
                     </a>
                 </div>
             </form>

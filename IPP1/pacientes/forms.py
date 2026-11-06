@@ -415,10 +415,9 @@ class FamiliarForm(forms.ModelForm):
 class TasaCambioForm(forms.ModelForm):
     class Meta:
         model = TasaCambio
-        fields = ['tasa', 'actualizado_por']
+        fields = ['tasa']
         widgets = {
             'tasa': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'placeholder': 'Ej: 36.50'}),
-            'actualizado_por': forms.HiddenInput(),
         }
 
 # RECETAS
@@ -456,3 +455,40 @@ class RecetaForm(forms.ModelForm):
         if valor is not None and valor < 1:
             raise forms.ValidationError('La cantidad debe ser al menos 1.')
         return valor
+
+# REFINAMIENTO DE CITA
+
+class SolicitudSecretariaRefinarForm(forms.ModelForm):
+    """Formulario para reprogramar (refinar) fecha y hora de una cita pendiente."""
+    class Meta:
+        model = SolicitudSecretaria
+        fields = ['fecha_cita', 'hora_cita']
+        widgets = {
+            'fecha_cita': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
+            'hora_cita': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control uiverse-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.current_user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+    def clean_fecha_cita(self):
+        fecha = self.cleaned_data.get('fecha_cita')
+        if fecha and fecha < timezone.now().date():
+            raise forms.ValidationError('La fecha de la cita no puede ser en el pasado.')
+        return fecha
+
+    def clean(self):
+        cleaned_data = super().clean()
+        especialista = self.instance.especialista
+        fecha_cita = cleaned_data.get('fecha_cita')
+        hora_cita = cleaned_data.get('hora_cita')
+        if especialista and fecha_cita and hora_cita:
+            if SolicitudSecretaria.objects.filter(
+                especialista=especialista,
+                fecha_cita=fecha_cita,
+                hora_cita=hora_cita,
+                estado__in=['En Espera', 'Atendido'],
+            ).exclude(pk=self.instance.pk).exists():
+                raise forms.ValidationError('El especialista ya tiene una cita programada para esa fecha y hora.')
+        return cleaned_data

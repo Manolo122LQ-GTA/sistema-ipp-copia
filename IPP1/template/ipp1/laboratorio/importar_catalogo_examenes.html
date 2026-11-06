@@ -1,0 +1,53 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Laboratorio{% endblock %}
+{% block title %}Importar Catálogo de Exámenes - IPP{% endblock %}
+{% block content %}
+
+<!-- PANEL CON NOMBRE DE LA SECCION Y BOTON DE VOLVER ATRAS -->
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-upload me-2"></i>Importar Catalogo de Examenes</h2>
+        <p class="text-muted">Cargue un archivo Excel con los examenes a registrar en el sistema.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'catalogo_examenes' %}" class="btn btn-outline-secondary uiverse-btn">
+            <i class="bi bi-arrow-left me-1"></i>Volver al Catálogo
+        </a>
+    </div>
+</div>
+
+<!-- PANEL DONDE SE CARGA EL ARCHIVO EXCEL Y SE MUESTRA UN EJEMPLO DE FORMATO -->
+<div class="uiverse-card shadow-sm">
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="archivo">Archivo Excel</label>
+                <input type="file" id="archivo" name="archivo" class="form-control uiverse-input" accept=".xlsx,.xlsm" aria-describedby="archivo-help" required>
+                <div class="form-text" id="archivo-help">Formato: columnas <strong>Nombre, Descripción, Costo Base, Estado</strong>. La primera fila debe contener los encabezados. El precio afiliado se calcula automáticamente (20% de descuento).</div>
+            </div>
+            <button type="submit" class="btn btn-primary uiverse-btn"><i class="bi bi-upload me-1"></i>Importar Examenes</button>
+        </form>
+    </div>
+</div>
+
+<!-- UNA PARTE PARA MOSTRAR UN EJEMPLO DE FORMATO DE EXCEL QUE SE ESPERA, PARA QUE EL USUARIO PUEDA VER CUAL ES EL FORMATO CORRECTO. -->
+<div class="uiverse-card mt-4 shadow-sm">
+    <div class="card-header bg-light fw-bold">Formato de ejemplo</div>
+    <div class="card-body">
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-0">
+            <thead class="table-light">
+                <tr><th>Nombre</th><th>Descripción</th><th>Costo Base</th><th>Estado</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Hemograma completo</td><td>Conteo sanguíneo</td><td>10.00</td><td>Activo</td></tr>
+                <tr><td>Glucosa en ayunas</td><td>Química sanguínea</td><td>8.00</td><td>Activo</td></tr>
+                <tr><td>Perfil lipídico</td><td>Colesterol y triglicéridos</td><td>15.00</td><td>Inactivo</td></tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

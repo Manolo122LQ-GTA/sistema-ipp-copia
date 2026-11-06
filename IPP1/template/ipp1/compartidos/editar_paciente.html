@@ -8,44 +8,85 @@
 <h2 class="fw-bold mb-4 text-primary text-center">Editar Paciente</h2>
 <p class="text-muted text-center">{{ paciente.nombre }} {{ paciente.apellido }} ({{ paciente.cedula }})</p>
 
-<form method="post">
+<form method="post" novalidate>
     {% csrf_token %}
+    {% if form.errors %}
+        <div class="alert alert-danger py-2">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Revisa los campos marcados para poder guardar los cambios.
+        </div>
+    {% endif %}
     <div class="row g-4">
-        <div class="col-md-3">
-            <label class="form-label fw-semibold">Nombre</label>
+        <div class="col-md-6">
+            <label for="{{ form.nombre.id_for_label }}" class="form-label fw-semibold">Nombre</label>
             {{ form.nombre }}
+            {% if form.nombre.errors %}
+                <div class="text-danger small mt-1">{{ form.nombre.errors }}</div>
+            {% endif %}
         </div>
-        <div class="col-md-2">
-            <label class="form-label fw-semibold">Apellido</label>
+        <div class="col-md-6">
+            <label for="{{ form.apellido.id_for_label }}" class="form-label fw-semibold">Apellido</label>
             {{ form.apellido }}
-        </div>
-        <div class="col-md-3">
-            <label class="form-label fw-semibold">Cédula</label>
-            {{ form.cedula }}
-        </div>
-        <div class="col-md-2">
-            <label class="form-label fw-semibold">Código</label>
-            {{ form.codigo_telefono }}
+            {% if form.apellido.errors %}
+                <div class="text-danger small mt-1">{{ form.apellido.errors }}</div>
+            {% endif %}
         </div>
         <div class="col-md-4">
-            <label class="form-label fw-semibold">Teléfono</label>
+            <label for="{{ form.cedula.id_for_label }}" class="form-label fw-semibold">Cédula</label>
+            {{ form.cedula }}
+            {% if form.cedula.errors %}
+                <div class="text-danger small mt-1">{{ form.cedula.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-4">
+            <label for="{{ form.codigo_telefono.id_for_label }}" class="form-label fw-semibold">Código</label>
+            {{ form.codigo_telefono }}
+            {% if form.codigo_telefono.errors %}
+                <div class="text-danger small mt-1">{{ form.codigo_telefono.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-4">
+            <label for="{{ form.numero_telefono.id_for_label }}" class="form-label fw-semibold">Teléfono</label>
             {{ form.numero_telefono }}
+            {% if form.numero_telefono.errors %}
+                <div class="text-danger small mt-1">{{ form.numero_telefono.errors }}</div>
+            {% endif %}
         </div>
-        <div class="col-3">
-            <label class="form-label fw-semibold">Dirección</label>
-            {{ form.direccion }}
-        </div>
-        <div class="col-md-3">
-            <label class="form-label fw-semibold">Fecha de Nacimiento</label>
+        <div class="col-md-4">
+            <label for="{{ form.fecha_nacimiento.id_for_label }}" class="form-label fw-semibold">Fecha de Nacimiento</label>
             {{ form.fecha_nacimiento }}
+            {% if form.fecha_nacimiento.errors %}
+                <div class="text-danger small mt-1">{{ form.fecha_nacimiento.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-4">
+            <label for="{{ form.status_afiliado.id_for_label }}" class="form-label fw-semibold">Tipo de Paciente</label>
+            {{ form.status_afiliado }}
+            {% if form.status_afiliado.errors %}
+                <div class="text-danger small mt-1">{{ form.status_afiliado.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-4">
+            <label for="{{ form.categoria_afiliado.id_for_label }}" class="form-label fw-semibold">Categoría</label>
+            {{ form.categoria_afiliado }}
+            {% if form.categoria_afiliado.errors %}
+                <div class="text-danger small mt-1">{{ form.categoria_afiliado.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="col-12">
+            <label for="{{ form.direccion.id_for_label }}" class="form-label fw-semibold">Dirección</label>
+            {{ form.direccion }}
+            {% if form.direccion.errors %}
+                <div class="text-danger small mt-1">{{ form.direccion.errors }}</div>
+            {% endif %}
         </div>
     </div>
     <div class="d-flex justify-content-center gap-2 mt-4">
-        <button type="submit" class="btn btn-primary px-3 uiverse-btn">Guardar Cambios</button>
+        <button type="submit" class="btn btn-outline-primary px-3 uiverse-btn"><i class="bi bi-floppy"></i>Guardar Cambios</button>
         {% if "Secretaria" in user.groups.all|join:"," %}
-            <a href="{% url 'registrar_paciente' %}" class="btn btn-outline-secondary uiverse-btn px-3">Cancelar</a>
+            <a href="{% url 'registrar_paciente' %}" class="btn btn-outline-secondary uiverse-btn px-3"><i class="bi bi-x"></i>Cancelar</a>
         {% else %}
-            <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-secondary uiverse-btn px-3">Cancelar</a>
+            <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-secondary uiverse-btn px-3"><i class="bi bi-x"></i>Cancelar</a>
         {% endif %}
     </div>
 </form>

@@ -17,9 +17,14 @@
     <div class="uiverse-card shadow-sm mb-4">
         <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center py-3">
             <span><i class="bi bi-flask me-2"></i>Exámenes Registrados</span>
+            <!-- BOTON DE NUEVO EXAMEN -->
             <button class="btn btn-light btn-sm uiverse-btn" data-bs-toggle="modal" data-bs-target="#modalCrear">
                 <i class="bi bi-plus-circle me-1"></i>Nuevo Examen
             </button>
+            <!-- BOTON DE IMPORTAR EXAMENES POR EXCEL -->
+            <a href="{% url 'importar_catalogo_examenes' %}" class="btn btn-light btn-sm uiverse-btn">
+                <i class="bi bi-file-earmark-excel me-1"></i>Importar Exámenes
+            </a>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -28,7 +33,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>#</th>
-                        <th>Examen</th>
+                        <th>Nombre</th>
                         <th>Costo Base</th>
                         <th>Precio Afiliado (20% off)</th>
                         <th>Estado</th>
@@ -50,13 +55,17 @@
                             {% endif %}
                         </td>
                         <td class="text-center">
-                            <button class="btn btn-sm btn-outline-primary uiverse-btn" data-bs-toggle="modal" data-bs-target="#modalEditar{{ e.id }}" title="Editar"><i class="bi bi-pencil"></i></button>
+                            <!-- BOTON DE EDITAR EXAMEN -->
+                            <!-- <button class="btn btn-sm btn-outline-primary uiverse-btn" data-bs-toggle="modal" data-bs-target="#modalEditar{{ e.id }}" title="Editar" aria-label="Editar examen {{ e.nombre }}"><i class="bi bi-pencil"></i></button> -->
+                            <!-- BOTON DE ELIMINAR EXAMEN MAL ESCRITO -->
+                            <button class="btn btn-sm btn-outline-danger uiverse-btn" data-bs-toggle="modal" data-bs-target="#modalEliminar{{ e.id }}" title="Eliminar" aria-label="Eliminar examen {{ e.nombre }}"><i class="bi bi-trash"></i></button>
                             {% if e.activo %}
                             <form method="POST" style="display:inline;">
                                 {% csrf_token %}
                                 <input type="hidden" name="accion" value="desactivar">
                                 <input type="hidden" name="examen_id" value="{{ e.id }}">
-                                <button class="btn btn-sm btn-outline-danger uiverse-btn" title="Desactivar" onclick="return confirm('¿Desactivar este examen?')"><i class="bi bi-trash"></i></button>
+                                <!-- BOTON DESACTIVAR EXAMEN -->
+                                <button class="btn btn-sm btn-outline-success uiverse-btn" title="Desactivar" aria-label="Desactivar examen {{ e.nombre }}" onclick="return confirm('¿Desactivar este examen?')"><i class="bi bi-eye-slash"></i></button>
                             </form>
                             {% endif %}
                         </td>
@@ -70,6 +79,31 @@
                 </tbody>
             </table>
         </div>
+        {% if examenes.has_other_pages %}
+        <div class="p-3 border-top">
+            <nav aria-label="Paginación del catálogo de exámenes">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if examenes.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ examenes.previous_page_number }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">Anterior</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                    {% endif %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Página {{ examenes.number }} de {{ examenes.paginator.num_pages }}</span>
+                    </li>
+                    {% if examenes.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ examenes.next_page_number }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">Siguiente</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
         </div>
     </div>
 
@@ -82,11 +116,32 @@
                 <input type="hidden" name="examen_id" value="{{ e.id }}">
                 <div class="modal-header bg-warning text-white"><h5 class="modal-title">Editar Examen</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <div class="mb-3"><label class="form-label">Nombre</label><input type="text" name="nombre" class="form-control uiverse-input" value="{{ e.nombre }}" required></div>
-                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control uiverse-input" rows="2">{{ e.descripcion|default:"" }}</textarea></div>
-                    <div class="mb-3"><label class="form-label">Costo Base ($)</label><input type="number" name="costo" class="form-control uiverse-input" step="0.01" value="{{ e.costo }}" required></div>
+                    <div class="mb-3"><label class="form-label" for="nombre-{{ e.id }}">Nombre</label><input type="text" id="nombre-{{ e.id }}" name="nombre" class="form-control uiverse-input" value="{{ e.nombre }}" required></div>
+                    <div class="mb-3"><label class="form-label" for="descripcion-{{ e.id }}">Descripción</label><textarea id="descripcion-{{ e.id }}" name="descripcion" class="form-control uiverse-input" rows="2">{{ e.descripcion|default:"" }}</textarea></div>
+                    <div class="mb-3"><label class="form-label" for="costo-{{ e.id }}">Costo Base ($)</label><input type="number" id="costo-{{ e.id }}" name="costo" class="form-control uiverse-input" step="0.01" value="{{ e.costo }}" required></div>
                 </div>
                 <div class="modal-footer"><button type="submit" class="btn btn-warning uiverse-btn">Guardar Cambios</button></div>
+            </form>
+        </div></div>
+    </div>
+
+    <!-- MODAL ELIMINAR EXAMEN -->
+    <div class="modal fade" id="modalEliminar{{ e.id }}" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="eliminar">
+                <input type="hidden" name="examen_id" value="{{ e.id }}">
+                <div class="modal-header bg-danger text-white"><h5 class="modal-title">Eliminar Examen</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <p class="mb-3">¿Estás seguro de eliminar el examen <strong>{{ e.nombre }}</strong>?</p>
+                    <p class="small text-warning">Esta acción no se puede deshacer y eliminará el registro permanentemente.</p>
+                </div>
+                <div class="modal-footer">
+                
+                    <button type="button" class="btn btn-outline-secondary uiverse-btn" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-outline-danger uiverse-btn">Eliminar</button>
+                </div>
             </form>
         </div></div>
     </div>
@@ -99,9 +154,9 @@
                 <input type="hidden" name="accion" value="crear">
                 <div class="modal-header bg-success text-white"><h5 class="modal-title">Nuevo Examen</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <div class="mb-3"><label class="form-label">Nombre</label><input type="text" name="nombre" class="form-control uiverse-input" required></div>
-                    <div class="mb-3"><label class="form-label">Descripción</label><textarea name="descripcion" class="form-control uiverse-input" rows="2"></textarea></div>
-                    <div class="mb-3"><label class="form-label">Costo Base ($)</label><input type="number" name="costo" class="form-control uiverse-input" step="0.01" required></div>
+                    <div class="mb-3"><label class="form-label" for="crear-nombre">Nombre</label><input type="text" id="crear-nombre" name="nombre" class="form-control uiverse-input" required></div>
+                    <div class="mb-3"><label class="form-label" for="crear-descripcion">Descripción</label><textarea id="crear-descripcion" name="descripcion" class="form-control uiverse-input" rows="2"></textarea></div>
+                    <div class="mb-3"><label class="form-label" for="crear-costo">Costo Base ($)</label><input type="number" id="crear-costo" name="costo" class="form-control uiverse-input" step="0.01" required></div>
                 </div>
                 <div class="modal-footer"><button type="submit" class="btn btn-success uiverse-btn">Crear Examen</button></div>
             </form>

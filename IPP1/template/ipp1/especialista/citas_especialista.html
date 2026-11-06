@@ -42,10 +42,16 @@
                                     <td><span class="badge bg-secondary">{{ cita.paciente.cedula }}</span></td>
                                     <td class="small">{{ cita.motivo_consulta|default:"Especialidad" }}</td>
                                     <td class="text-center pe-4">
-                                        <form method="POST" action="{% url 'atender_cita' cita.id %}" style="display:inline;">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-success btn-sm shadow-sm uiverse-btn">Atender</button>
-                                        </form>
+                                        <div class="btn-group" role="group" style="display:inline-flex; gap:2px;">
+                                            <form method="POST" action="{% url 'atender_cita' cita.id %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-success btn-sm shadow-sm uiverse-btn">Atender</button>
+                                            </form>
+                                            <form method="POST" action="{% url 'refinar_cita' cita.id %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-warning btn-sm shadow-sm uiverse-btn">Refinar</button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             {% endfor %}

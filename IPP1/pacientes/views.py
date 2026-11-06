@@ -14,8 +14,8 @@ from django.contrib.auth.models import Group, User
 from django.contrib import messages
 from django.views.decorators.http import require_POST, require_http_methods
 from django.conf import settings
-from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura, PerfilUsuario
-from .forms import PacienteForm, LoginForm, PerfilForm, SolicitudSecretariaForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm
+from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura, PerfilUsuario, TasaCambio
+from .forms import PacienteForm, LoginForm, PerfilForm, SolicitudSecretariaForm, SolicitudSecretariaRefinarForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm, TasaCambioForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordChangeForm
@@ -68,6 +68,40 @@ def crear_solicitud_view(request):
         'es_medico_creando': es_medico and not es_secretaria,
     }
     return render(request, 'ipp1/secretaria/crear_solicitud.html', ctx)
+
+# CITA DESDE PANEL MÉDICO (vista propia, no reutiliza flujo de Secretaría)
+
+@login_required
+def crear_cita_medico(request):
+    """Permite al Médico crear su propia cita directamente como especialista."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Medico').exists()):
+        messages.error(request, "Acceso denegado.")
+        return redirect('home')
+    if request.method == 'POST':
+        form = SolicitudSecretariaForm(request.POST, user=request.user)
+        if form.is_valid():
+            cita = form.save(commit=False)
+            cita.creada_por = request.user
+            cita.especialista = request.user  # El médico es el especialista de su propia cita
+            _vincular_poliza(cita)
+            cita.save()
+            form.save_m2m()
+            _registrar_log(request, f'Creó cita propia para {cita.paciente}', 'SolicitudSecretaria', cita.id)
+            poliza = cita.poliza
+            if poliza and poliza.plan and poliza.consultas_restantes() == 0:
+                messages.warning(request, f'El paciente {cita.paciente} ha agotado las consultas de su póliza. Esta cita se registró como no cubierta.')
+            else:
+                messages.success(request, 'Cita creada exitosamente.')
+            return redirect('medico_panel')
+    else:
+        form = SolicitudSecretariaForm(user=request.user)
+
+    ctx = {
+        'form': form,
+        'navbar_brand': 'Sistema IPP - Médico',
+        'title': 'Crear Cita - Médico',
+    }
+    return render(request, 'ipp1/medico/crear_cita_medico.html', ctx)
 
 # LOGIN
 def login_view(request):
@@ -386,6 +420,48 @@ def cancelar_cita(request, cita_id):
     if request.user.groups.filter(name='Especialista').exists():
         return redirect('citas_especialista')
     return redirect('citas_recibidas_medico')
+
+@login_required
+def refinar_cita(request, cita_id):
+    """Reprograma la fecha y hora de una cita pendiente ('En Espera')."""
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Secretaria', 'Medico', 'Odontologo', 'Especialista']).exists()):
+        messages.error(request, "No tienes permiso para reprogramar citas.")
+        return redirect('home')
+    cita = get_object_or_404(SolicitudSecretaria, id=cita_id)
+    if cita.estado != 'En Espera':
+        messages.error(request, "Solo se pueden reprogramar citas en estado 'En Espera'.")
+        return redirect('home')
+    if not cita.especialista:
+        messages.error(request, "Esta cita no tiene especialista asignado.")
+        return redirect('home')
+    if cita.especialista != request.user and not request.user.is_superuser and not request.user.groups.filter(name='Secretaria').exists():
+        messages.error(request, "Esta cita no te pertenece.")
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = SolicitudSecretariaRefinarForm(request.POST, instance=cita, user=request.user)
+        if form.is_valid():
+            form.save()
+            _registrar_log(request, f'Reprogramó cita de {cita.paciente} a {cita.fecha_cita} {cita.hora_cita}', 'SolicitudSecretaria', cita.id)
+            messages.success(request, f"Cita de {cita.paciente} reprogramada para el {cita.fecha_cita} a las {cita.hora_cita}.")
+            if request.user.groups.filter(name='Odontologo').exists():
+                return redirect('citas_odonto')
+            if request.user.groups.filter(name='Especialista').exists():
+                return redirect('citas_especialista')
+            if request.user.groups.filter(name='Secretaria').exists():
+                return redirect('crear_solicitud')
+            return redirect('citas_recibidas_medico')
+    else:
+        form = SolicitudSecretariaRefinarForm(instance=cita, user=request.user)
+
+    ctx = {
+        'form': form,
+        'cita': cita,
+        'navbar_brand': 'Sistema IPP - Refinar Cita',
+        'back_url_name': 'citas_recibidas_medico',
+        'back_text': 'Volver a Citas',
+    }
+    return render(request, 'ipp1/compartidos/refinar_cita.html', ctx)
 
 @login_required
 def citas_recibidas_medico(request):
@@ -1008,7 +1084,7 @@ def poliza_inicio(request):
     if request.user.groups.filter(name='Administracion').exists() and not request.user.is_superuser:
         messages.error(request, "Acceso denegado: El módulo de Póliza no está disponible para el rol de Administración.")
         return redirect('inicio_admin')
-    if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Secretaria', 'Poliza', 'Póliza']).exists()):
         messages.error(request, "No tienes permisos para acceder a esta área.")
         return redirect('home')
 
@@ -1019,6 +1095,7 @@ def poliza_inicio(request):
     planes = PlanSalud.objects.all()
 
     es_secretaria = request.user.groups.filter(name='Secretaria').exists()
+    es_poliza = request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists()
 
     return render(request, 'ipp1/poliza/inicio_poliza.html', {
         'total_polizas': total_polizas,
@@ -1027,6 +1104,7 @@ def poliza_inicio(request):
         'total_gastos': total_gastos,
         'planes': planes,
         'es_secretaria': es_secretaria,
+        'es_poliza': es_poliza,
     })
 
 @login_required
@@ -1036,7 +1114,7 @@ def poliza_menu(request):
     if request.user.groups.filter(name='Administracion').exists() and not request.user.is_superuser:
         messages.error(request, "Acceso denegado: El módulo de Póliza no está disponible para el rol de Administración.")
         return redirect('inicio_admin')
-    if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Secretaria', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
@@ -1070,17 +1148,19 @@ def poliza_menu(request):
         return redirect('poliza_menu')
 
     es_secretaria = request.user.groups.filter(name='Secretaria').exists()
+    es_poliza = request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists()
 
     return render(request, 'ipp1/poliza/menu_poliza.html', {
         'polizas': polizas,
         'query': query,
         'es_secretaria': es_secretaria,
+        'es_poliza': es_poliza,
     })
 
 @login_required
 def poliza_crear(request):
     """Crear una nueva póliza para un paciente."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     if request.method == 'POST':
@@ -1101,7 +1181,7 @@ def poliza_crear(request):
 @login_required
 def poliza_detalle(request, poliza_id):
     """Detalle de una póliza con gastos y familiares."""
-    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
@@ -1127,7 +1207,7 @@ def poliza_detalle(request, poliza_id):
 @login_required
 def poliza_registrar_familiar(request, poliza_id):
     """Registrar un familiar en una póliza."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     poliza = get_object_or_404(Poliza, id=poliza_id)
@@ -1149,7 +1229,7 @@ def poliza_registrar_familiar(request, poliza_id):
 @login_required
 def poliza_registrar_gasto(request, poliza_id):
     """Registrar un gasto asociado a una póliza."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
@@ -1175,7 +1255,7 @@ def poliza_registrar_gasto(request, poliza_id):
 
 @login_required
 def poliza_editar(request, poliza_id):
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     poliza = get_object_or_404(Poliza, id=poliza_id)
@@ -1193,7 +1273,7 @@ def poliza_editar(request, poliza_id):
 
 @login_required
 def plan_salud_lista(request):
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     planes = PlanSalud.objects.all()
@@ -1210,7 +1290,7 @@ def plan_salud_lista(request):
 
 @login_required
 def plan_salud_editar(request, plan_id):
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     plan = get_object_or_404(PlanSalud, id=plan_id)
@@ -1228,7 +1308,7 @@ def plan_salud_editar(request, plan_id):
 @login_required
 @require_POST
 def plan_salud_eliminar(request, plan_id):
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     plan = get_object_or_404(PlanSalud, id=plan_id)
@@ -1241,7 +1321,8 @@ def plan_salud_eliminar(request, plan_id):
 @login_required
 def registrar_paciente(request):
     """Vista para registrar nuevos pacientes."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists()):
+    es_poliza = request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists()
+    if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists() or es_poliza):
         messages.error(request, "Acceso denegado.")
         return redirect('home')
     q = request.GET.get('q', '').strip()
@@ -1264,7 +1345,8 @@ def registrar_paciente(request):
     else:
         form = PacienteForm()
 
-    ctx = {'form': form, 'pacientes': pacientes, 'q': q}
+    ctx = {'form': form, 'pacientes': pacientes, 'q': q,
+           'es_poliza': es_poliza}
     return render(request, 'ipp1/secretaria/regis_pacient.html', ctx)
 
 # CALENDARIO DE CITAS
@@ -1323,7 +1405,8 @@ def calendario_citas(request):
 # DETALLE DE PACIENTE
 @login_required
 def detalle_paciente(request, paciente_id):
-    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+    es_poliza = request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists()
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para ver este paciente.')
         return redirect('home')
     paciente = get_object_or_404(Paciente, id=paciente_id)
@@ -1337,21 +1420,23 @@ def detalle_paciente(request, paciente_id):
         'laboratorios': laboratorios,
         'poliza_activa': poliza_activa,
         'recetas': recetas,
+        'es_poliza': es_poliza,
     })
 
 @login_required
 def landing_page(request):
     """Página de inicio del sistema con selección de roles filtrados."""
     is_admin = request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()
-    es_medico_real = request.user.groups.filter(name='Medico').exists() or is_admin
+    is_superuser = request.user.is_superuser
+    es_medico_real = request.user.groups.filter(name='Medico').exists() or is_superuser
     puede_entrar_servicio_medico = (
         es_medico_real
         or request.user.groups.filter(name='Odontologo').exists()
         or request.user.groups.filter(name='Especialista').exists()
         or request.user.groups.filter(name='Laboratorio').exists()
     )
-    es_secretaria = request.user.groups.filter(name='Secretaria').exists() or is_admin
-    es_poliza = request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists()
+    es_secretaria = request.user.groups.filter(name='Secretaria').exists() or is_superuser
+    es_poliza = request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists() or is_superuser
 
     context = {
         'titulo': 'Sistema IPP - Inicio',
@@ -1617,7 +1702,7 @@ def importar_gastos_excel(request):
 @login_required
 def importar_medicamentos_excel(request):
     """Importa medicamentos desde un archivo Excel."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists() or request.user.groups.filter(name='Especialista').exists()):
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('home')
     if request.method == 'POST' and request.FILES.get('archivo'):
@@ -1660,13 +1745,13 @@ def importar_medicamentos_excel(request):
             _registrar_log(request, f'Importó {creados} medicamentos desde Excel', 'Medicamento')
         except Exception as e:
             messages.error(request, f'Error al procesar el archivo: {e}')
-    return render(request, 'ipp1/especialista/importar_medicamentos.html')
+    return render(request, 'ipp1/especialista/importar_medicamentos_excel.html')
 
-
+# IMPORTAR NOMINA (GASTOS) A POLIZA DESDE EXCEL
 @login_required
 def importar_nomina_poliza(request, poliza_id):
     """Importa nómina (gastos) dentro de una póliza desde Excel."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('home')
     poliza = get_object_or_404(Poliza, id=poliza_id)
@@ -1818,7 +1903,7 @@ def editar_paciente(request, paciente_id):
 
 @login_required
 @require_POST
-def eliminar_paciente(request, paciente_id):
+def desactivar_paciente(request, paciente_id):
     if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists() or request.user.groups.filter(name='Administracion').exists()):
         messages.error(request, "Acceso denegado.")
         return redirect('home')
@@ -2114,7 +2199,7 @@ def resumen_afiliados(request):
 @login_required
 def exportar_gastos_excel(request):
     """Export a comprehensive Excel with spending by patient/consultation/doctor."""
-    if not _es_admin(request.user):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
@@ -2346,7 +2431,16 @@ def catalogo_examenes(request):
             examen.save()
             _registrar_log(request, f'Desactivó examen {examen.nombre}', 'ExamenLaboratorio', examen.id)
             messages.success(request, f'Examen "{examen.nombre}" desactivado.')
-        return redirect('catalogo_examenes')
+        # return redirect('catalogo_examenes')
+
+        # ELIMINAR EXAMEN MAL ESCRITO
+        elif accion == 'eliminar':
+            examen_id = request.POST.get('examen_id')
+            examen = get_object_or_404(ExamenLaboratorio, id=examen_id)
+            examen.delete()
+            _registrar_log(request, f'Eliminó examen {examen.nombre}', 'ExamenLaboratorio', examen.id)
+            messages.success(request, f'Examen "{examen.nombre}" eliminado.')
+            return redirect('catalogo_examenes')
 
     q = request.GET.get('q', '').strip()
     examenes = ExamenLaboratorio.objects.all()
@@ -2394,9 +2488,148 @@ def _is_safe_redirect_url(url, allowed_hosts=None, require_https=False):
     # Rutas relativas simples (sin / inicial) se consideran internas
     return True
 
+# IMPORTAR CATALOGO DE EXAMENES
+@login_required
+def importar_catalogo_examenes(request):
+    """Importa el catalogo de examenes desde un archivo Excel (.xlsx/.xlsm)."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Laboratorio').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('home')
+
+    if request.method == 'POST':
+        archivo = request.FILES.get('archivo')
+        if not archivo:
+            messages.error(request, 'Selecciona un archivo Excel.')
+            return redirect('importar_catalogo_examenes')
+
+        if not archivo.name.lower().endswith(('.xlsx', '.xlsm')):
+            messages.error(request, 'El archivo debe ser .xlsx o .xlsm.')
+            return redirect('importar_catalogo_examenes')
+
+        import openpyxl
+        from decimal import InvalidOperation
+
+        creados = 0
+        actualizados = 0
+        errores = []
+        wb = None
+
+        try:
+            wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
+            ws = wb.active
+            filas = ws.iter_rows(values_only=True)
+            encabezados = next(filas, None)
+
+            if not encabezados:
+                messages.error(request, 'El archivo está vacío.')
+                return redirect('importar_catalogo_examenes')
+
+            def normalizar(valor):
+                texto = str(valor or '').strip().lower()
+                return (texto.replace('á', 'a').replace('é', 'e')
+                             .replace('í', 'i').replace('ó', 'o')
+                             .replace('ú', 'u').replace('ñ', 'n'))
+
+            columnas = {}
+            for indice, encabezado in enumerate(encabezados):
+                columnas.setdefault(normalizar(encabezado), indice)
+
+            col_nombre = columnas.get('nombre', columnas.get('examen'))
+            col_costo = columnas.get('costo base', columnas.get('costo'))
+            col_desc = columnas.get('descripcion')
+            col_estado = columnas.get('estado')
+
+            if col_nombre is None or col_costo is None:
+                messages.error(
+                    request,
+                    'El Excel debe tener las columnas "Nombre" y "Costo Base".'
+                )
+                return redirect('importar_catalogo_examenes')
+
+            for numero_fila, fila in enumerate(filas, start=2):
+                if not any(valor is not None and str(valor).strip() != '' for valor in fila):
+                    continue
+
+                try:
+                    def celda(indice):
+                        if indice is None or indice >= len(fila):
+                            return None
+                        return fila[indice]
+
+                    nombre = str(celda(col_nombre) or '').strip()
+                    if not nombre:
+                        errores.append(f'Fila {numero_fila}: falta el nombre del examen.')
+                        continue
+
+                    costo_crudo = celda(col_costo)
+                    if costo_crudo in (None, ''):
+                        costo = Decimal('0.00')
+                    else:
+                        costo = Decimal(str(costo_crudo).replace(',', '.').strip())
+
+                    if costo < 0:
+                        errores.append(f'Fila {numero_fila}: el costo no puede ser negativo.')
+                        continue
+
+                    descripcion = str(celda(col_desc) or '').strip()
+                    estado = str(celda(col_estado) or 'Activo').strip().lower()
+                    activo = estado not in ('inactivo', 'no', '0', 'false')
+
+                    examen = ExamenLaboratorio.objects.filter(
+                        nombre__iexact=nombre
+                    ).first()
+
+                    if examen:
+                        examen.descripcion = descripcion
+                        examen.costo = costo
+                        examen.activo = activo
+                        examen.save(update_fields=['descripcion', 'costo', 'activo'])
+                        actualizados += 1
+                    else:
+                        ExamenLaboratorio.objects.create(
+                            nombre=nombre,
+                            descripcion=descripcion,
+                            costo=costo,
+                            activo=activo,
+                        )
+                        creados += 1
+
+                except (InvalidOperation, ValueError, TypeError):
+                    errores.append(f'Fila {numero_fila}: costo inválido.')
+                except Exception as exc:
+                    errores.append(f'Fila {numero_fila}: {exc}')
+
+            if creados or actualizados:
+                messages.success(
+                    request,
+                    f'Importación completada: {creados} creado(s) y '
+                    f'{actualizados} actualizado(s).'
+                )
+
+            for error in errores[:5]:
+                messages.warning(request, error)
+
+            if len(errores) > 5:
+                messages.warning(request, f'...y {len(errores) - 5} error(es) más.')
+
+            _registrar_log(
+                request,
+                f'Importó catálogo de exámenes ({creados} creados, {actualizados} actualizados)',
+                'ExamenLaboratorio',
+            )
+
+        except Exception as exc:
+            messages.error(request, f'No se pudo procesar el archivo: {exc}')
+        finally:
+            if wb is not None:
+                wb.close()
+
+        return redirect('catalogo_examenes')
+
+    return render(request, 'ipp1/laboratorio/importar_catalogo_examenes.html')
+
 
 # TASA DE CAMBIO
-
 @login_required
 def tasa_cambio_lista(request):
     """Lista y crea tasas de cambio del día."""

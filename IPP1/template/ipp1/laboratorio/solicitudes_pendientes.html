@@ -45,7 +45,7 @@
                                 <td>{{ solicitud.fecha_solicitud|date:"d/m/Y" }}</td>
                                 {% if puede_procesar %}
                                 <td class="text-center pe-4">
-                                    <button type="button" class="uiverse-btn btn btn-sm btn-outline-warning px-3" data-bs-toggle="modal" data-bs-target="#procesarModal{{ solicitud.id }}">
+                                    <button type="button" class="uiverse-btn btn btn-sm btn-outline-success px-3" data-bs-toggle="modal" data-bs-target="#procesarModal{{ solicitud.id }}">
                                         <i class="bi bi-flask me-1"></i>Procesar
                                     </button>
                                 </td>
@@ -73,7 +73,7 @@
             <form method="POST" action="{% url 'solicitudes_pendientes_laboratorio' %}">
                 {% csrf_token %}
                 <input type="hidden" name="solicitud_id" value="{{ solicitud.id }}">
-                <div class="modal-header bg-warning text-dark">
+                <div class="modal-header bg-success text-dark">
                     <h5 class="modal-title"><i class="bi bi-flask me-2"></i>Procesar Examen</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -104,8 +104,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="uiverse-btn btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="uiverse-btn btn btn-warning"><i class="bi bi-check-circle me-1"></i>Guardar y Procesar</button>
+                    <button type="button" class="uiverse-btn btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="uiverse-btn btn btn-outline-success"><i class="bi bi-check-circle me-1"></i>Guardar y Procesar</button>
                 </div>
             </form>
         </div>

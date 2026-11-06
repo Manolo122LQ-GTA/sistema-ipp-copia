@@ -105,19 +105,19 @@
                 <!-- CAMPOS DEL FORMULARIO -->
                 <div class="form-container">
 
-                    <!-- Nombre y Apellido (en fila) -->
+                    <!-- NOMBRE Y APELLIDO -->
                     <div class="d-flex gap-2" style="width:100%;">
                         <input type="text" name="name" class="input flex-fill" placeholder="Nombre(s)" required value="{{ request.POST.name }}">
                         <input type="text" name="last_name" class="input flex-fill" placeholder="Apellido(s)" required value="{{ request.POST.last_name }}">
                     </div>
 
-                    <!-- Usuario -->
+                    <!-- NOMBRE DE USUARIO -->
                     <input type="text" name="username" class="input" placeholder="Usuario" required value="{{ request.POST.username }}">
 
                     <!-- VALIDACION DE CONTRASEÑA -->
                     <div class="pw-wrap">
                         <div class="position-relative">
-                            <input type="password" name="password" id="id_password" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;">
+                            <input type="password" name="password" maxlength="16" id="id_password" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;">
                             <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
                         </div>
                     
@@ -133,7 +133,7 @@
 
                     <!-- Confirmar Contraseña -->
                      <div class="position-relative">
-                        <input type="password" name="password2" id="id_password2" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;">
+                        <input type="password" name="password2" maxlength="16" id="id_password2" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;">
                         <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
                     </div>
 

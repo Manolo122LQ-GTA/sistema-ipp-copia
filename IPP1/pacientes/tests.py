@@ -1,5 +1,7 @@
 from decimal import Decimal
 from datetime import date, time, timedelta
+import io
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Group, Permission
@@ -697,6 +699,71 @@ class CitaFlowTest(BaseTest):
         self.assertFalse(cita.cubierto_por_poliza)
 
 
+class CitaRefinarTest(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.paciente = self._crear_paciente()
+        self.medico = self._crear_usuario('dr_ref', 'Abc123!@', 'Medico')
+        self.cita = SolicitudSecretaria.objects.create(
+            paciente=self.paciente, especialista=self.medico,
+            fecha_cita=date(2027, 8, 10), hora_cita=time(9, 0),
+            motivo_consulta='Control', estado='En Espera'
+        )
+
+    def test_refinar_cita_get(self):
+        self.client.force_login(self.medico)
+        response = self.client.get(reverse('refinar_cita', args=[self.cita.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Refinar Cita')
+
+    def test_refinar_cita_post_valido(self):
+        self.client.force_login(self.medico)
+        response = self.client.post(reverse('refinar_cita', args=[self.cita.id]), {
+            'fecha_cita': '2027-09-15', 'hora_cita': '14:30',
+        }, follow=True)
+        self.assertContains(response, 'reprogramada')
+        self.cita.refresh_from_db()
+        self.assertEqual(self.cita.fecha_cita, date(2027, 9, 15))
+        self.assertEqual(self.cita.hora_cita, time(14, 30))
+        self.assertEqual(self.cita.estado, 'En Espera')
+
+    def test_refinar_cita_rechaza_fecha_pasada(self):
+        self.client.force_login(self.medico)
+        response = self.client.post(reverse('refinar_cita', args=[self.cita.id]), {
+            'fecha_cita': '2020-01-01', 'hora_cita': '10:00',
+        }, follow=True)
+        self.assertContains(response, 'no puede ser en el pasado')
+        self.cita.refresh_from_db()
+        self.assertEqual(self.cita.fecha_cita, date(2027, 8, 10))
+
+    def test_refinar_cita_rechaza_doble_reserva(self):
+        SolicitudSecretaria.objects.create(
+            paciente=self.paciente, especialista=self.medico,
+            fecha_cita=date(2027, 9, 15), hora_cita=time(14, 30),
+            estado='En Espera'
+        )
+        self.client.force_login(self.medico)
+        response = self.client.post(reverse('refinar_cita', args=[self.cita.id]), {
+            'fecha_cita': '2027-09-15', 'hora_cita': '14:30',
+        }, follow=True)
+        self.assertContains(response, 'ya tiene una cita programada')
+        self.cita.refresh_from_db()
+        self.assertEqual(self.cita.fecha_cita, date(2027, 8, 10))
+
+    def test_refinar_cita_solo_estado_en_espera(self):
+        self.cita.estado = 'Atendido'
+        self.cita.save()
+        self.client.force_login(self.medico)
+        response = self.client.get(reverse('refinar_cita', args=[self.cita.id]))
+        self.assertNotEqual(response.status_code, 200)
+
+    def test_refinar_cita_denegado_sin_permiso(self):
+        user = self._crear_usuario('noro', 'Abc123!@')
+        self.client.force_login(user)
+        response = self.client.get(reverse('refinar_cita', args=[self.cita.id]))
+        self.assertNotEqual(response.status_code, 200)
+
+
 class MisSolicitudesTest(BaseTest):
     def test_mis_solicitudes_denegado_sin_rol(self):
         self._login(grupo='Medico')
@@ -814,6 +881,80 @@ class CatalogoExamenesTest(BaseTest):
         }, follow=True)
         examen = ExamenLaboratorio.objects.get(nombre='Perfil 30')
         self.assertEqual(examen.costo, Decimal('0.00'))
+
+    def _archivo_excel(self, filas):
+        from openpyxl import Workbook
+        wb = Workbook()
+        ws = wb.active
+        for fila in filas:
+            ws.append(fila)
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        return SimpleUploadedFile(
+            'catalogo.xlsx',
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
+    def test_importar_catalogo_denegado_sin_login(self):
+        response = self.client.get(reverse('importar_catalogo_examenes'))
+        self.assertNotEqual(response.status_code, 200)
+
+    def test_importar_catalogo_acceso_laboratorio(self):
+        self._login(grupo='Laboratorio')
+        response = self.client.get(reverse('importar_catalogo_examenes'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_importar_catalogo_crea_y_desactiva(self):
+        self._login(grupo='Laboratorio')
+        archivo = self._archivo_excel([
+            ['Nombre', 'Descripción', 'Costo Base', 'Estado'],
+            ['Hemograma importado', 'Conteo sanguíneo', '10.00', 'Activo'],
+            ['Glucosa importada', 'Química sanguínea', '8.00', 'Inactivo'],
+            ['Costo negativo', 'No debe importarse', '-5', 'Activo'],
+        ])
+        response = self.client.post(
+            reverse('importar_catalogo_examenes'),
+            {'archivo': archivo},
+            follow=True,
+        )
+        self.assertContains(response, 'Importación completada')
+        self.assertContains(response, 'no puede ser negativo')
+        self.assertTrue(ExamenLaboratorio.objects.filter(
+            nombre='Hemograma importado', activo=True).exists())
+        self.assertTrue(ExamenLaboratorio.objects.filter(
+            nombre='Glucosa importada', activo=False).exists())
+        self.assertFalse(ExamenLaboratorio.objects.filter(
+            nombre='Costo negativo').exists())
+
+    def test_importar_catalogo_actualiza_existente(self):
+        self._login(grupo='Laboratorio')
+        ExamenLaboratorio.objects.create(
+            nombre='Hemograma actualizado', costo=Decimal('5.00'))
+        archivo = self._archivo_excel([
+            ['Nombre', 'Descripción', 'Costo Base', 'Estado'],
+            ['Hemograma actualizado', 'Nueva descripción', '12.00', 'Inactivo'],
+        ])
+        response = self.client.post(
+            reverse('importar_catalogo_examenes'),
+            {'archivo': archivo},
+            follow=True,
+        )
+        self.assertContains(response, 'actualizado')
+        examen = ExamenLaboratorio.objects.get(nombre='Hemograma actualizado')
+        self.assertEqual(examen.costo, Decimal('12.00'))
+        self.assertFalse(examen.activo)
+
+    def test_importar_catalogo_rechaza_extension(self):
+        self._login(grupo='Laboratorio')
+        archivo = SimpleUploadedFile(
+            'catalogo.csv', b'nombre,costo\nX,1\n', content_type='text/csv')
+        response = self.client.post(
+            reverse('importar_catalogo_examenes'),
+            {'archivo': archivo},
+            follow=True,
+        )
+        self.assertContains(response, 'debe ser .xlsx')
 
 
 class TarifaMedicamentoCRUDTest(BaseTest):
@@ -1273,6 +1414,16 @@ class EditarPacienteTest(BaseTest):
         response = self.client.get(reverse('editar_paciente', args=[p.id]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, p.nombre)
+
+    def test_editar_paciente_incluye_campos_requeridos(self):
+        """El formulario de edición debe enviar todos los campos obligatorios del form."""
+        self._login(grupo='Secretaria')
+        p = self._crear_paciente()
+        response = self.client.get(reverse('editar_paciente', args=[p.id]))
+        self.assertContains(response, 'name="status_afiliado"')
+        self.assertContains(response, 'name="categoria_afiliado"')
+        self.assertContains(response, 'name="codigo_telefono"')
+        self.assertContains(response, 'name="numero_telefono"')
 
     def test_editar_paciente_post(self):
         self._login(grupo='Secretaria')

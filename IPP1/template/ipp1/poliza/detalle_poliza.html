@@ -10,7 +10,7 @@
             <p class="text-muted">{{ poliza.paciente.nombre }} {{ poliza.paciente.apellido }} — {{ poliza.paciente.cedula }}</p>
         </div>
         <a href="{% url 'poliza_menu' %}" class="btn btn-outline-secondary uiverse-btn"><i class="bi bi-arrow-left me-1"></i>Volver</a>
-        {% if not es_secretaria or request.user.is_superuser %}
+        {% if not es_secretaria or request.user.is_superuser or es_poliza %}
         <a href="{% url 'poliza_editar' poliza.id %}" class="btn btn-outline-success uiverse-btn"><i class="bi bi-pencil me-1"></i>Editar Póliza</a>
         <a href="{% url 'importar_nomina_poliza' poliza.id %}" class="btn btn-outline-primary uiverse-btn"><i class="bi bi-upload me-1"></i>Importar Nómina</a>
         {% endif %}
@@ -32,6 +32,7 @@
                 </div>
             </div>
         </div>
+        {% if not es_secretaria %}
         <div class="col-md-4">
             <div class="uiverse-card shadow-sm h-100">
                 <div class="card-body">
@@ -59,6 +60,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         <div class="col-md-4">
             <div class="uiverse-card shadow-sm h-100">
                 <div class="card-body d-flex flex-column justify-content-between">
@@ -67,7 +69,7 @@
                         <p class="small text-muted">Registrar movimientos en esta póliza.</p>
                     </div>
                     <div class="d-flex gap-2">
-                        {% if not es_secretaria or request.user.is_superuser %}
+                        {% if not es_secretaria or request.user.is_superuser or es_poliza %}
                         <a href="{% url 'poliza_registrar_gasto' poliza.id %}" class="btn btn-sm btn-outline-danger uiverse-btn"><i class="bi bi-cash me-1"></i>Registrar Gasto</a>
                         <a href="{% url 'poliza_registrar_familiar' poliza.id %}" class="btn btn-sm btn-outline-success uiverse-btn"><i class="bi bi-person-plus me-1"></i>Agregar Familiar</a>
                         {% endif %}
@@ -78,6 +80,7 @@
     </div>
 
     {% if poliza.plan and poliza.plan.servicios_maximos_anuales > 0 %}
+    {% if not es_secretaria %}
     <div class="row g-3 mb-4">
         <div class="col-12">
             <div class="uiverse-card shadow-sm">
@@ -121,8 +124,10 @@
         </div>
     </div>
     {% endif %}
+    {% endif %}
 
     <div class="row g-3">
+        {% if not es_secretaria %}
         <div class="col-md-7">
             <div class="uiverse-card shadow-sm">
                 <div class="card-header bg-light fw-bold d-flex justify-content-between align-items-center">
@@ -150,6 +155,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         <div class="col-md-5">
             <div class="uiverse-card shadow-sm">
                 <div class="card-header bg-light fw-bold d-flex justify-content-between align-items-center">
@@ -177,6 +183,7 @@
     </div>
     </div>
 
+    {% if not es_secretaria %}
     <div class="row mt-3">
         <div class="col-12">
             <div class="uiverse-card shadow-sm">
@@ -228,6 +235,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 </div>
 {% endblock %}

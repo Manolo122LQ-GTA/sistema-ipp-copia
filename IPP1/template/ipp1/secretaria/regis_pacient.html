@@ -7,6 +7,7 @@
     <!-- CUADRO 1: REGISTRO PACIENTES -->
     <div class="row mb-4">
         <div class="col-12">
+            {% if not es_poliza %}
             <div class="uiverse-card shadow-sm">
                 <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
                     <h6 class="fw-bold mb-0"><i class="bi bi-person-plus me-2"></i>Registro de Pacientes</h6>
@@ -89,17 +90,31 @@
                             </div>
                         </div>
                         <!-- GUARDAR/CANCELAR -->
-                        <div class="d-flex justify-content-end gap-2 mt-4">
-                            <a href="{% url 'secretaria' %}" class="uiverse-btn btn btn-outline-danger px-4 shadow-sm">
-                                <i class="bi bi-arrow-left me-1"></i>Cancelar
-                            </a>
+                        <div class="d-flex justify-content-center gap-2 mt-4">
                             <button type="submit" class="uiverse-btn btn btn-outline-primary px-4 shadow-sm">
                                 <i class="bi bi-floppy me-2"></i>Guardar Paciente
                             </button>
+                            <a href="{% url 'secretaria' %}" class="uiverse-btn btn btn-outline-danger px-4 shadow-sm">
+                                <!-- <i class="bi bi-arrow-left me-1"></i>Cancelar -->
+                                <i class="bi bi-x me-1"></i>Cancelar
+                            </a> 
                         </div>
                     </form>
                 </div>
             </div>
+            {% else %}
+            <div class="uiverse-card shadow-sm">
+                <div class="card-body p-4 text-center">
+                    <div class="d-flex align-items-center justify-content-center mb-3">
+                        <i class="bi bi-person-lock fs-1 text-muted me-3"></i>
+                        <div>
+                            <h6 class="fw-bold text-dark mb-1">Modo Solo Lectura (Póliza)</h6>
+                            <p class="text-muted small mb-0">Desde el rol de Póliza solo puede consultar la fecha completa de registro de cada paciente. No puede registrar, editar ni desactivar pacientes.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -120,21 +135,28 @@
                         <thead class="table-light">
                             <tr>
                                 <th class="small">Nombre Completo</th>
+                                {% if not es_poliza %}
                                 <th class="small">Cédula</th>
                                 <th class="small">Teléfono</th>
                                 <th class="small">Dirección</th>
+                                {% endif %}
                                 <th class="small">Fecha Registro</th>
+                                {% if not es_poliza %}
                                 <th class="small text-end">Acciones</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for paciente in pacientes %}
                             <tr>
                                 <td>{{ paciente.nombre }} {{ paciente.apellido }}</td>
+                                {% if not es_poliza %}
                                 <td>{{ paciente.cedula }}</td>
                                 <td>{{ paciente.telefono|default:"-" }}</td>
                                 <td>{{ paciente.direccion|default:"-" }}</td>
+                                {% endif %}
                                 <td>{{ paciente.fecha_registro|date:"d/m/Y H:i" }}</td>
+                                {% if not es_poliza %}
                                 <td class="text-end">
                                     <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-outline-info uiverse-btn btn-sm" title="Ver detalle">
                                         <i class="bi bi-eye"></i>
@@ -149,10 +171,11 @@
                                         </button>
                                     </form>
                                 </td>
+                                {% endif %}
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="6" class="text-center text-muted">No hay pacientes registrados aún.</td>
+                                <td colspan="{% if es_poliza %}2{% else %}6{% endif %}" class="text-center text-muted">No hay pacientes registrados aún.</td>
                             </tr>
                             {% endfor %}
                         </tbody>

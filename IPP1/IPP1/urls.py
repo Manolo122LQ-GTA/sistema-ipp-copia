@@ -40,6 +40,7 @@ urlpatterns = [
     # Medico
     path('medico/seleccion/', views.medico, name='medico'),
     path('medico/panel/', views.medico_dashboard, name='medico_panel'),
+    path('medico/crear-cita/', views.crear_cita_medico, name='crear_cita_medico'),
     path('medico/consultas/', views.citas_recibidas_medico, name='citas_recibidas_medico'),
     path('medico/historial/', views.consulta_historial_medico, name='consulta_historial_medico'),
 
@@ -51,6 +52,7 @@ urlpatterns = [
     # Acciones de Citas
     path('cita/atender/<int:cita_id>/', views.atender_cita, name='atender_cita'),
     path('cita/cancelar/<int:cita_id>/', views.cancelar_cita, name='cancelar_cita'),
+    path('cita/refinar/<int:cita_id>/', views.refinar_cita, name='refinar_cita'),
 
     # Especialista
     path('especialista/inicio/', views.especialista, name='especialista'),
@@ -66,6 +68,7 @@ urlpatterns = [
     path('laboratorio/pendientes/', views.solicitudes_pendientes_laboratorio, name='solicitudes_pendientes_laboratorio'),
     path('laboratorio/resultados/', views.resultados_laboratorio, name='resultados_laboratorio'),
     path('laboratorio/examenes/', views.catalogo_examenes, name='catalogo_examenes'),
+    path('laboratorio/importar-examenes/', views.importar_catalogo_examenes, name='importar_catalogo_examenes'),
 
     # Administración
     path('administracion/inicio/', views.inicio_admin, name='inicio_admin'),
@@ -138,7 +141,7 @@ urlpatterns = [
 
     # Editar / Eliminar Paciente
     path('paciente/editar/<int:paciente_id>/', views.editar_paciente, name='editar_paciente'),
-    path('paciente/eliminar/<int:paciente_id>/', views.eliminar_paciente, name='eliminar_paciente'),
+    path('paciente/eliminar/<int:paciente_id>/', views.desactivar_paciente, name='eliminar_paciente'),
 
     # Marcar Factura Pagada
     path('factura/pagar/<int:factura_id>/', views.marcar_factura_pagada, name='marcar_factura_pagada'),

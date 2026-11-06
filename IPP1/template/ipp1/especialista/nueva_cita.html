@@ -13,7 +13,7 @@
         {% csrf_token %}
         <div class="row g-3">
 {% for field in form %}
-<div class="mb-3">
+<div class="mb-2">
     <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
         {% if field.name == 'paciente' %}
             <i class="bi bi-person-fill me-1"></i>
@@ -36,8 +36,8 @@
 {% endfor %}
         </div>
         <div class="text-center mt-4 border-top pt-3">
-            <button type="submit" class="btn btn-outline-primary px-5 shadow-sm uiverse-btn">Confirmar Cita</button>
-            <a href="{% url 'especialista' %}" class="btn btn-outline-danger ms-2 uiverse-btn">Cancelar</a>
+            <button type="submit" class="btn btn-outline-primary px-5 shadow-sm uiverse-btn"><i class="bi bi-floppy"></i>Confirmar Cita</button>
+            <a href="{% url 'especialista' %}" class="btn btn-outline-danger ms-2 uiverse-btn"><i class="bi bi-x"></i>Cancelar</a>
         </div>
     </form>
 </div>

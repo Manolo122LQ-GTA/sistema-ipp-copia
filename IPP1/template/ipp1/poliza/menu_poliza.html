@@ -19,7 +19,7 @@
             <a href="{% url 'poliza_inicio' %}" class="btn btn-outline-secondary uiverse-btn shadow-sm"><i class="bi bi-arrow-left me-1"></i>Volver Atrás</a>
         </div>
     </div>
-    {% if not es_secretaria or request.user.is_superuser %}
+                                 {% if not es_secretaria or request.user.is_superuser %}
     <div class="mb-3">
         <a href="{% url 'poliza_crear' %}" class="btn btn-outline-primary uiverse-btn shadow-sm"><i class="bi bi-plus-circle me-1"></i>Nueva Póliza</a>
         <a href="{% url 'plan_salud_lista' %}" class="btn btn-outline-primary uiverse-btn shadow-sm"><i class="bi bi-shield-check me-1"></i>Gestionar Plan de Salud</a>
@@ -70,7 +70,7 @@
                                 <a href="{% url 'poliza_detalle' poliza.id %}" class="btn btn-sm btn-outline-info uiverse-btn" title="Ver detalle">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                {% if not es_secretaria or request.user.is_superuser %}
+    {% if not es_secretaria or request.user.is_superuser %}
                                 <form method="POST" class="d-inline">
                                     {% csrf_token %}
                                     <input type="hidden" name="poliza_id" value="{{ poliza.id }}">

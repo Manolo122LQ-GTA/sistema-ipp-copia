@@ -150,6 +150,7 @@
     </div>
 
     <!-- RESUMEN DE AFILIADOS -->
+     {% if es_admin or es_poliza %}
     <div class="col-md-4">
         <div class="uiverse-card shadow-sm h-100 d-flex flex-column">
             <div class="card-body d-flex flex-column justify-content-between flex-grow-1">
@@ -164,6 +165,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- TASA DE CAMBIO -->
     <div class="col-md-4">

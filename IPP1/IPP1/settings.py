@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+# MODELOS IMPORTADOS PARA EL PROYECTO
 from pathlib import Path
 import os
 from decimal import Decimal
@@ -20,6 +21,20 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# CODIGO DE PRUEBA
+# settings.py (Configuración temporal de desarrollo)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = '127.0.0.1'
+EMAIL_PORT = 1025
+EMAIL_HOST_USER = ''
+EMAIL_HOST_PASSWORD = ''
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = False
+
+# Tip extra: Asegúrate de que el dominio de tus enlaces use localhost en desarrollo
+# Si usas el framework 'sites' de Django o una variable propia:
+DEFAULT_FROM_EMAIL = 'no-reply@tu-laboratorio.local'
 
 
 # Quick-start development settings - unsuitable for production
@@ -127,6 +142,11 @@ DATABASES = {
     }
 }
 
+# CIFRADO DE CONTRAÑEAS
+# PASSWORD_HASHERS = [
+#     'django.contrib.auth.hashers.Argon2PasswordHasher',
+# ]
+# FINAL DE CIFRADO DE CONTRAÑEAS
 
 # VALIDACION DE CONTRASEÑAS
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

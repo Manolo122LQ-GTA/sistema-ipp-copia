@@ -42,12 +42,20 @@
                                     <td class="fw-semibold">{{ cita.paciente.nombre }} {{ cita.paciente.apellido }}</td>
                                     <td class="text-muted small">{% if cita.especialista %}{{ cita.especialista.get_full_name|default:cita.especialista.username }}{% else %}<em>Sin asignar</em>{% endif %}</td>
                                     <td class="text-center pe-4">
-                                        <form method="POST" action="{% url 'atender_cita' cita.id %}" style="display:inline;">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-success btn-sm px-3 shadow-sm uiverse-btn">
-                                                <i class="bi bi-clipboard-pulse me-1"></i>Atender
-                                            </button>
-                                        </form>
+                                        <div class="btn-group" role="group" style="display:inline-flex; gap:2px;">
+                                            <form method="POST" action="{% url 'atender_cita' cita.id %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-success btn-sm px-3 shadow-sm uiverse-btn">
+                                                    <i class="bi bi-clipboard-pulse me-1"></i>Atender
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{% url 'refinar_cita' cita.id %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-warning btn-sm px-3 shadow-sm uiverse-btn">
+                                                    <i class="bi bi-clock me-1"></i>Refinar
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             {% endfor %}

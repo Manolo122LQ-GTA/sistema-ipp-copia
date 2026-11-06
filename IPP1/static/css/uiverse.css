@@ -457,7 +457,7 @@ select.uiverse-input {
   .container-fluid { padding-left: 0.5rem; padding-right: 0.5rem; }
 }
 
-/* TIPOGRAFIA O FUENTE DE LETRA GENERAL */
+/* TIPOGRAFIA O FUENTE DE LETRA GENERAL
 body, *, *::before, *::after {
   font-family: 'Time New Roman', cursive, sans-serif !important;
-}
+} */
