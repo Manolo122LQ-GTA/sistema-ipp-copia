@@ -1,21 +1,27 @@
-<form id="logout-form-inactivity" action="{% url 'logout' %}" method="post" style="display:none;">{% csrf_token %}</form>
+<!-- BOTON ACCIONAR EL CIERRE DE SESION -->
+<form id="logout-form-inactivity" action="{% url 'logout' %}" method="post" style="display:none;" onsubmit="return confirm('¿Estás seguro de que deseas cerrar sesión en el Sistema IPP?');">{% csrf_token %}</form>
 
-<!-- Estructura visual de la advertencia por inactividad -->
+<!-- VENTANA VISUAL DE AVISO DE INACTIVIDAD -->
 <div id="modal-inactividad" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); z-index: 99999; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
     <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #fff; width: 420px; padding: 30px; border-radius: 8px; box-shadow: 0px 5px 20px rgba(0,0,0,0.4); text-align: center;">
+        
+        <!-- MENSAJE DE AVISO DE CIERRE DE SESION POR INACTIVIDAD -->
         <div style="font-size: 45px; color: #dc3545; margin-bottom: 15px;">AVISO</div>
         <h3 style="margin: 0 0 10px 0; color: #212529; font-size: 20px;">Aviso de Inactividad</h3>
         <p style="color: #495057; font-size: 14px; line-height: 1.6; margin-bottom: 25px;">
             Tu sesión en el <strong>Sistema IPP</strong> está a punto de caducar por motivos de seguridad. ¿Deseas permanecer conectado?
         </p>
         <div style="display: flex; gap: 12px; justify-content: center;">
-            <!-- Formulario para enviar el POST de cierre de sesión nativo de Django -->
-            <form id="form-logout-automatico" action="{% url 'logout' %}" method="post" style="margin: 0;">
+            
+            <!-- FORMULARIO PARA CIERRE DE SESION A TRAVES DE POST DE DJANGO -->
+            <form id="form-logout-automatico" action="{% url 'logout' %}" method="post" style="margin: 0;" onsubmit="return confirm('¿Estás seguro de que deseas cerrar sesión en el Sistema IPP?');">
                 {% csrf_token %}
                 <button type="submit" style="padding: 10px 18px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px;">
                     Salir del Sistema
                 </button>
             </form>
+
+<!-- BOTON PARA EXTENDER LA SESION Y PERMANECER CONECTADO -->
 <button onclick="extenderSesion()" style="padding: 10px 18px; background-color: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px;">
     Permanecer conectado
 </button>
@@ -23,6 +29,7 @@
     </div>
 </div>
 
+<!-- SCRIPT DE JAVASCRIPT PARA CONTROLAR EL TIEMPO DE INACTIVIDAD Y CIERRE AUTOMATICO DE SESION -->
 <script>
     const TIEMPO_INACTIVIDAD = 600000;   // 10 min (coincide con settings.py:197)
     const TIEMPO_AVISO = 540000;         // 9 min → se muestra el modal

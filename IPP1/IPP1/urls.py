@@ -32,12 +32,14 @@ urlpatterns = [
     # Aprobación pendiente
     path('pendiente-aprobacion/', views.pendiente_aprobacion, name='pendiente_aprobacion'),
 
-    # Secretaria
+    # SECRETARIA INICIO
     path('secretaria/inicio/', views.secretaria, name='secretaria'),
+    # SECRETARIA (REGISTRAR PACIENTE, VER PACIENTES RECIENTES, VER MIS SOLICITUDES)
     path('secretaria/registrar_paciente/', views.registrar_paciente, name='registrar_paciente'),
+    path('secretaria/pacientes-recientes/', views.pacientes_recientes, name='pacientes_recientes'),
     path('secretaria/mis-solicitudes/', views.mis_solicitudes, name='mis_solicitudes'),
 
-    # Medico
+    # MEDICO
     path('medico/seleccion/', views.medico, name='medico'),
     path('medico/panel/', views.medico_dashboard, name='medico_panel'),
     path('medico/crear-cita/', views.crear_cita_medico, name='crear_cita_medico'),

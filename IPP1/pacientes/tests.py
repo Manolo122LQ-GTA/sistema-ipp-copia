@@ -30,7 +30,7 @@ class BaseTest(TestCase):
         self._crear_grupos()
 
     def _crear_grupos(self):
-        for nombre in ['Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio', 'Administracion']:
+        for nombre in ['Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio', 'Administracion', 'Poliza']:
             Group.objects.get_or_create(name=nombre)
 
     def _crear_usuario(self, username='testuser', password='Abc123!@#$%xyz78', grupo=None):
@@ -352,7 +352,8 @@ class LoginFormTest(BaseTest):
 class PacienteFormTest(BaseTest):
     def test_form_valido(self):
         form = PacienteForm(data={
-            'nombre': 'Juan', 'apellido': 'Perez', 'cedula': '12345678',
+            'nombre': 'Juan', 'apellido': 'Perez',
+            'codigo_cedula': 'V', 'numero_cedula': '12345678',
             'codigo_telefono': '0412', 'numero_telefono': '1234567',
             'fecha_nacimiento': '1990-05-15',
             'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Docente',
@@ -364,19 +365,20 @@ class PacienteFormTest(BaseTest):
         self.assertFalse(form.is_valid())
         self.assertIn('nombre', form.errors)
         self.assertIn('apellido', form.errors)
-        self.assertIn('cedula', form.errors)
+        self.assertIn('numero_cedula', form.errors)
         self.assertIn('fecha_nacimiento', form.errors)
 
     def test_cedula_unica(self):
         self._crear_paciente(cedula='12345678')
         form = PacienteForm(data={
-            'nombre': 'Otro', 'apellido': 'Perez', 'cedula': '12345678',
+            'nombre': 'Otro', 'apellido': 'Perez',
+            'codigo_cedula': 'V', 'numero_cedula': '12345678',
             'codigo_telefono': '0412', 'numero_telefono': '1234567',
             'fecha_nacimiento': '1990-05-15',
             'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Beneficiario',
         })
         self.assertFalse(form.is_valid())
-        self.assertIn('cedula', form.errors)
+        self.assertIn('numero_cedula', form.errors)
 
 
 class SolicitudSecretariaFormTest(BaseTest):
@@ -801,7 +803,8 @@ class PacienteCRUDTest(BaseTest):
     def test_registrar_paciente(self):
         self._login(grupo='Secretaria')
         response = self.client.post(reverse('registrar_paciente'), {
-            'nombre': 'Maria', 'apellido': 'Gomez', 'cedula': '87654321',
+            'nombre': 'Maria', 'apellido': 'Gomez',
+            'codigo_cedula': 'V', 'numero_cedula': '87654321',
             'codigo_telefono': '0414', 'numero_telefono': '7654321',
             'fecha_nacimiento': '1985-03-22',
             'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Docente',
@@ -1190,6 +1193,76 @@ class LandingPageTest(BaseTest):
         self.assertContains(response, 'Administración')
 
 
+class PolizaFichaTest(BaseTest):
+    """El rol Póliza debe poder consultar la ficha de los pacientes (solo lectura)."""
+
+    def setUp(self):
+        super().setUp()
+        self.paciente = self._crear_paciente()
+
+    def test_landing_poliza_habilita_modulo(self):
+        self._login(grupo='Poliza')
+        response = self.client.get(reverse('home'))
+        self.assertContains(response, 'Póliza')
+        self.assertContains(response, reverse('poliza_inicio'))
+
+    def test_poliza_ve_tarjeta_ver_ficha(self):
+        self._login(grupo='Poliza')
+        response = self.client.get(reverse('poliza_inicio'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Ver Ficha')
+        self.assertContains(response, reverse('pacientes_recientes'))
+
+    def test_secretaria_no_ve_tarjeta_ver_ficha_de_poliza(self):
+        self._login(grupo='Secretaria')
+        response = self.client.get(reverse('poliza_inicio'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Consultar la ficha de los pacientes registrados')
+
+    def test_poliza_lista_pacientes_y_abre_ficha(self):
+        self._login(grupo='Poliza')
+        response = self.client.get(reverse('pacientes_recientes'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.paciente.nombre)
+        self.assertContains(response, reverse('detalle_paciente', args=[self.paciente.id]))
+        self.assertContains(response, 'Ver Ficha')
+        self.assertNotContains(response, reverse('editar_paciente', args=[self.paciente.id]))
+
+    def test_poliza_accede_detalle_paciente(self):
+        self._login(grupo='Poliza')
+        response = self.client.get(reverse('detalle_paciente', args=[self.paciente.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.paciente.cedula)
+
+    def test_poliza_no_puede_registrar_paciente(self):
+        self._login(grupo='Poliza')
+        response = self.client.post(reverse('registrar_paciente'), {
+            'nombre': 'Intruso', 'apellido': 'Prueba',
+            'codigo_cedula': 'V', 'numero_cedula': '99999999',
+            'codigo_telefono': '0412', 'numero_telefono': '1234567',
+            'fecha_nacimiento': '1990-05-15',
+            'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Docente',
+        }, follow=True)
+        self.assertFalse(Paciente.objects.filter(cedula='99999999').exists())
+        self.assertContains(response, 'solo lectura')
+
+    def test_poliza_registrar_paciente_es_solo_lectura(self):
+        self._login(grupo='Poliza')
+        response = self.client.get(reverse('registrar_paciente'))
+        self.assertContains(response, 'Ver Ficha')
+        self.assertNotContains(response, 'Guardar Paciente')
+
+    def test_secretaria_si_ve_formulario_de_registro(self):
+        self._login(grupo='Secretaria')
+        response = self.client.get(reverse('registrar_paciente'))
+        self.assertContains(response, 'Guardar Paciente')
+
+    def test_otro_rol_no_accede_lista_de_pacientes(self):
+        self._login(grupo='Medico')
+        response = self.client.get(reverse('pacientes_recientes'))
+        self.assertRedirects(response, reverse('home'))
+
+
 class ExportTest(BaseTest):
     def test_export_pacientes_csv_admin(self):
         self._crear_paciente()
@@ -1424,12 +1497,15 @@ class EditarPacienteTest(BaseTest):
         self.assertContains(response, 'name="categoria_afiliado"')
         self.assertContains(response, 'name="codigo_telefono"')
         self.assertContains(response, 'name="numero_telefono"')
+        self.assertContains(response, 'name="codigo_cedula"')
+        self.assertContains(response, 'name="numero_cedula"')
 
     def test_editar_paciente_post(self):
         self._login(grupo='Secretaria')
         p = self._crear_paciente()
         response = self.client.post(reverse('editar_paciente', args=[p.id]), {
-            'nombre': 'Pedro', 'apellido': 'Gomez', 'cedula': p.cedula,
+            'nombre': 'Pedro', 'apellido': 'Gomez',
+            'codigo_cedula': 'V', 'numero_cedula': p.cedula,
             'codigo_telefono': '0412', 'numero_telefono': '1234567',
             'fecha_nacimiento': '1990-05-15',
             'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Jubilado',
@@ -1437,6 +1513,7 @@ class EditarPacienteTest(BaseTest):
         p.refresh_from_db()
         self.assertEqual(p.nombre, 'Pedro')
         self.assertEqual(p.apellido, 'Gomez')
+        self.assertEqual(p.cedula, '12345678')
 
     def test_eliminar_paciente(self):
         self._login(grupo='Secretaria')

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ titulo }}</title>
     
+
     <!-- COSAS DEL CSS Y SVG -->
     <link rel="icon" type="image/svg+xml" href="{% static 'icon/LOGO_IPP_IUTAG.svg' %}">
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
@@ -58,6 +59,22 @@
         </div>
     </div>
 
+    
+    <!-- VISUALIZAR QUE USUARIO ESTA LOGUEADO Y DARLE LA OPCION DE CERRAR SESION -->
+    <div class="text-center mb-3">
+        <span class="text-white text-opacity-75" style="font-size: 14px;">Usuario: <strong>{{ user.get_full_name }}</strong></span>
+    </div>
+
+    <!-- BOTON DE CIERRE DE SESION -->
+    <form action="{% url 'logout' %}" method="post" class="mt-2" class="m-0" onsubmit="return confirm('¿Estás seguro de que deseas cerrar sesión en el Sistema IPP?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-light uiverse-btn px-2">
+            <i class="bi bi-box-arrow-left me-1"></i>Cerrar Sesión
+        </button>
+    </form>
+    </div>
+
+    <!-- IMAGEN LOGO SISTEMA -->
     <img src="{% static 'img/ipp_logo.png' %}" width="300" height="190" class="mb-4 d-block mx-auto" alt="Logo IPP">
 
         <!-- TITULO -->
@@ -66,6 +83,7 @@
             <h2 class="text-white fw-bold mb-1">Selecciona tu área de trabajo</h2>
             <p class="text-white text-opacity-75 mb-0">Elige el módulo al que deseas acceder</p>
             
+
                 <!-- BOTON SECRETARIA GENERAL -->
             <div class="row justify-content-center mt-4">
                 <div class="col-md-10">
@@ -124,12 +142,6 @@
         <div class="container-fluid">
             <small class="text-white text-opacity-75">© {% now "Y" %} IPP-IUTAG. Todos los derechos reservados.</small>
         </div>
-    <form action="{% url 'logout' %}" method="post" class="mt-2">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-sm btn-outline-light uiverse-btn px-3">
-    <i class="bi bi-box-arrow-left me-1"></i>Cerrar Sesión
-    </button>
-    </form>
     </footer>
 </body>
 </html>

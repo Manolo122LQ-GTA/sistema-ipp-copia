@@ -32,10 +32,16 @@
             {% endif %}
         </div>
         <div class="col-md-4">
-            <label for="{{ form.cedula.id_for_label }}" class="form-label fw-semibold">Cédula</label>
-            {{ form.cedula }}
-            {% if form.cedula.errors %}
-                <div class="text-danger small mt-1">{{ form.cedula.errors }}</div>
+            <label class="form-label fw-semibold">Cédula</label>
+            <div class="input-group">
+                <span class="input-group-text">{{ form.codigo_cedula }}</span>
+                {{ form.numero_cedula }}
+            </div>
+            {% if form.codigo_cedula.errors or form.numero_cedula.errors %}
+                <div class="text-danger small mt-1">
+                    {{ form.codigo_cedula.errors }}
+                    {{ form.numero_cedula.errors }}
+                </div>
             {% endif %}
         </div>
         <div class="col-md-4">

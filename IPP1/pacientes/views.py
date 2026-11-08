@@ -1,5 +1,4 @@
 # MODELOS IMPORTADOS EN VISTAS
-
 from django.contrib.auth import get_user_model
 from decimal import Decimal
 from django.http import HttpResponse
@@ -21,7 +20,34 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now, localdate
+from django.contrib.sessions.models import Session
+from django.contrib.auth.views import LoginView
+from django.views.decorators.cache import never_cache
 import csv
+
+
+# PACIENTES RECIENTES (SECRETARIA)
+@login_required
+def pacientes_recientes(request):
+    es_poliza = request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists()
+    if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists() or es_poliza):
+        messages.error(request, "Acceso denegado.")
+        return redirect('home')
+    q = request.GET.get('q', '').strip()
+    pacientes_lista = Paciente.objects.filter(activo=True).order_by('-fecha_registro')
+    if q:
+        pacientes_lista = pacientes_lista.filter(
+            Q(nombre__icontains=q) | Q(apellido__icontains=q) |
+            Q(cedula__icontains=q) | Q(codigo_afiliado__icontains=q)
+        )
+    paginator = Paginator(pacientes_lista, 10)
+    pacientes = paginator.get_page(request.GET.get('page', 1))
+    return render(request, 'ipp1/secretaria/pacientes_recientes.html', {
+        'pacientes': pacientes,
+        'q': q,
+        'es_poliza': es_poliza,
+    })
+
 
 # SOLICITUD DE CITA
 @login_required
@@ -103,6 +129,25 @@ def crear_cita_medico(request):
     }
     return render(request, 'ipp1/medico/crear_cita_medico.html', ctx)
 
+# SESION ABIERTA
+class CustomLoginView(LoginView):
+    """Vista de inicio de sesión personalizada para manejar errores y redirecciones."""
+    template_name = 'ipp1/compartidos/login.html'
+    authentication_form = LoginForm
+
+    def form_invalid(self, form):
+        """Maneja el caso de formulario inválido mostrando mensajes de error."""
+        messages.error(self.request, 'Usuario o contraseña incorrectos.')
+        return super().form_invalid(form)
+
+    def get_success_url(self):
+        """Redirige al usuario a la URL deseada después del inicio de sesión."""
+        next_url = self.request.POST.get('next') or self.request.GET.get('next') or ''
+        if not _is_safe_redirect_url(next_url, allowed_hosts={self.request.get_host()}):
+            next_url = reverse('home')
+        return next_url
+
+
 # LOGIN
 def login_view(request):
     """Vista para el inicio de sesión sin redirecciones ciegas en errores."""
@@ -142,12 +187,19 @@ def login_view(request):
 
     return render(request, 'ipp1/compartidos/login.html', {'form': form})
 
+# CIERRE DE SESION
 @login_required
 @require_http_methods(["GET", "POST"])
+@never_cache
 def logout_view(request):
     """Cierra la sesión y redirige al login con un mensaje de éxito."""
     logout(request)
     messages.success(request, "Has cerrado sesión exitosamente. ¡Vuelve pronto!")
+    response = redirect('login')
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
     return redirect('login')
 
 # VISTA REGISTRO USUARIO/ROLES
@@ -1192,6 +1244,7 @@ def poliza_detalle(request, poliza_id):
     total_gastado = gastos.aggregate(total=Sum('monto'))['total'] or 0
 
     es_secretaria = request.user.groups.filter(name='Secretaria').exists()
+    es_poliza = request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists()
 
     return render(request, 'ipp1/poliza/detalle_poliza.html', {
         'poliza': poliza,
@@ -1200,6 +1253,7 @@ def poliza_detalle(request, poliza_id):
         'citas': citas,
         'total_gastado': total_gastado,
         'es_secretaria': es_secretaria,
+        'es_poliza': es_poliza,
     })
 
     
@@ -1325,6 +1379,10 @@ def registrar_paciente(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists() or es_poliza):
         messages.error(request, "Acceso denegado.")
         return redirect('home')
+    if request.method == 'POST' and es_poliza:
+        messages.error(request, "El rol de Póliza es de solo lectura: no puede registrar pacientes.")
+        return redirect('pacientes_recientes')
+
     q = request.GET.get('q', '').strip()
     pacientes_lista = Paciente.objects.filter(activo=True).order_by('-fecha_registro')
     if q:

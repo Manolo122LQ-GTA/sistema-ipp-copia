@@ -92,7 +92,7 @@
         {% endif %}
 
         <!-- FORMULARIO DE REGISTRO -->
-        <div class="form-box">
+        <div class="form-box px4">
             <form class="form" method="POST">
                 {% csrf_token %}
 
@@ -104,20 +104,15 @@
 
                 <!-- CAMPOS DEL FORMULARIO -->
                 <div class="form-container">
-
-                    <!-- NOMBRE Y APELLIDO -->
-                    <div class="d-flex gap-2" style="width:100%;">
-                        <input type="text" name="name" class="input flex-fill" placeholder="Nombre(s)" required value="{{ request.POST.name }}">
-                        <input type="text" name="last_name" class="input flex-fill" placeholder="Apellido(s)" required value="{{ request.POST.last_name }}">
-                    </div>
-
-                    <!-- NOMBRE DE USUARIO -->
-                    <input type="text" name="username" class="input" placeholder="Usuario" required value="{{ request.POST.username }}">
+                    <!-- NOMBRE -->
+                    <input type="text" name="name" class="input" placeholder="Nombre" required value="{{ request.POST.name }}">
+                    <!-- APELLIDO -->
+                    <input type="text" name="last_name" class="input" placeholder="Apellido" required value="{{ request.POST.last_name }}">
 
                     <!-- VALIDACION DE CONTRASEÑA -->
                     <div class="pw-wrap">
                         <div class="position-relative">
-                            <input type="password" name="password" maxlength="16" id="id_password" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;">
+                            <input type="password" name="password" maxlength="16" minlength="16" id="id_password" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;">
                             <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
                         </div>
                     
@@ -133,11 +128,11 @@
 
                     <!-- Confirmar Contraseña -->
                      <div class="position-relative">
-                        <input type="password" name="password2" maxlength="16" id="id_password2" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;">
+                        <input type="password" name="password2" maxlength="16" minlength="16" id="id_password2" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;">
                         <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
                     </div>
 
-                    <!-- Correo Electronico -->
+                    <!-- CORREOnombre -->
                     <input type="email" name="email" class="input" placeholder="Correo Electrónico" required value="{{ request.POST.email }}">
 
                     <!-- Seleccion de Rol -->
@@ -180,6 +175,19 @@ function validarPassword() {
     req('req-numonly', !/^[0-9]+$/.test(pwd) || pwd.length === 0);
 }
 </script>
+
+<!-- VALIDACION DE LETRAS EN NOMBRE Y APELLIDO -->
+<script>
+document.querySelector('input[name="name"]').addEventListener('input', function() {
+    this.value = this.value.replace(/[^A-Za-zÑñÁáÉéÍíÓóÚú\s]/g, '');
+});
+
+document.querySelector('input[name="last_name"]').addEventListener('input', function() {
+    this.value = this.value.replace(/[^A-Za-zÑñÁáÉéÍíÓóÚú\s]/g, '');
+});
+</script>
+
+
 
 <!--  FOOTER  -->
 <footer class="py-3 text-center" style="background: rgba(0,0,0,0.15);">

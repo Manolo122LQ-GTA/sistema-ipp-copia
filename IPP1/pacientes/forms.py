@@ -1,34 +1,32 @@
-
 # MODELOS IMPORTADOS
-
+import re
 from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, TarifaEspecialidad, Medicamento, Receta, PlanSalud, Poliza, GastoPaciente, Familiar, TasaCambio
 from django import forms
 from django.contrib.auth.models import User
 from django.utils import timezone
-import re
+
 
 # VALIDACIONES 
-
 def _no_negativo(valor, campo):
     if valor is not None and valor < 0:
         raise forms.ValidationError(f'{campo} no puede ser negativo.')
     return valor
 
-# EL VALOR SOLO PUEDE SER NUMEROS
 
+# EL VALOR SOLO PUEDE SER NUMEROS
 def _solo_digitos(valor, campo):
     if valor and not re.match(r'^\d+$', str(valor)):
         raise forms.ValidationError(f'{campo} debe contener solo números.')
     return valor
 
-# LOGIN
 
+# LOGIN
 class LoginForm(forms.Form):
     username = forms.CharField(label='Usuario', max_length=100, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su usuario'}))
     password = forms.CharField(label='Contraseña', max_length=100, widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su contraseña'}))
 
-# PERFIL DE USUARIO
 
+# PERFIL DE USUARIO
 class PerfilForm(forms.ModelForm):
     class Meta:
         model = User
@@ -39,8 +37,8 @@ class PerfilForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={'class': 'form-control uiverse-input', 'maxlength': '254'}),
         }
 
-# CODIGOS DE TELEFONO VENEZOLANOS
 
+# CODIGOS DE TELEFONO VENEZOLANOS
 CODIGOS_TELEFONO_VE = [
     ('0412', '0412'),
     ('0414', '0414'),
@@ -53,29 +51,45 @@ CODIGOS_TELEFONO_VE = [
     ('0268', '0268 (Coro)'),
 ]
 
-# COSAS DE PACIENTES
 
+# COSAS DE PACIENTES
 class PacienteForm(forms.ModelForm):
+
+# CODIGO & NUMERO DE TELEFONO SEPARADOS PARA FORMULARIO
     codigo_telefono = forms.ChoiceField(choices=CODIGOS_TELEFONO_VE, label='Código')
     numero_telefono = forms.CharField(label='Número', max_length=7, widget=forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': '1234567', 'onkeypress': 'return event.charCode >= 48 && event.charCode <= 57', 'inputmode': 'numeric'}))
+    
+# CODIGO & NUMERO DE CEDULA SEPARADOS PARA FORMULARIO
+    codigo_cedula = forms.ChoiceField(choices=[('V', 'V'), ('E', 'E'), ('P', 'P'), ('J', 'J'), ('G', 'G')], label='Código', required=False)
+    numero_cedula = forms.CharField(
+        label='Número', max_length=8, required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control uiverse-input',
+            'placeholder': '12345678',
+            'onkeypress': 'return event.charCode >= 48 && event.charCode <= 57',
+            'inputmode': 'numeric',
+        })
+    )
+
 
 # CATEGORIA DE AFILIADO
     class Meta:
         model = Paciente
-        fields = ['nombre', 'apellido', 'cedula', 'telefono', 'direccion', 'fecha_nacimiento', 'status_afiliado', 'categoria_afiliado']
+        fields = ['nombre', 'apellido', 'telefono', 'direccion', 'fecha_nacimiento', 'status_afiliado', 'categoria_afiliado', 'codigo_cedula', 'numero_cedula']
         widgets = {
             'fecha_nacimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
-            'nombre': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ingrese los nombres'}),
-            'apellido': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ingrese los apellidos'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ingrese los nombres', 'pattern': '[A-Za-zÁÉÍÓÚáéíóúÑñ ]+', 'title': 'Solo se permiten letras y espacios', 'maxlength': '30'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ingrese los apellidos', 'pattern': '[A-Za-zÁÉÍÓÚáéíóúÑñ ]+', 'title': 'Solo se permiten letras y espacios', 'maxlength': '30'}),
             'cedula': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'V-12.345.678', 'onkeypress': 'return event.charCode >= 48 && event.charCode <= 57', 'inputmode': 'numeric'}),
             'telefono': forms.HiddenInput(),
             'direccion': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ingresa la dirección completa'}),
             'status_afiliado': forms.Select(attrs={'class': 'form-control uiverse-input'}),
             'categoria_afiliado': forms.Select(attrs={'class': 'form-control uiverse-input'}),
+            'codigo_cedula': forms.Select(attrs={'class': 'form-control uiverse-input'}),
+            'numero_cedula': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': '12345678', 'onkeypress': 'return event.charCode >= 48 && event.charCode <= 57', 'inputmode': 'numeric'}),
         }
 
 # CODIGO Y NUMERO DE TELEFONO SEPARADOS PARA FORMULARIO
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['codigo_telefono'].widget.attrs.update({'class': 'form-control uiverse-input'})
@@ -84,16 +98,14 @@ class PacienteForm(forms.ModelForm):
             if len(raw) >= 4:
                 self.fields['codigo_telefono'].initial = raw[:4]
                 self.fields['numero_telefono'].initial = raw[4:]
+        if self.instance and self.instance.cedula:
+            self.fields['codigo_cedula'].initial = 'V'
+            self.fields['numero_cedula'].initial = ''.join(
+                c for c in str(self.instance.cedula) if c.isdigit()
+            )
 
-# NUMERO Y CODIGO DE TELEFONO SE UNEN PARA GUARDAR EN EL MODELO
-
-    def clean(self):
-        cleaned = super().clean()
-        cod = cleaned.get('codigo_telefono', '')
-        num = cleaned.get('numero_telefono', '')
-        cleaned['telefono'] = f"{cod}{num}"
-        return cleaned
-# UN MIENTRAS TANTO
+    
+# CEDULA VALIDACION: SOLO NUMEROS, ENTRE 6 Y 8 DIGITOS, UNICA EN LA BASE DE DATOS 
     def clean_cedula(self):
         cedula = self.cleaned_data.get('cedula', '')
         if not cedula:
@@ -111,7 +123,41 @@ class PacienteForm(forms.ModelForm):
                 raise forms.ValidationError('Ya existe un paciente registrado con esta cédula.')
         return limpia
 
-# UN MIENTRAS TANTO 2
+# METODO CLEAN CODIGO NUMERO CEDULA
+    def clean(self):
+        cleaned = super().clean()
+        numero = (cleaned.get('numero_cedula') or '').strip()
+
+        if not numero:
+            self.add_error('numero_cedula', 'La cédula es obligatoria.')
+            return cleaned
+
+        numero_limpio = ''.join(c for c in str(numero) if c.isdigit())
+        if len(numero_limpio) < 6 or len(numero_limpio) > 8:
+            self.add_error('numero_cedula', 'La cédula debe tener entre 6 y 8 dígitos.')
+            return cleaned
+
+        # El modelo almacena la cédula solo con dígitos (V/E/P/J/G es referencial)
+        cleaned['cedula'] = numero_limpio
+        existentes = Paciente.objects.filter(cedula=numero_limpio)
+        if self.instance and self.instance.pk:
+            existentes = existentes.exclude(pk=self.instance.pk)
+        if existentes.exists():
+            self.add_error('numero_cedula', 'Ya existe un paciente con esta cédula.')
+
+        return cleaned
+
+# LA CEDULA COMPUESTA SE ASIGNA AL MODELO ANTES DE GUARDAR
+    def save(self, commit=True):
+        paciente = super().save(commit=False)
+        if self.cleaned_data.get('cedula'):
+            paciente.cedula = self.cleaned_data['cedula']
+        if commit:
+            paciente.save()
+            self.save_m2m()
+        return paciente
+
+# FECHA DE NACIMIENTO NO PUEDE SER FUTURA NI MAYOR A 120 AÑOS
     def clean_fecha_nacimiento(self):
         fecha = self.cleaned_data.get('fecha_nacimiento')
         if not fecha:
@@ -125,24 +171,33 @@ class PacienteForm(forms.ModelForm):
         return fecha
 
 
-# SOLICITUD DE CITA
+# CODIGOS DE IDENTIFICACION DE CEDULA VENEZOLANA (PACIENTFORM)
+CODIGOS_CEDULA_VE = [
+    'V',  # Venezolano
+    'E',  # Extranjero
+    'P',  # Pasaporte
+    'J',  # Jurídico
+    'G',  # Gobierno
+]
 
+
+# SOLICITUD DE CITA
 def _tipo_paciente(paciente):
     partes = [paciente.status_afiliado]
     if paciente.categoria_afiliado and paciente.categoria_afiliado != 'Otro':
         partes.append(paciente.categoria_afiliado)
     return " - ".join(partes)
 
-# MEDICO/ODONTOLOGO/ESPECIALISTA
 
+# MEDICO/ODONTOLOGO/ESPECIALISTA
 def _especialista_label(usuario):
     grupo = usuario.groups.filter(name__in=['Medico', 'Odontologo', 'Especialista']).first()
     especialidad = grupo.name if grupo else 'Medico'
     nombre = usuario.last_name or usuario.username
     return f"{nombre} ({especialidad})"
 
-# PACIENTE/ESPECIALISTA/FECHA/HORA/MOTIVO/CUANTOCOBRO/CUANTOCOBRA
 
+# PACIENTE/ESPECIALISTA/FECHA/HORA/MOTIVO/CUANTOCOBRO/CUANTOCOBRA
 class SolicitudSecretariaForm(forms.ModelForm):
     class Meta:
         model = SolicitudSecretaria
@@ -185,14 +240,16 @@ class SolicitudSecretariaForm(forms.ModelForm):
             self.fields['especialista'].widget.attrs['readonly'] = True
             self.fields['especialista'].widget.attrs['disabled'] = True
 
-    # HACER QUE LA FECHA NO PUEDA SER LA MISMA DEL MISMO DIA DEL HOY
+
+# HACER QUE LA FECHA NO PUEDA SER LA MISMA DEL MISMO DIA DEL HOY
     def clean_fecha_cita(self):
         fecha = self.cleaned_data.get('fecha_cita')
         if fecha and fecha < timezone.now().date():
             raise forms.ValidationError('La fecha de la cita no puede ser en el pasado.')
         return fecha
 
-    # IMPEDIR DOBLE RESERVA DEL MISMO ESPECIALISTA EN LA MISMA FECHA Y HORA
+
+# IMPEDIR DOBLE RESERVA DEL MISMO ESPECIALISTA EN LA MISMA FECHA Y HORA
     def clean(self):
         cleaned_data = super().clean()
         especialista = cleaned_data.get('especialista')
@@ -208,8 +265,8 @@ class SolicitudSecretariaForm(forms.ModelForm):
                 raise forms.ValidationError('El especialista ya tiene una cita programada para esa fecha y hora.')
         return cleaned_data
 
-# SOLICITUD DE LABORATORIO
 
+# SOLICITUD DE LABORATORIO
 class SolicitudLaboratorioForm(forms.ModelForm):
     class Meta:
         model = SolicitudLaboratorio
@@ -233,8 +290,8 @@ class SolicitudLaboratorioForm(forms.ModelForm):
             self.add_error('examen', 'Seleccione un examen del catálogo.')
         return cleaned
 
-# PROCESAR LABORATORIO
 
+# PROCESAR LABORATORIO
 class ProcesarLaboratorioForm(forms.ModelForm):
     class Meta:
         model = SolicitudLaboratorio
@@ -248,8 +305,8 @@ class ProcesarLaboratorioForm(forms.ModelForm):
     def clean_costo(self):
         return _no_negativo(self.cleaned_data.get('costo'), 'El costo')
 
-# TARIFA ESPECIALIDAD
 
+# TARIFA ESPECIALIDAD
 class TarifaEspecialidadForm(forms.ModelForm):
     class Meta:
         model = TarifaEspecialidad
@@ -272,8 +329,8 @@ class TarifaEspecialidadForm(forms.ModelForm):
             raise forms.ValidationError('El porcentaje del médico debe estar entre 0 y 100.')
         return valor
 
-# MEDICAMENTOS Y RECETAS
 
+# MEDICAMENTOS Y RECETAS
 class MedicamentoForm(forms.ModelForm):
     class Meta:
         model = Medicamento
@@ -293,8 +350,8 @@ class MedicamentoForm(forms.ModelForm):
     def clean_cantidad_stock(self):
         return _no_negativo(self.cleaned_data.get('cantidad_stock'), 'La cantidad en stock')
 
-# PLAN DE SALUD
 
+# PLAN DE SALUD
 class PlanSaludForm(forms.ModelForm):
     class Meta:
         model = PlanSalud
@@ -314,7 +371,6 @@ class PlanSaludForm(forms.ModelForm):
         return _no_negativo(self.cleaned_data.get('servicios_maximos_anuales'), 'Los servicios máximos')
 
 # PÓLIZA
-
 class PolizaForm(forms.ModelForm):
     class Meta:
         model = Poliza
@@ -359,7 +415,6 @@ class PolizaForm(forms.ModelForm):
         return cleaned
 
 # GASTO DEL PACIENTE
-
 class GastoPacienteForm(forms.ModelForm):
     class Meta:
         model = GastoPaciente
@@ -385,7 +440,6 @@ class GastoPacienteForm(forms.ModelForm):
         return _no_negativo(self.cleaned_data.get('monto'), 'El monto')
 
 # FAMILIAR
-
 class FamiliarForm(forms.ModelForm):
     PARENTESCO_CHOICES = [
         ('Cónyuge', 'Cónyuge'),
@@ -411,7 +465,6 @@ class FamiliarForm(forms.ModelForm):
         return _solo_digitos(self.cleaned_data.get('cedula'), 'La cédula')
 
 # TASA DE CAMBIO
-
 class TasaCambioForm(forms.ModelForm):
     class Meta:
         model = TasaCambio
@@ -421,7 +474,6 @@ class TasaCambioForm(forms.ModelForm):
         }
 
 # RECETAS
-
 class RecetaForm(forms.ModelForm):
     class Meta:
         model = Receta
@@ -457,7 +509,6 @@ class RecetaForm(forms.ModelForm):
         return valor
 
 # REFINAMIENTO DE CITA
-
 class SolicitudSecretariaRefinarForm(forms.ModelForm):
     """Formulario para reprogramar (refinar) fecha y hora de una cita pendiente."""
     class Meta:
@@ -492,3 +543,4 @@ class SolicitudSecretariaRefinarForm(forms.ModelForm):
             ).exclude(pk=self.instance.pk).exists():
                 raise forms.ValidationError('El especialista ya tiene una cita programada para esa fecha y hora.')
         return cleaned_data
+

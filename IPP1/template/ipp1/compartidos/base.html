@@ -63,7 +63,7 @@
                         {% elif "Poliza" in user.groups.all|join:"," or "Póliza" in user.groups.all|join:"," %}
                             <li class="nav-item"><a class="nav-link" href="{% url 'poliza_inicio' %}">Panel</a></li>
                             <li class="nav-item"><a class="nav-link" href="{% url 'poliza_menu' %}">Pólizas</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'registrar_paciente' %}">Ver Ficha Paciente</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'pacientes_recientes' %}">Ver Ficha Paciente</a></li>
                         {% else %}
                             <li class="nav-item"><span class="nav-link text-warning">Rol no asignado</span></li>
                         {% endif %}
@@ -108,7 +108,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <form method="post" action="{% url 'logout' %}" class="d-inline">
+                            <form method="post" action="{% url 'logout' %}" class="d-inline" class="m-0" onsubmit="return confirm('¿Estás seguro de que deseas cerrar sesión en el Sistema IPP?');">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-link nav-link" style="display: inline; cursor: pointer;">Cerrar Sesión</button>
                             </form>
