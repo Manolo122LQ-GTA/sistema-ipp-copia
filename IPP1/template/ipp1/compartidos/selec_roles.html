@@ -59,13 +59,18 @@
         </div>
     </div>
 
-    
+
+
+    <!-- IMAGEN LOGO SISTEMA -->
+    <img src="{% static 'img/ipp_logo.png' %}" width="300" height="190" class="mb-4 d-block mx-auto" alt="Logo IPP">
+
     <!-- VISUALIZAR QUE USUARIO ESTA LOGUEADO Y DARLE LA OPCION DE CERRAR SESION -->
     <div class="text-center mb-3">
         <span class="text-white text-opacity-75" style="font-size: 14px;">Usuario: <strong>{{ user.get_full_name }}</strong></span>
     </div>
 
     <!-- BOTON DE CIERRE DE SESION -->
+    <div class="text-center mb-3"> 
     <form action="{% url 'logout' %}" method="post" class="mt-2" class="m-0" onsubmit="return confirm('¿Estás seguro de que deseas cerrar sesión en el Sistema IPP?');">
         {% csrf_token %}
         <button type="submit" class="btn btn-sm btn-outline-light uiverse-btn px-2">
@@ -73,9 +78,6 @@
         </button>
     </form>
     </div>
-
-    <!-- IMAGEN LOGO SISTEMA -->
-    <img src="{% static 'img/ipp_logo.png' %}" width="300" height="190" class="mb-4 d-block mx-auto" alt="Logo IPP">
 
         <!-- TITULO -->
     <div class="main-content">

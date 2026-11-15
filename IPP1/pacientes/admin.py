@@ -1,3 +1,4 @@
+
 from django.contrib import admin
 from .models import PerfilUsuario, Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura
 

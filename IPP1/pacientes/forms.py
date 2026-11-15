@@ -5,6 +5,8 @@ from django import forms
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+# VALIDACION PARA NO ESCRIBIR/USAR CORREO YA EXISTENTE EN "EDITAR PERFIL"
+
 
 # VALIDACIONES 
 def _no_negativo(valor, campo):
@@ -37,6 +39,26 @@ class PerfilForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={'class': 'form-control uiverse-input', 'maxlength': '254'}),
         }
 
+    def clean_email(self):
+        email = (self.cleaned_data.get('email') or '').strip()
+
+        # LOS CORREOS SON OPCIONALES, SI ESTA VACIO SE PUEDE GUARDAR
+        if not email:
+            return email
+
+        # SE BUSCA EL MISMO CORREO EN OTROS USUARIOS
+        otros = User.objects.filter(email__iexact=email)
+
+        # SE EXCLUYE AL PROPIO USUARIO QUE ESTA EDITANDO SU PROPIO PERFIL
+        if self.instance and self.instance.pk:
+            otros = otros.exclude(pk=self.instance.pk)
+
+        if otros.exists():
+            raise forms.ValidationError(
+                'Este correo ya está en uso por otro usuario'
+            )
+
+        return email
 
 # CODIGOS DE TELEFONO VENEZOLANOS
 CODIGOS_TELEFONO_VE = [

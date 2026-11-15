@@ -10,10 +10,11 @@ from django.utils.timezone import now
 from .models import (
     Paciente, SolicitudSecretaria, SolicitudLaboratorio,
     PlanSalud, Poliza, GastoPaciente, Familiar,
-    TarifaEspecialidad, Medicamento, Receta, Factura, ExamenLaboratorio
+    TarifaEspecialidad, Medicamento, Receta, Factura, ExamenLaboratorio,
+    PerfilUsuario
 )
 from .forms import (
-    LoginForm, PacienteForm, SolicitudSecretariaForm,
+    LoginForm, PacienteForm, PerfilForm, SolicitudSecretariaForm,
     SolicitudLaboratorioForm, ProcesarLaboratorioForm,
     TarifaEspecialidadForm, MedicamentoForm, RecetaForm,
     PlanSaludForm, GastoPacienteForm, FamiliarForm
@@ -380,6 +381,39 @@ class PacienteFormTest(BaseTest):
         self.assertFalse(form.is_valid())
         self.assertIn('numero_cedula', form.errors)
 
+class PerfilFormEmailTest(BaseTest):
+    def test_email_de_otro_usuario(self):
+        User.objects.create_user('otro', email='otro@test.com', password='x')
+        user = User.objects.create_user('yo', email='yo@test.com', password='x')
+
+        form = PerfilForm(
+            {'first_name': 'A', 'last_name': 'B', 'email': 'otro@test.com'},
+            instance=user,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('email', form.errors)
+
+    def test_mismo_email_del_propio_usuario(self):
+        user = User.objects.create_user('yo', email='yo@test.com', password='x')
+
+        form = PerfilForm(
+            {'first_name': 'A', 'last_name': 'B', 'email': 'yo@test.com'},
+            instance=user,
+        )
+
+        self.assertTrue(form.is_valid())
+
+    def test_email_con_mayusculas_distintas(self):
+        User.objects.create_user('otro', email='otro@test.com', password='x')
+        user = User.objects.create_user('yo', email='yo@test.com', password='x')
+
+        form = PerfilForm(
+            {'first_name': 'A', 'last_name': 'B', 'email': 'OTRO@TEST.COM'},
+            instance=user,
+        )
+
+        self.assertFalse(form.is_valid())
 
 class SolicitudSecretariaFormTest(BaseTest):
     def setUp(self):
@@ -474,6 +508,37 @@ class LoginViewTest(BaseTest):
 
     def test_login_valido(self):
         self._crear_usuario()
+        response = self.client.post(reverse('login'), {
+            'username': 'testuser', 'password': 'Abc123!@#$%xyz78'
+        })
+        self.assertRedirects(response, reverse('home'))
+
+    def test_login_bloquea_segunda_sesion_en_otro_navegador(self):
+        """Abrir la misma cuenta en otro navegador no debe tumbar la primera sesión."""
+        self._crear_usuario()
+
+        navegador_uno = Client()
+        respuesta_uno = navegador_uno.post(reverse('login'), {
+            'username': 'testuser', 'password': 'Abc123!@#$%xyz78'
+        })
+        self.assertRedirects(respuesta_uno, reverse('home'))
+
+        navegador_dos = Client()
+        respuesta_dos = navegador_dos.post(reverse('login'), {
+            'username': 'testuser', 'password': 'Abc123!@#$%xyz78'
+        })
+        self.assertEqual(respuesta_dos.status_code, 200)
+        self.assertContains(respuesta_dos, 'sesión abierta')
+        self.assertNotIn('_auth_user_id', navegador_dos.session)
+
+        # La sesión original debe seguir activa
+        self.assertEqual(navegador_uno.get(reverse('home')).status_code, 200)
+
+    def test_login_permite_si_la_sesion_anterior_ya_expiro(self):
+        user = self._crear_usuario()
+        PerfilUsuario.objects.create(
+            usuario=user, aprobado=True, session_key='sesion-que-ya-no-existe'
+        )
         response = self.client.post(reverse('login'), {
             'username': 'testuser', 'password': 'Abc123!@#$%xyz78'
         })

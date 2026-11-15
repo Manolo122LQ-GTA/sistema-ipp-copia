@@ -1,0 +1,122 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Bloqueos - IPP</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'icon/LOGO_IPP_IUTAG.svg' %}">
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}">
+    <link href="{% static 'css/uiverse.css' %}?v=5" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            background: linear-gradient(90deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%);
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+        .form-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 700px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container text-center py-4">
+        <div class="d-inline-block bg-white bg-opacity-10 rounded-3 px-4 py-2 mb-3" style="backdrop-filter: blur(4px);">
+            <span class="text-white fw-bold" style="letter-spacing: 2px; font-size: 13px;">SISTEMA IPP — IUTAG</span>
+        </div>
+    </div>
+
+    <div class="main-content position-relative">
+        {% if messages %}
+        <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+            {% for message in messages %}
+            <div class="modern-{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}success{% endif %}-message mb-2">
+                <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+                <div class="icon-wrapper">
+                    <i class="bi bi-{% if message.tags == 'error' %}x-circle{% elif message.tags == 'warning' %}exclamation-triangle{% elif message.tags == 'info' %}info-circle{% else %}check-circle{% endif %}-fill success-icon"></i>
+                </div>
+                <div class="text-wrapper">
+                    <div class="msg-title">
+                        {% if message.tags == 'error' %}Error{% elif message.tags == 'warning' %}Atención{% elif message.tags == 'info' %}Información{% else %}Operación Correcta{% endif %}
+                    </div>
+                    <div class="msg-message">{{ message }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="form-box">
+            <span class="title">Gestión de Bloqueos de Cuenta</span>
+            <span class="subtitle">Usuarios bloqueados por exceder intentos de inicio de sesión.</span>
+
+            {% if bloqueados %}
+            <table class="table table-hover align-middle mt-4">
+                <thead class="table-light">
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Dirección IP</th>
+                        <th>Intentos Fallidos</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for intento in bloqueados %}
+                    <tr>
+                        <td class="fw-semibold">{{ intento.username }}</td>
+                        <td>{{ intento.ip_address }}</td>
+                        <td class="text-danger">{{ intento.failures_since_start }}</td>
+                        <td><span class="badge bg-danger">Bloqueado</span></td>
+                        <td class="text-center">
+                            <form method="POST" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="username" value="{{ intento.username }}">
+                                <button type="submit" class="btn btn-sm btn-success uiverse-btn"
+                                        onclick="return confirm('¿Desbloquear la cuenta de {{ intento.username }}?')">
+                                    <i class="bi bi-unlock-fill me-1"></i>Desbloquear
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-shield-check text-success fs-1 mb-3"></i>
+                <p class="text-muted">No hay cuentas bloqueadas actualmente.</p>
+            </div>
+            {% endif %}
+
+            <div class="form-section mt-4">
+                <a href="{% url 'menu_admin' %}" class="btn btn-outline-secondary uiverse-btn">
+                    <i class="bi bi-arrow-left me-1"></i>Volver al Menú de Administración
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <footer class="py-3 text-center" style="background: rgba(0,0,0,0.15);">
+        <div class="container-fluid">
+            <small class="text-white text-opacity-75">© {% now "Y" %} IPP-IUTAG. Todos los derechos reservados.</small>
+        </div>
+    </footer>
+</body>
+</html>

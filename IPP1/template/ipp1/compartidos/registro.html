@@ -11,57 +11,9 @@
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}">
     <link rel="stylesheet" href="{% static 'css/uiverse.css' %}?v=5">
-    <style>
-        /* --- ESTILOS --- */
-        html, body {
-            height: 100%;
-            margin: 0;
-            overflow-y: auto;
-        }
-        body {
-            background: #2c6e9c;
-            background: linear-gradient(90deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%);
-            font-family: Verdana, Geneva, Tahoma, sans-serif;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* --- CONTENEDOR PRINCIPAL: centra el formulario vertical/horizontalmente --- */
-        .main-content {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            min-height: 0;
-        }
-
-        /* --- FORMULARIO: altura maxima con scroll interno si es necesario --- */
-        .form-box {
-            max-height: calc(100vh - 180px) !important;
-            overflow-y: auto !important;
-        }
-
-        /* --- LISTA DE REQUISITOS DE CONTRASEÑA: oculta por defecto, aparece al enfocar el input --- */
-        #password-requisitos {
-            max-height: 0;
-            opacity: 0;
-            overflow: hidden;
-            transition: all 0.3s ease-in-out;
-        }
-
-        /* Al hacer clic en el campo contraseña se muestra la lista */
-        #id_password:focus + #password-requisitos {
-            max-height: 120px;
-            opacity: 1;
-            margin-top: 8px !important;
-            margin-bottom: 8px !important;
-        }
-    </style>
 
 </head>
-<body>
-    <!-- ===== BADGE SUPERIOR: SISTEMA IPP — IUTAG ===== -->
+<body class="auth-page auth-register">
     <div class="container text-center py-4">
         <div class="d-inline-block bg-white bg-opacity-10 rounded-3 px-4 py-2 mb-3" style="backdrop-filter: blur(4px);">
             <span class="text-white fw-bold" style="letter-spacing: 2px; font-size: 13px;">SISTEMA IPP — IUTAG</span>
@@ -93,7 +45,7 @@
 
         <!-- FORMULARIO DE REGISTRO -->
         <div class="form-box px4">
-            <form class="form" method="POST">
+            <form class="form" method="POST" autocomplete="off">
                 {% csrf_token %}
 
                 <!-- ICONO Y ENCABEZADO -->
@@ -104,52 +56,68 @@
 
                 <!-- CAMPOS DEL FORMULARIO -->
                 <div class="form-container">
-                    <!-- NOMBRE -->
-                    <input type="text" name="name" class="input" placeholder="Nombre" required value="{{ request.POST.name }}">
-                    <!-- APELLIDO -->
-                    <input type="text" name="last_name" class="input" placeholder="Apellido" required value="{{ request.POST.last_name }}">
+                    <!-- NOMBRE Y APELLIDO LADO A LADO -->
+                    <div style="display:flex; gap:12px; margin-bottom:16px;">
+                        <!-- NOMBRE -->
+                        <div style="flex:1;">
+                            <input type="text" name="name" class="input" placeholder="Nombre" required value="{{ request.POST.name }}" autocomplete="off">
+                        </div>
+                        <!-- APELLIDO -->
+                        <div style="flex:1;">
+                            <input type="text" name="last_name" class="input" placeholder="Apellido" required value="{{ request.POST.last_name }}" autocomplete="off">
+                        </div>
+                        <!-- NOMBRE DE USUARIO -->
+                        <div style="flex:1;">
+                            <input type="text" name="username" class="input" placeholder="Nombre de usuario" required value="{{ request.POST.username }}" autocomplete="off">
+                        </div>
+                    </div>
 
-                    <!-- VALIDACION DE CONTRASEÑA -->
-                    <div class="pw-wrap">
-                        <div class="position-relative">
-                            <input type="password" name="password" maxlength="16" minlength="16" id="id_password" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;">
+                    <!-- CONTRASEÑA Y CONFIRMAR CONTRASEÑA LADO A LADO -->
+                    <div style="display:flex; gap:12px; margin-bottom:16px;">
+                        <!-- CONTRASEÑA CON 8 CARACTERES -->
+                        <div style="flex:1; position:relative;">
+                            <input type="password" name="password" maxlength="16" minlength="16" id="id_password" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;" autocomplete="new-password">
                             <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
                         </div>
-                    
+                        <!-- CONFIRMAR LA CONTRASEÑA ESCRITA -->
+                        <div style="flex:1; position:relative;">
+                            <input type="password" name="password2" maxlength="16" minlength="16" id="id_password2" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;" autocomplete="new-password">
+                            <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
+                        </div>
+                    </div>
+
                     <!-- REQUISITOS DE CONTRASEÑA -->
-                    <ul id="password-requisitos" class="text-start small px-3" style="list-style:none; padding:4px 12px; margin:0; font-size:11px;">
+                    <ul id="password-requisitos" class="text-start small px-3">
                         <li id="req-long" class="text-muted">✗ Al menos 16 caracteres</li>
                         <li id="req-mayus" class="text-muted">✗ 1 letra mayúscula</li>
+                        <li id="req-min" class="text-muted">✗ 1 letra minúscula</li>
                         <li id="req-num" class="text-muted">✗ 1 número</li>
                         <li id="req-symbol" class="text-muted">✗ 1 símbolo</li>
                         <li id="req-numonly" class="text-muted">✗ No solo números</li>
                     </ul>
+
+                    <!-- CORREO ELECTRONICO Y SELECCION DE ROL LADO A LADO -->
+                    <div style="display:flex; gap:12px; margin-bottom:24px;">
+                        <div style="flex:1;">
+                            <input type="email" name="email" class="input" placeholder="Correo Electrónico" required value="{{ request.POST.email }}">
+                        </div>
+                        <div style="flex:1;">
+                            <select name="rol" class="input" required>
+                                <option value="" selected disabled>Selecciona tu Rol</option>
+                                <option value="Administracion">Administración</option>
+                                <option value="Secretaria">Secretaría General</option>
+                                <option value="Medico">Servicio Médico</option>
+                                <option value="Odontologo">Odontología</option>
+                                <option value="Laboratorio">Laboratorio</option>
+                                <option value="Especialista">Especialista</option>
+                                <option value="Poliza">Poliza</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <!-- Confirmar Contraseña -->
-                     <div class="position-relative">
-                        <input type="password" name="password2" maxlength="16" minlength="16" id="id_password2" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;">
-                        <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
-                    </div>
-
-                    <!-- CORREOnombre -->
-                    <input type="email" name="email" class="input" placeholder="Correo Electrónico" required value="{{ request.POST.email }}">
-
-                    <!-- Seleccion de Rol -->
-                    <select name="rol" class="input" required>
-                        <option value="" selected disabled>Selecciona tu Rol</option>
-                        <option value="Administracion">Administración</option>
-                        <option value="Secretaria">Secretaría General</option>
-                        <option value="Medico">Servicio Médico</option>
-                        <option value="Odontologo">Odontología</option>
-                        <option value="Laboratorio">Laboratorio</option>
-                        <option value="Especialista">Especialista</option>
-                        <option value="Poliza">Poliza</option>
-                    </select>
+                    <!-- BOTON DE ENVIO -->
+                    <button type="submit">Registrarse</button>
                 </div>
-
-                <!-- BOTON DE ENVIO -->
-                <button type="submit">Registrarse</button>
             </form>
 
             <!-- ENLACE A INICIO DE SESION -->
@@ -170,10 +138,21 @@ function validarPassword() {
     };
     req('req-long', pwd.length >= 16);
     req('req-mayus', /[A-Z]/.test(pwd));
+    req('req-min', /[a-z]/.test(pwd));
     req('req-num', /[0-9]/.test(pwd));
     req('req-symbol', /[^A-Za-z0-9]/.test(pwd));
     req('req-numonly', !/^[0-9]+$/.test(pwd) || pwd.length === 0);
 }
+
+// Mostrar/ocultar requisitos al escribir en contraseña
+document.getElementById('id_password').addEventListener('input', function() {
+    var reqList = document.getElementById('password-requisitos');
+    if (this.value.trim() !== '') {
+        reqList.classList.add('show-requirements');
+    } else {
+        reqList.classList.remove('show-requirements');
+    }
+});
 </script>
 
 <!-- VALIDACION DE LETRAS EN NOMBRE Y APELLIDO -->

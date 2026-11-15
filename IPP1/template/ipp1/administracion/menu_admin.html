@@ -3,17 +3,37 @@
 {% block title %}Menú de Administración - IPP{% endblock %}
 {% block content %}
 
+<!-- PANEL CON NOMBRE DE MODULO -->
 <div class="row mb-4 align-items-center">
-    <div class="col-md-8">
+    <div class="col-auto me-auto">
         <h2 class="fw-bold text-dark">Menú de Administración</h2>
-        <p class="text-muted">Aquí podrás Gestionar los Roles del Personal.</p>
+        <p class="text-muted mb-0">Aquí podrás Gestionar los Roles del Personal.</p>
     </div>
-    <div class="col-md-4 text-md-end">
-        <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary uiverse-btn">
-            <i class="bi bi-arrow-left me-1"></i>Volver Atrás
-        </a>
+    <div class="col-auto text-end">
+        <div class="d-flex gap-2 flex-wrap justify-content-end">
+            <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary uiverse-btn btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Volver Atrás
+            </a>
+            <a href="{% url 'gestion_bloqueos' %}" class="btn btn-outline-danger uiverse-btn btn-sm">
+                <i class="bi bi-shield-lock me-1"></i>Gestión Bloqueos
+            </a>
+            <a href="{% url 'usuarios_pendientes' %}" class="btn btn-outline-success uiverse-btn btn-sm">
+                <i class="bi bi-shield-check me-1"></i>Gestión Aprobaciones
+            </a>
+        </div>
     </div>
 </div>
+
+<!-- BARRA DE BUSQUEDA DE USUARIOS -->
+<form method="GET" class="mb-4">
+    <div class="input-group">
+        <input type="text" name="q" class="form-control uiverse-input" placeholder="Buscar personal por nombre..." value="{{ query }}">
+        <button type="submit" class="btn btn-primary uiverse-btn"><i class="bi bi-search"></i> Buscar</button>
+        {% if query %}
+            <a href="{% url 'menu_admin' %}" class="btn btn-outline-secondary uiverse-btn">Limpiar</a>
+        {% endif %}
+    </div>
+</form>
 
 <div class="uiverse-card shadow-sm mb-5">
     <div class="fw-bold card-header bg-white">Gestión de Personal y Roles</div>
@@ -30,7 +50,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for usuario in usuarios %}
+                    {% for usuario in page_obj.object_list %}
                     <tr>
                         <th scope="row">{{ usuario.id }}</th>
                         <td>
@@ -66,7 +86,9 @@
                                 <select name="rol_nombre" class="form-select form-select-sm uiverse-input" style="max-width: 200px;">
                                     <option value="">-- Quitar Roles --</option>
                                     {% for grupo in grupos %}
-                                        <option value="{{ grupo.name }}">{{ grupo.name }}</option>
+                                        {% if request.user.is_superuser or grupo.name in roles_permitidos or es_administrador %}
+                                            <option value="{{ grupo.name }}">{{ grupo.name }}</option>
+                                        {% endif %}
                                     {% endfor %}
                                 </select>
                                 <button type="submit" class="btn btn-primary btn-sm uiverse-btn">Guardar</button>
@@ -83,4 +105,46 @@
         </div>
     </div>
 </div>
+
+<!-- PAGINACIÓN -->
+{% if page_obj.has_other_pages %}
+<div class="d-flex justify-content-center mt-4">
+    <nav>
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page={{ page_obj.previous_page_number }}">Anterior</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Anterior</span>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ query }}&page={{ num }}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page={{ page_obj.next_page_number }}">Siguiente</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Siguiente</span>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
 {% endblock %}

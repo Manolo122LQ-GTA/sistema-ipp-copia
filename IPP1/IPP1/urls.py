@@ -81,6 +81,7 @@ urlpatterns = [
     path('administracion/ingresos/', views.ingresos_especialistas, name='ingresos_especialistas'),
     path('administracion/usuarios-pendientes/', views.usuarios_pendientes, name='usuarios_pendientes'),
     path('administracion/aprobar-usuario/<int:user_id>/', views.aprobar_usuario, name='aprobar_usuario'),
+    path('administracion/bloqueos/', views.gestion_bloqueos, name='gestion_bloqueos'),
 
     # Póliza
     path('poliza/', views.poliza_inicio, name='poliza_inicio'),

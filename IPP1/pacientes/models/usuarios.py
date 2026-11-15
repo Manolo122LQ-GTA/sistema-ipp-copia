@@ -8,6 +8,8 @@ class PerfilUsuario(models.Model):
     fecha_registro = models.DateTimeField(auto_now_add=True)
     fecha_aprobacion = models.DateTimeField(null=True, blank=True)
     aprobado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='aprobaciones')
+    # GUARDAR SESION ACTIVA
+    session_key = models.CharField(max_length=40, null=True, blank=True)
 
     class Meta:
         verbose_name = "Perfil de Usuario"

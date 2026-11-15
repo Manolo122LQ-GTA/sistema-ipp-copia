@@ -9,6 +9,7 @@ from django.db.models import Q, Sum, Count, F
 from django.db.models.functions import Greatest
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
+from django.utils.safestring import mark_safe
 from django.contrib.auth.models import Group, User
 from django.contrib import messages
 from django.views.decorators.http import require_POST, require_http_methods
@@ -18,13 +19,57 @@ from .forms import PacienteForm, LoginForm, PerfilForm, SolicitudSecretariaForm,
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.sessions.models import Session
+from django.utils import timezone
+from axes.models import AccessAttempt
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now, localdate
 from django.contrib.sessions.models import Session
 from django.contrib.auth.views import LoginView
 from django.views.decorators.cache import never_cache
+from django.contrib.auth.decorators import login_required
 import csv
 
+
+
+# CATEGORIA DE ROLES (GRUPO)
+@login_required
+def cambiar_rol_administrador(request):
+    usuario = request.user
+    # VERIFICAMOS SI EL USUARIO PERTENECE A LA CATEGORIA ADMINISTRACION
+    if usuario.groups.filter(name='Administracion').exists() or usuario.is_superuser:
+        # OBTENEMOS LOS ROLES DISPONIBLES PARA EL USUARIO
+
+        roles_disponibles = Group.objects.filter(name__in=['Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio', 'Poliza'])
+        if request.method == 'POST':
+            rol_seleccionado = request.POST.get('rol')
+            if rol_seleccionado in [rol.name for rol in roles_disponibles]:
+                # ROLES PERMITIDOS
+                roles_admin_permitidos = ['Administracion', 'Superusuario']
+                roles_disponibles = Group.objects.filter(name__in=['Secretaria', 'Medico', 'Odontologo', 'Especialista', 'Laboratorio', 'Poliza'])
+                if request.user.groups.filter(name__in=roles_admin_permitidos).exists() or request.user.is_superuser:
+                    # ELIMINAMOS AL USUARIO DE TODOS LOS ROLES ANTERIORES
+                    usuario.groups.clear()
+                    # ASIGNAMOS EL NUEVO ROL
+                    nuevo_rol = Group.objects.get(name=rol_seleccionado)
+                    usuario.groups.add(nuevo_rol)
+                    messages.success(request, f'Rol cambiado a {rol_seleccionado}.')
+                    return redirect('home')
+
+                # ELIMINAMOS AL USUARIO DE TODOS LOS ROLES ANTERIORES
+                usuario.groups.clear()
+                # ASIGNAMOS EL NUEVO ROL
+                nuevo_rol = Group.objects.get(name=rol_seleccionado)
+                usuario.groups.add(nuevo_rol)
+                messages.success(request, f'Rol cambiado a {rol_seleccionado}.')
+                return redirect('home')
+            else:
+                messages.error(request, 'Rol seleccionado no válido.')
+        return render(request, 'ipp1/admin/cambiar_rol.html', {'roles': roles_disponibles})
+    else:
+        messages.error(request, 'No tienes permisos para cambiar de rol.')
+        return redirect('home')
+    # FINAL DEL CODIGO DE CATEGORIA DE ROLES (GRUPOS)
 
 # PACIENTES RECIENTES (SECRETARIA)
 @login_required
@@ -147,12 +192,12 @@ class CustomLoginView(LoginView):
             next_url = reverse('home')
         return next_url
 
-
 # LOGIN
+# INICIO DE CODIGO DE LOGIN
 def login_view(request):
-    """Vista para el inicio de sesión sin redirecciones ciegas en errores."""
+    # Si el usuario ya tiene una sesión válida en este navegador, no tiene
+    # sentido mostrarle el formulario de login: se le lleva directo al inicio.
     if request.user.is_authenticated:
-        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
     if request.GET.get('timeout'):
@@ -172,27 +217,68 @@ def login_view(request):
             if not usuario_obj.is_active:
                 return redirect('pendiente_aprobacion')
 
+            # AUTENTICACIÓN
             usuario_autenticado = authenticate(request, username=usuario, password=clave)
             if usuario_autenticado is not None:
+                # VERIFICAR QUE NO HAYA UNA SESIÓN ACTIVA EN OTRO NAVEGADOR
+                try:
+                    perfil = usuario_autenticado.perfil
+                except PerfilUsuario.DoesNotExist:
+                    perfil = PerfilUsuario.objects.create(usuario=usuario_autenticado, aprobado=True)
+
+                if perfil.session_key and perfil.session_key != request.session.session_key:
+                    sesion_activa = Session.objects.filter(
+                        session_key=perfil.session_key,
+                        expire_date__gt=now(),
+                    ).exists()
+                    if sesion_activa:
+                        messages.error(
+                            request,
+                            'Hay una cuenta con sesión abierta. '
+                            'Cierra sesión allí para ingresar.'
+                        )
+                        return render(request, 'ipp1/compartidos/login.html', {'form': form})
+                    # La sesión anterior ya expiró o fue eliminada: liberamos el candado
+                    perfil.session_key = None
+                    perfil.save(update_fields=['session_key'])
+
                 login(request, usuario_autenticado)
+
+                # GUARDAR LA NUEVA SESIÓN ACTIVA EN EL PERFIL
+                perfil.session_key = request.session.session_key
+                perfil.save(update_fields=['session_key'])
+                
                 next_url = request.POST.get('next') or request.GET.get('next') or ''
                 if not _is_safe_redirect_url(next_url, allowed_hosts={request.get_host()}):
                     next_url = 'home'
                 return redirect(next_url)
 
-            messages.error(request, 'Usuario o contraseña incorrectos.')
+            # CONTADOR DE INTENTOS FALLIDOS (AXES)
+            intento = AccessAttempt.objects.filter(username=usuario).order_by('-failures_since_start').first()
+            fallos = intento.failures_since_start if intento else 0
+            limite = getattr(settings, 'AXES_FAILURE_LIMIT', 3)
+            restantes = max(0, limite - fallos)
+            if restantes <= 0:
+                messages.error(request, 'Cuenta bloqueada por exceder intentos fallidos. Contacte al administrador.')
+            else:
+                messages.error(request, f'Usuario o contraseña incorrectos. Le quedan {restantes} intento(s).')
             return render(request, 'ipp1/compartidos/login.html', {'form': form})
     else:
         form = LoginForm()
 
     return render(request, 'ipp1/compartidos/login.html', {'form': form})
+# FINAL DEL CODIGO DE LOGIN
 
-# CIERRE DE SESION
+# CIERRE DE SESION (LIMPIAR SESION Y CACHE)
 @login_required
 @require_http_methods(["GET", "POST"])
 @never_cache
 def logout_view(request):
     """Cierra la sesión y redirige al login con un mensaje de éxito."""
+    # LIMPIAR SESIÓN ACTIVA EN EL PERFIL
+    if hasattr(request.user, 'perfil'):
+        request.user.perfil.session_key = None
+        request.user.perfil.save()
     logout(request)
     messages.success(request, "Has cerrado sesión exitosamente. ¡Vuelve pronto!")
     response = redirect('login')
@@ -200,7 +286,7 @@ def logout_view(request):
     response['Pragma'] = 'no-cache'
     response['Expires'] = '0'
     return response
-    return redirect('login')
+        # request.user.perfil.save()
 
 # VISTA REGISTRO USUARIO/ROLES
 ROLES_PERMITIDOS_REGISTRO = ['Secretaria', 'Medico', 'Odontologo', 'Laboratorio', 'Especialista', 'Poliza', 'Administracion']
@@ -255,7 +341,9 @@ def registro(request):
 
             # NOTIFICAR A ADMINISTRADORES SOBRE NUEVO USUARIO PENDIENTE DE APROBACIÓN
             from django.contrib.auth.models import User as DjangoUser
-            admins = DjangoUser.objects.filter(is_superuser=True)
+            admins = DjangoUser.objects.filter(
+                Q(is_superuser=True) | Q(groups__name='Administracion')
+            ).distinct()
             for admin in admins:
                 if admin.id != request.user.id if request.user.is_authenticated else True:
                     _crear_notificacion(
@@ -951,20 +1039,64 @@ def solicitudes_pendientes_laboratorio(request):
 @login_required
 def inicio_admin(request):
     """Panel inicial de administración."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
         messages.error(request, "No tienes permisos para acceder al área administrativa.")
         return redirect('home')
     return render(request, 'ipp1/administracion/inicio_admin.html')
 
+# VISTA MENU ADMIN
 @login_required
 def menu_admin(request):
     """Menú detallado para asignar roles y especialidades."""
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
-    usuarios = User.objects.all().exclude(is_superuser=True).prefetch_related('groups') # Excluimos superusuarios para seguridad
+    # Definir categorías de roles y qué roles puede asignar cada categoría
+    # Solo Administracion puede asignar cualquier rol.
+    # Los demas roles solo pueden asignar su propia categoria.
+    ROLE_CATEGORIES = {
+        'Administracion': ['Administracion', 'Secretaria', 'Medico', 'Odontologo', 'Laboratorio', 'Especialista', 'Poliza'],
+        'Secretaria': ['Secretaria'],
+        'Medico': ['Medico'],
+        'Odontologo': ['Odontologo'],
+        'Laboratorio': ['Laboratorio'],
+        'Especialista': ['Especialista'],
+        'Poliza': ['Poliza'],
+    }
+
+    def _get_user_categories(user):
+        """Retorna las categorías de roles que posee el usuario."""
+        user_groups = set(user.groups.values_list('name', flat=True))
+        categories = set()
+        for category, roles in ROLE_CATEGORIES.items():
+            if category in user_groups:
+                categories.add(category)
+        return categories
+
+    def _puede_asignar_rol(user_actual, rol_a_asignar):
+        """Verifica si user_actual puede asignar rol_a_asignar basado en su categoría."""
+        if user_actual.is_superuser:
+            return True
+        user_categories = _get_user_categories(user_actual)
+        for categoria in user_categories:
+            if rol_a_asignar in ROLE_CATEGORIES.get(categoria, []):
+                return True
+        return False
+
+    usuarios = User.objects.all().exclude(is_superuser=True).prefetch_related('groups').order_by('id')
     grupos = Group.objects.all()
+
+    query = request.GET.get('q', '').strip()
+    if query:
+        usuarios = usuarios.filter(
+            Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query) | Q(email__icontains=query)
+        )
+
+    # PAGINACIÓN: 15 usuarios por página
+    paginator = Paginator(usuarios, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     if request.method == 'POST':
         usuario_id = request.POST.get('usuario_id')
@@ -988,8 +1120,12 @@ def menu_admin(request):
 
         # Lógica para asignar/quitar roles
         rol_nombre = request.POST.get('rol_nombre')
-        
+
         if rol_nombre:
+            # Validar que el usuario actual pueda asignar este rol basado en su categoría
+            if not _puede_asignar_rol(request.user, rol_nombre):
+                messages.error(request, f"No tienes permiso para asignar el rol '{rol_nombre}'. Solo puedes asignar roles de tu misma categoría.")
+                return redirect('menu_admin')
             # Agrega el rol sin eliminar los existentes
             grupo, _ = Group.objects.get_or_create(name=rol_nombre)
             user_to_update.groups.add(grupo)
@@ -1000,8 +1136,29 @@ def menu_admin(request):
             user_to_update.groups.clear()
             _registrar_log(request, f'Quitó todos los roles de {user_to_update.username}', 'User', user_to_update.id)
             messages.success(request, f"Se han quitado todos los roles de '{user_to_update.username}'.")
-        
+
         return redirect('menu_admin')
+
+    user_first_group = request.user.groups.first().name if request.user.groups.exists() else ''
+
+    # Calcular si el usuario actual es administrador (para el template)
+    es_administrador = request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()
+
+    # Calcular roles permitidos para el usuario actual (para el template)
+    if es_administrador:
+        roles_permitidos = list(Group.objects.values_list('name', flat=True))
+    else:
+        roles_permitidos = ROLE_CATEGORIES.get(user_first_group, [])
+
+    return render(request, 'ipp1/administracion/menu_admin.html', {
+        'page_obj': page_obj,
+        'grupos': grupos,
+        'query': query,
+        'rol_categories': ROLE_CATEGORIES,
+        'user_first_group': user_first_group,
+        'roles_permitidos': roles_permitidos,
+        'es_administrador': es_administrador,
+    })
 
     return render(request, 'ipp1/administracion/menu_admin.html', {
         'usuarios': usuarios,
@@ -1179,7 +1336,7 @@ def poliza_menu(request):
             | Q(paciente__cedula__icontains=query)
         )
 
-    if request.method == 'POST' and not _es_admin(request.user):
+    if request.method == 'POST' and not (_es_admin(request.user) or request.user.groups.filter(name__in=['Secretaria', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para modificar pólizas.')
         return redirect('poliza_menu')
 
@@ -1201,12 +1358,14 @@ def poliza_menu(request):
 
     es_secretaria = request.user.groups.filter(name='Secretaria').exists()
     es_poliza = request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists()
+    es_administracion = request.user.groups.filter(name='Administracion').exists()
 
     return render(request, 'ipp1/poliza/menu_poliza.html', {
         'polizas': polizas,
         'query': query,
         'es_secretaria': es_secretaria,
         'es_poliza': es_poliza,
+        'es_administracion': es_administracion,
     })
 
 @login_required
@@ -1962,7 +2121,7 @@ def editar_paciente(request, paciente_id):
 @login_required
 @require_POST
 def desactivar_paciente(request, paciente_id):
-    if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists() or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name='Secretaria').exists() or request.user.groups.filter(name='Administracion').exists() or request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists()):
         messages.error(request, "Acceso denegado.")
         return redirect('home')
     paciente = get_object_or_404(Paciente, id=paciente_id)
@@ -2008,7 +2167,7 @@ def recibo_factura(request, factura_id):
 
 @login_required
 def reporte_caja(request):
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists() or request.user.groups.filter(name__in=['Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     from datetime import datetime, time as dtime
@@ -2201,7 +2360,7 @@ def gastos_por_paciente(request):
 def resumen_afiliados(request):
     """Cross-module spending visualization — Admin and Póliza."""
     if not (request.user.is_superuser
-            or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+            or request.user.groups.filter(name__in=['Administracion', 'Secretaria', 'Poliza', 'Póliza']).exists()):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
@@ -2410,6 +2569,31 @@ def toggle_paciente(request, paciente_id):
     _registrar_log(request, f'{"Activó" if paciente.activo else "Desactivó"} paciente {paciente.nombre} {paciente.apellido}', 'Paciente', paciente.id)
     messages.success(request, f'Paciente {paciente.nombre} {paciente.apellido} ha sido {estado}.')
     return redirect('saldos_admin')
+
+# GESTIÓN DE BLOQUEOS DE CUENTA (DESBLOQUEO)
+@login_required
+def gestion_bloqueos(request):
+    """Listado de usuarios bloqueados por django-axes con opción de desbloqueo."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('home')
+
+    from django.conf import settings
+    failure_limit = getattr(settings, 'AXES_FAILURE_LIMIT', 3)
+    bloqueados = AccessAttempt.objects.filter(
+        failures_since_start__gte=failure_limit
+    ).order_by('-failures_since_start')
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        if username:
+            AccessAttempt.objects.filter(username=username).update(failures_since_start=0)
+            messages.success(request, f'Cuenta de "{username}" desbloqueada exitosamente.')
+            return redirect('gestion_bloqueos')
+
+    return render(request, 'ipp1/administracion/gestion_bloqueos.html', {
+        'bloqueados': bloqueados,
+    })
 
 # LABORATORIO
 @login_required

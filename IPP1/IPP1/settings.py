@@ -13,11 +13,29 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 # MODELOS IMPORTADOS PARA EL PROYECTO
 from pathlib import Path
 import os
+from datetime import timedelta
 from decimal import Decimal
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
+
+# Forzar valores de conexión a DB limpios (UTF-8) para evitar UnicodeDecodeError
+# por caracteres especiales en variables de entorno del sistema de Windows
+import os as _os
+_forced_db_env = {
+    'DB_NAME': 'ippbd',
+    'DB_USER': 'postgres',
+    'DB_PASSWORD': '1234',
+    'DB_HOST': 'localhost',
+    'DB_PORT': '5432',
+}
+for _k, _v in _forced_db_env.items():
+    _os.environ[_k] = _v
+
+# Limpiar variables PG* que psycopg2 lee del entorno y pueden tener caracteres no-UTF-8
+for _pg_var in ['PGHOST', 'PGPASSWORD', 'PGUSER', 'PGDATABASE', 'PGPORT', 'PGSSLMODE', 'PGSERVICE', 'PGSERVICEFILE']:
+    _os.environ.pop(_pg_var, None)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -34,7 +52,8 @@ EMAIL_USE_SSL = False
 
 # Tip extra: Asegúrate de que el dominio de tus enlaces use localhost en desarrollo
 # Si usas el framework 'sites' de Django o una variable propia:
-DEFAULT_FROM_EMAIL = 'no-reply@tu-laboratorio.local'
+# DEFAULT_FROM_EMAIL = 'no-reply@tu-laboratorio.local'
+DEFAULT_FROM_EMAIL = 'ipp.uptag01@gmail.com'
 
 
 # Quick-start development settings - unsuitable for production
@@ -56,18 +75,29 @@ RUNNING_DEVSERVER = 'runserver' in sys.argv
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # Orígenes permitidos para POST (requerido si se publica con HTTPS/dominio)
-CSRF_TRUSTED_ORIGINS = [
-    o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
+# Debe incluir el puerto exacto (ej. http://localhost:8000) para que CSRF funcione en desarrollo
+_CSRF_TRUSTED_DEFAULT = [
+    'http://localhost', 'http://127.0.0.1',
+    'http://localhost:8000', 'http://127.0.0.1:8000',
+    'http://localhost:8080', 'http://127.0.0.1:8080',
 ]
+_env_origins = [o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
+CSRF_TRUSTED_ORIGINS = _env_origins if _env_origins else _CSRF_TRUSTED_DEFAULT
 
 # Configuración SSL/HTTPS
 # Solo forzar HTTPS en producción real, no en runserver local
-SECURE_SSL_REDIRECT = (not DEBUG and not TESTING and not RUNNING_DEVSERVER)
-SECURE_HSTS_SECONDS = 31536000 if not RUNNING_DEVSERVER else 0
+# DEBUG está en False por defecto; se activa solo en entorno de desarrollo real
+IS_DEVELOPMENT = DEBUG or RUNNING_DEVSERVER or TESTING or 'runserver' in sys.argv
+SECURE_SSL_REDIRECT = not IS_DEVELOPMENT
+SECURE_HSTS_SECONDS = 31536000 if not IS_DEVELOPMENT else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
-SESSION_COOKIE_SECURE = not DEBUG and not RUNNING_DEVSERVER and not TESTING
-CSRF_COOKIE_SECURE = not DEBUG and not RUNNING_DEVSERVER and not TESTING
+SESSION_COOKIE_SECURE = not IS_DEVELOPMENT
+CSRF_COOKIE_SECURE = not IS_DEVELOPMENT
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
@@ -131,14 +161,23 @@ WSGI_APPLICATION = 'IPP1.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/
 
 # PostgreSQL
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.environ.get('DB_NAME', 'IPPBD'),
+#         'USER': os.environ.get('DB_USER', 'postgres'),
+#         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+#         'HOST': os.environ.get('DB_HOST', 'localhost'),
+#         'PORT': os.environ.get('DB_PORT', '5432'),
+#     }
+# }
+
+# SQLITE
+database_path = BASE_DIR / 'db.sqlite3'
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'IPPBD'),
-        'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -151,6 +190,7 @@ DATABASES = {
 # VALIDACION DE CONTRASEÑAS
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
+# METODO DE VALIDACION DE CONTRASEÑAS
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -173,20 +213,16 @@ AUTH_PASSWORD_VALIDATORS = [
 
 ]
 
-
 # LENGUAJE Y ZONA HORARIA DEL SISTEMA
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
 LANGUAGE_CODE = 'es-es'
-
 TIME_ZONE = 'America/Caracas'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
+# ARCHIVOS ESTATICOS
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = '/static/'
@@ -211,12 +247,19 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
+# AXES CONFIGURACION
 AXES_ENABLED = True
-AXES_FAILURE_LIMIT = 3 # ANTES ERAN 5, AHORA LO CAMBIE A 3 PARA QUE BLOQUEE MAS RAPIDO
-AXES_COOLOFF_TIME = 0.5  # 30 minutos
+AXES_FAILURE_LIMIT = 3  # 3 intentos fallidos bloquean la cuenta
+# Bloqueo TEMPORAL: se libera solo a los 15 minutos. Antes era permanente (None)
+# y si se bloqueaba el administrador no habia forma de aprobar usuarios nuevos.
+AXES_COOLOFF_TIME = timedelta(minutes=15)
 AXES_LOCKOUT_TEMPLATE = 'ipp1/compartidos/axes/lockout.html'
 AXES_RESET_ON_SUCCESS = True
-AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']
+# IMPORTANTE: una lista plana genera bloqueos INDEPENDIENTES por cada elemento.
+# ['username', 'ip_address'] bloqueaba TODA la red tras 3 fallos de cualquier
+# usuario (todos entran desde 127.0.0.1). Con la lista anidada se bloquea solo
+# la combinacion usuario + IP, sin afectar a las demas cuentas del consultorio.
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
 
 # CONFIGURACION PARA EL ENVIO DE LOS CORREOS (Gmail)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -226,16 +269,16 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 
+# CORREO DE RECUPERACION POR DEFECTO
 DEFAULT_FROM_EMAIL = 'IPP - IUTAG <ipp.uptag01@gmail.com>'
 
 
-
 # PARA CUANDO PASA MUCHO TIEMPO Y NO HAY ACTIVIDAD EN LA PAGINA
-SESSION_COOKIE_AGE = 600 # 10 minutos (600 segundos)
+SESSION_COOKIE_AGE = 300 # ANTES ERAN DE 10 MINUTOS, AHORA SON DE 5 MINUTOS (300 SEGUNDOS)
 SESSION_SAVE_EVERY_REQUEST = True  # Reinicia el contador de tiempo en cada solicitud
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Expira la sesión al cerrar el navegador
 
-# Monto fijo por consulta para cálculo de nómina
+# MONTO FIJO POR CONSULTA (USADO EN FACTURACION, SE PUEDE CAMBIAR DESDE EL ADMIN)
 MONTO_POR_CONSULTA = 50.00
 
 # Porcentaje de IVA aplicado a las facturas (0-100, usado por facturacion)

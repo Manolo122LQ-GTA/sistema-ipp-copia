@@ -9,28 +9,8 @@
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}">
     <link rel="stylesheet" href="{% static 'css/uiverse.css' %}?v=5">
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-        }
-        body {
-        background: #2c6e9c;
-        background: linear-gradient(90deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%);
-        font-family: Verdana, Geneva, Tahoma, sans-serif;
-        display: flex;
-        flex-direction: column;
-        }
-        .main-content {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 1rem;
-        }
-    </style>
 </head>
-<body>
+<body class="auth-page auth-login">
     <div class="container text-center py-4">
         <div class="d-inline-block bg-white bg-opacity-10 rounded-3 px-4 py-2 mb-3" style="backdrop-filter: blur(4px);">
             <span class="text-white fw-bold" style="letter-spacing: 2px; font-size: 13px;">SISTEMA IPP — IUTAG</span>
@@ -57,7 +37,7 @@
         {% endif %}
 
         <div class="form-box">
-            <form class="form" method="POST">
+            <form class="form" method="POST" autocomplete="off">
                 {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.GET.next }}">
                 <img src="{% static 'img/ipp_logo.png' %}" width="200" height="128" class="mb-4 d-block mx-auto" alt="Logo IPP">
@@ -65,9 +45,11 @@
                 <span class="title">Inicio de Sesión</span>
                 <span class="subtitle">Ingresa tus credenciales para acceder al sistema IPP-IUTAG.</span>
                 <div class="form-container">
-                    <input type="text" name="username" class="input" placeholder="Usuario" required>
+                    <!-- NOMBRE DE USUARIO -->
+                    <input type="text" name="username" class="input" placeholder="Usuario" autocomplete="off" required>
                     <div class="position-relative">
-                    <input type="password" name="password" class="input" maxlength="16" minlength="16" placeholder="Contraseña" required style="padding-right: 40px;">
+                    <!-- CONTRASEÑA -->
+                    <input type="password" name="password" class="input" maxlength="16" minlength="16" placeholder="Contraseña" required style="padding-right: 40px;" autocomplete="new-password">
                     <i class="bi bi-eye-slash" onclick="togglePassword(this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #6c757d;"></i>
                     </div>
                 </div>
