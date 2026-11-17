@@ -20,25 +20,27 @@
                         <!-- NOMBRE Y APELLIDO (CON VALIDACION DE QUE SOLO SE PERMITEN LETRAS)-->
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold small">Nombre</label>
-                                <!-- VALIDACION PARA QUE SOLO ADMITEN LETRAS Y NO NUMEROS: {{ form.nombre }} -->
+                                <label for="id_nombre" class="form-label fw-semibold small">Nombre</label>
+                                <!-- NOMBRE: SOLO LETRAS Y ESPACIOS (VALIDADO EN EL SERVIDOR Y CON JS) -->
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
                                     {{ form.nombre }}
                                 </div>
                                 {% if form.nombre.errors %}
-                                    <div class="text-danger small mt-1">{{ form.nombre.errors }}</div>
+                                    <div class="text-danger small mt-1" data-error-de="nombre">{{ form.nombre.errors.0 }}</div>
                                 {% endif %}
+                                <div class="form-text" id="ayuda-nombre">Solo letras y espacios, sin números ni símbolos.</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold small">Apellido</label>
+                                <label for="id_apellido" class="form-label fw-semibold small">Apellido</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
                                     {{ form.apellido }}
                                 </div>
                                 {% if form.apellido.errors %}
-                                    <div class="text-danger small mt-1">{{ form.apellido.errors }}</div>
+                                    <div class="text-danger small mt-1" data-error-de="apellido">{{ form.apellido.errors.0 }}</div>
                                 {% endif %}
+                                <div class="form-text" id="ayuda-apellido">Solo letras y espacios, sin números ni símbolos.</div>
                             </div>
                         </div>
 
@@ -146,5 +148,49 @@
         </div>
     </div>
 
+<script>
+(function () {
+    var VALIDO = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ ]+$/;
+    var AYUDA = 'Solo letras y espacios, sin números ni símbolos.';
+    var CAMPOS = [
+        { id: 'id_nombre', ayuda: 'ayuda-nombre' },
+        { id: 'id_apellido', ayuda: 'ayuda-apellido' }
+    ];
 
+    // Si el servidor devolvio un error, marcar el campo en rojo al cargar la pagina.
+    document.querySelectorAll('[data-error-de]').forEach(function (error) {
+        var campo = document.getElementById('id_' + error.getAttribute('data-error-de'));
+        if (campo) campo.classList.add('is-invalid');
+    });
+
+    CAMPOS.forEach(function (cfg) {
+        var input = document.getElementById(cfg.id);
+        var ayuda = document.getElementById(cfg.ayuda);
+        if (!input || !ayuda) return;
+
+        function revisar() {
+            var valor = input.value.trim();
+
+            if (!valor) {
+                input.classList.remove('is-valid', 'is-invalid');
+                ayuda.classList.remove('text-danger', 'text-success');
+                ayuda.classList.add('text-muted');
+                ayuda.textContent = AYUDA;
+                return;
+            }
+
+            var valido = VALIDO.test(valor);
+            input.classList.toggle('is-valid', valido);
+            input.classList.toggle('is-invalid', !valido);
+            ayuda.classList.toggle('text-success', valido);
+            ayuda.classList.toggle('text-danger', !valido);
+            ayuda.classList.remove('text-muted');
+            ayuda.textContent = valido ? 'Correcto.' : AYUDA;
+        }
+
+        input.addEventListener('input', revisar);
+        input.addEventListener('blur', revisar);
+    });
+})();
+</script>
 {% endblock %}

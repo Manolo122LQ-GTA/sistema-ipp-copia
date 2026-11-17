@@ -381,6 +381,50 @@ class PacienteFormTest(BaseTest):
         self.assertFalse(form.is_valid())
         self.assertIn('numero_cedula', form.errors)
 
+    def test_nombre_con_numeros(self):
+        form = PacienteForm(data={
+            'nombre': 'Juan123', 'apellido': 'Perez',
+            'codigo_cedula': 'V', 'numero_cedula': '22345678',
+            'codigo_telefono': '0412', 'numero_telefono': '1234567',
+            'fecha_nacimiento': '1990-05-15',
+            'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Docente',
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('nombre', form.errors)
+
+    def test_apellido_con_simbolos(self):
+        form = PacienteForm(data={
+            'nombre': 'Juan', 'apellido': 'Perez@#',
+            'codigo_cedula': 'V', 'numero_cedula': '32345678',
+            'codigo_telefono': '0412', 'numero_telefono': '1234567',
+            'fecha_nacimiento': '1990-05-15',
+            'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Docente',
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('apellido', form.errors)
+
+    def test_nombre_con_acentos_y_enie(self):
+        form = PacienteForm(data={
+            'nombre': 'José María', 'apellido': 'Pérez Ñáñez',
+            'codigo_cedula': 'V', 'numero_cedula': '42345678',
+            'codigo_telefono': '0412', 'numero_telefono': '1234567',
+            'fecha_nacimiento': '1990-05-15',
+            'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Docente',
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_nombre_normaliza_espacios(self):
+        form = PacienteForm(data={
+            'nombre': '  Juan   Pablo  ', 'apellido': '  Perez  ',
+            'codigo_cedula': 'V', 'numero_cedula': '52345678',
+            'codigo_telefono': '0412', 'numero_telefono': '1234567',
+            'fecha_nacimiento': '1990-05-15',
+            'status_afiliado': 'Afiliado', 'categoria_afiliado': 'Docente',
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['nombre'], 'Juan Pablo')
+        self.assertEqual(form.cleaned_data['apellido'], 'Perez')
+
 class PerfilFormEmailTest(BaseTest):
     def test_email_de_otro_usuario(self):
         User.objects.create_user('otro', email='otro@test.com', password='x')

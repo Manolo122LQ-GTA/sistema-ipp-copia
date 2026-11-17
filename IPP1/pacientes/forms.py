@@ -192,6 +192,23 @@ class PacienteForm(forms.ModelForm):
             raise forms.ValidationError('La fecha de nacimiento parece incorrecta (¿más de 120 años?).')
         return fecha
 
+# NOMBRE Y APELLIDO: SOLO LETRAS Y ESPACIOS
+    def _validar_solo_letras(self, valor, campo):
+        valor = ' '.join((valor or '').split())
+        if not valor:
+            return valor
+        if not re.fullmatch(r'[A-Za-zÁÉÍÓÚÜáéíóúüÑñ ]+', valor):
+            raise forms.ValidationError(
+                f'{campo} solo puede contener letras y espacios.'
+            )
+        return valor
+
+    def clean_nombre(self):
+        return self._validar_solo_letras(self.cleaned_data.get('nombre'), 'El nombre')
+
+    def clean_apellido(self):
+        return self._validar_solo_letras(self.cleaned_data.get('apellido'), 'El apellido')
+
 
 # CODIGOS DE IDENTIFICACION DE CEDULA VENEZOLANA (PACIENTFORM)
 CODIGOS_CEDULA_VE = [
