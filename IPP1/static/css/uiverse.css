@@ -486,7 +486,7 @@ body.auth-page {
   margin: 0;
   min-height: 100vh;
   background: linear-gradient(90deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%);
-  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  /* font-family: Verdana, Geneva, Tahoma, sans-serif; */
   display: flex;
   flex-direction: column;
 }

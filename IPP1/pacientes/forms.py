@@ -100,11 +100,11 @@ class PacienteForm(forms.ModelForm):
         fields = ['nombre', 'apellido', 'telefono', 'direccion', 'fecha_nacimiento', 'status_afiliado', 'categoria_afiliado', 'codigo_cedula', 'numero_cedula']
         widgets = {
             'fecha_nacimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
-            'nombre': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ingrese los nombres', 'pattern': '[A-Za-zÁÉÍÓÚáéíóúÑñ ]+', 'title': 'Solo se permiten letras y espacios', 'maxlength': '30'}),
-            'apellido': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ingrese los apellidos', 'pattern': '[A-Za-zÁÉÍÓÚáéíóúÑñ ]+', 'title': 'Solo se permiten letras y espacios', 'maxlength': '30'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'autocomplete': 'off', 'placeholder': 'Ingrese los nombres', 'pattern': '[A-Za-zÁÉÍÓÚáéíóúÑñ ]+', 'title': 'Solo se permiten letras y espacios', 'maxlength': '30'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'autocomplete': 'off', 'placeholder': 'Ingrese los apellidos', 'pattern': '[A-Za-zÁÉÍÓÚáéíóúÑñ ]+', 'title': 'Solo se permiten letras y espacios', 'maxlength': '30'}),
             'cedula': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'V-12.345.678', 'onkeypress': 'return event.charCode >= 48 && event.charCode <= 57', 'inputmode': 'numeric'}),
             'telefono': forms.HiddenInput(),
-            'direccion': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ingresa la dirección completa'}),
+            'direccion': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'autocomplete': 'off', 'placeholder': 'Ingresa la dirección completa'}),
             'status_afiliado': forms.Select(attrs={'class': 'form-control uiverse-input'}),
             'categoria_afiliado': forms.Select(attrs={'class': 'form-control uiverse-input'}),
             'codigo_cedula': forms.Select(attrs={'class': 'form-control uiverse-input'}),
@@ -494,8 +494,8 @@ class FamiliarForm(forms.ModelForm):
         model = Familiar
         fields = ['nombre', 'apellido', 'cedula', 'parentesco', 'fecha_nacimiento']
         widgets = {
-            'nombre': forms.TextInput(attrs={'class': 'form-control uiverse-input'}),
-            'apellido': forms.TextInput(attrs={'class': 'form-control uiverse-input'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'autocomplete': 'off'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'autocomplete': 'off'}),
             'cedula': forms.TextInput(attrs={'class': 'form-control uiverse-input'}),
             'fecha_nacimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
         }

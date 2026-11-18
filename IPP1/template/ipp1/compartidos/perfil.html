@@ -56,19 +56,19 @@
 
                     <div class="mb-3">
                         <label for="id_old_password" class="form-label fw-semibold">Contraseña actual</label>
-                        <input type="password" name="old_password" id="id_old_password" class="form-control uiverse-input">
+                        <input type="password" name="old_password" id="id_old_password" class="form-control uiverse-input" autocomplete="current-password">
                         {% if password_form.old_password.errors %}<div class="text-danger small mt-1">{{ password_form.old_password.errors.0 }}</div>{% endif %}
                     </div>
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label for="id_new_password1" class="form-label fw-semibold">Nueva contraseña</label>
-                            <input type="password" name="new_password1" id="id_new_password1" class="form-control uiverse-input">
+                            <input type="password" name="new_password1" id="id_new_password1" class="form-control uiverse-input" autocomplete="new-password">
                             {% if password_form.new_password1.errors %}<div class="text-danger small mt-1">{{ password_form.new_password1.errors.0 }}</div>{% endif %}
                         </div>
                         <div class="col-md-6">
                             <label for="id_new_password2" class="form-label fw-semibold">Confirmar contraseña</label>
-                            <input type="password" name="new_password2" id="id_new_password2" class="form-control uiverse-input">
+                            <input type="password" name="new_password2" id="id_new_password2" class="form-control uiverse-input" autocomplete="new-password">
                             {% if password_form.new_password2.errors %}<div class="text-danger small mt-1">{{ password_form.new_password2.errors.0 }}</div>{% endif %}
                         </div>
                     </div>
@@ -100,4 +100,31 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    // LOS TRES CAMPOS DE CONTRASENA SOLO SON OBLIGATORIOS SI EL USUARIO
+    // EMPIEZA A ESCRIBIR EN CUALQUIERA DE ELLOS (ASi SE PUEDE GUARDAR SOLO EL PERFIL)
+    var ids = ['id_old_password', 'id_new_password1', 'id_new_password2'];
+    var campos = ids.map(function (id) {
+        return document.getElementById(id);
+    }).filter(function (campo) {
+        return campo;
+    });
+
+    function sincronizar() {
+        var hayValor = campos.some(function (campo) {
+            return campo.value !== '';
+        });
+        campos.forEach(function (campo) {
+            campo.required = hayValor;
+        });
+    }
+
+    campos.forEach(function (campo) {
+        campo.addEventListener('input', sincronizar);
+    });
+    sincronizar();
+})();
+</script>
 {% endblock %}

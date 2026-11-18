@@ -20,22 +20,22 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-# Forzar valores de conexión a DB limpios (UTF-8) para evitar UnicodeDecodeError
-# por caracteres especiales en variables de entorno del sistema de Windows
-import os as _os
-_forced_db_env = {
-    'DB_NAME': 'ippbd',
-    'DB_USER': 'postgres',
-    'DB_PASSWORD': '1234',
-    'DB_HOST': 'localhost',
-    'DB_PORT': '5432',
+# CONFIGURACION DE CONEXION A LA BASE DE DATOS
+# Solo los valores NO sensibles tienen defecto aqui. La contrasena se toma
+# exclusivamente del entorno (.env) para no dejar credenciales en el codigo.
+_db_defaults = {
+    'DB_NAME': os.getenv('DB_NAME') or 'ippbd',
+    'DB_USER': os.getenv('DB_USER') or 'postgres',
+    'DB_HOST': os.getenv('DB_HOST') or 'localhost',
+    'DB_PORT': os.getenv('DB_PORT') or '5432',
+    'DB_PASSWORD': os.getenv('DB_PASSWORD') or '',
 }
-for _k, _v in _forced_db_env.items():
-    _os.environ[_k] = _v
+for _k, _v in _db_defaults.items():
+    os.environ[_k] = _v
 
 # Limpiar variables PG* que psycopg2 lee del entorno y pueden tener caracteres no-UTF-8
 for _pg_var in ['PGHOST', 'PGPASSWORD', 'PGUSER', 'PGDATABASE', 'PGPORT', 'PGSSLMODE', 'PGSERVICE', 'PGSERVICEFILE']:
-    _os.environ.pop(_pg_var, None)
+    os.environ.pop(_pg_var, None)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -191,13 +191,11 @@ DATABASES = {
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
 # METODO DE VALIDACION DE CONTRASEÑAS
+# LA LONGITUD MINIMA (16) LA VALIDA pacientes.validators.ValidarContrasenaFuerte.
+# NO SE REPITE MinimumLengthValidator PARA NO MOSTRAR EL MISMO MENSAJE DOS VECES.
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {'min_length': 16 },
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',

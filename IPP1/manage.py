@@ -4,22 +4,10 @@ import os
 import sys
 import ctypes
 
-# Forzar variables de conexión a DB con valores UTF-8 puros en el entorno REAL de Windows
-# Usar SetEnvironmentVariableW de Windows API para que libpq/psycopg2 lo vea
+# Limpiar del entorno real de Windows las variables PG* que pueda haber
+# heredado el proceso y que psycopg2 leerian con codificacion no UTF-8.
 _kernel32 = ctypes.windll.kernel32
 
-_db_clean = {
-    'DB_NAME': 'IPPBD',
-    'DB_USER': 'postgres',
-    'DB_PASSWORD': '1234',
-    'DB_HOST': 'localhost',
-    'DB_PORT': '5432',
-}
-for _k, _v in _db_clean.items():
-    _kernel32.SetEnvironmentVariableW(_k, _v)
-    os.environ[_k] = _v
-
-# Eliminar todas las variables PG* del entorno real de Windows
 for _key in list(os.environ.keys()):
     if _key.startswith('PG'):
         try:

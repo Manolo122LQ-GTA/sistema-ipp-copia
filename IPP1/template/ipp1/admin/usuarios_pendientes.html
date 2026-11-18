@@ -51,11 +51,21 @@
                             <form method="post" action="{% url 'aprobar_usuario' perfil.usuario.id %}" class="d-inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="accion" value="aprobar">
+                                <select name="rol" class="form-select form-select-sm d-inline-block w-auto align-middle" title="Rol a asignar">
+                                    <option value="">Sin rol</option>
+                                    <option value="Secretaria">Secretaría General</option>
+                                    <option value="Medico">Servicio Médico</option>
+                                    <option value="Odontologo">Odontología</option>
+                                    <option value="Laboratorio">Laboratorio</option>
+                                    <option value="Especialista">Especialista</option>
+                                    <option value="Poliza">Póliza</option>
+                                    <option value="Administracion">Administración</option>
+                                </select>
                                 <button type="submit" class="btn btn-sm btn-outline-success uiverse-btn" title="Aprobar">
                                     <i class="bi bi-check-lg"></i> Aprobar
                                 </button>
                             </form>
-                            <form method="post" action="{% url 'aprobar_usuario' perfil.usuario.id %}" class="d-inline" onsubmit="return confirm('¿Rechazar y eliminar este usuario?')">
+                            <form method="post" action="{% url 'aprobar_usuario' perfil.usuario.id %}" class="d-inline" onsubmit="return confirm('¿Rechazar y desactivar este usuario? El registro se conservará para auditoría.')">
                                 {% csrf_token %}
                                 <input type="hidden" name="accion" value="rechazar">
                                 <button type="submit" class="btn btn-sm btn-outline-danger uiverse-btn" title="Rechazar">

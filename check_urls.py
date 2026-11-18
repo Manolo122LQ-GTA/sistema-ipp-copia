@@ -1,55 +1,59 @@
+"""Comprueba que todos los {% url 'nombre' %} usados en las plantillas existan.
+
+No intenta resolver los argumentos (serian variables del template y habria que
+ejecutar la vista para conocerlas): solo verifica que el nombre de la ruta este
+registrado. Asi se evitan los falsos positivos de "Reverse for 'x' with no
+arguments not found" cuando la ruta si existe pero exige un parametro.
+"""
 import os
 import re
 import sys
+
 import django
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'IPP1'))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'IPP1.settings')
 django.setup()
 
-from django.urls import reverse, NoReverseMatch
+from django.urls import NoReverseMatch, get_resolver, reverse  # noqa: E402
 
 template_dir = os.path.join(os.path.dirname(__file__), 'IPP1', 'template')
 
-# Pattern to match {% url 'name' arg1 arg2 %} or {% url "name" arg1 arg2 %}
 url_pattern = re.compile(
     r"{%\s*url\s+['\"]([^'\"]+)['\"]\s*([^%]*?)\s*%}",
-    re.DOTALL
+    re.DOTALL,
 )
 
+nombres_registrados = set(get_resolver().reverse_dict.keys())
+
+
+def ruta_existe(nombre):
+    if nombre in nombres_registrados:
+        return True
+    try:
+        reverse(nombre)
+        return True
+    except NoReverseMatch:
+        return False
+
+
 issues = []
-
-for root, dirs, files in os.walk(template_dir):
+for root, _dirs, files in os.walk(template_dir):
     for f in files:
-        if f.endswith('.html'):
-            path = os.path.join(root, f)
-            with open(path, 'r', encoding='utf-8', errors='ignore') as fh:
-                content = fh.read()
-            for m in url_pattern.finditer(content):
-                name = m.group(1)
-                args_str = m.group(2).strip()
-                # Parse args: simple space-separated, may include filters like |filter
-                args = []
-                if args_str:
-                    # Simple split by whitespace, removing Django filters for arg resolution
-                    # We'll just try with the raw args first
-                    for arg in args_str.split():
-                        # Remove leading/trailing quotes
-                        arg_clean = arg.strip("'\"")
-                        # If it looks like a variable name (no spaces, no operators), use it
-                        if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', arg_clean):
-                            args.append(arg_clean)
-                        else:
-                            # It's a literal or expression - skip for now
-                            pass
-                try:
-                    if args:
-                        reverse(name, args=args)
-                    else:
-                        reverse(name)
-                except NoReverseMatch as e:
-                    issues.append((path, name, args, str(e)))
+        if not f.endswith('.html'):
+            continue
+        path = os.path.join(root, f)
+        with open(path, 'r', encoding='utf-8', errors='ignore') as fh:
+            content = fh.read()
+        for m in url_pattern.finditer(content):
+            name = m.group(1)
+            if not ruta_existe(name):
+                issues.append((os.path.relpath(path, template_dir), name))
 
-print('URL names usados en templates que NO se pueden reversar (con argumentos parseados):')
-for path, name, args, err in issues:
-    print(f'  {os.path.relpath(path, template_dir)}: {name} args={args} -> {err}')
+if issues:
+    print('Rutas usadas en templates que NO existen:')
+    for path, name in issues:
+        print(f'  {path}: {name}')
+    sys.exit(1)
+
+print('OK: todas las rutas usadas en las plantillas existen.')

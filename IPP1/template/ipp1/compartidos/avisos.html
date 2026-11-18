@@ -1,0 +1,92 @@
+{% comment %}
+    AVISOS DEL SISTEMA (django.contrib.messages)
+
+    DUPLICADO EN UN SOLO LUGAR: se incluye desde base.html, login.html,
+    registro.html, selec_roles.html y gestion_bloqueos.html.
+
+    TIEMPO EN PANTALLA: se configura en TIEMPOS_MS (JavaScript, al final de
+    este archivo). 0 = el aviso NO se cierra solo.
+
+    OPCIONAL, por mensaje desde una vista (views.py):
+        messages.success(request, 'Guardado.', extra_tags='dur-3000')
+    Si no se indica 'dur-XXXX', se usa el tiempo del tipo de mensaje.
+{% endcomment %}
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050;" role="status" aria-live="polite">
+    {% for message in messages %}
+    <div class="modern-{% if message.level_tag == 'error' %}error{% elif message.level_tag == 'warning' %}warning{% elif message.level_tag == 'info' %}info{% else %}success{% endif %}-message mb-2 aviso-ipp"
+         data-tipo="{% if message.level_tag == 'error' %}error{% elif message.level_tag == 'warning' %}warning{% elif message.level_tag == 'info' %}info{% else %}success{% endif %}"
+         data-extra="{{ message.extra_tags }}">
+        <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+        <div class="icon-wrapper">
+            <i class="bi bi-{% if message.level_tag == 'error' %}x-circle{% elif message.level_tag == 'warning' %}exclamation-triangle{% elif message.level_tag == 'info' %}info-circle{% else %}check-circle{% endif %}-fill success-icon"></i>
+        </div>
+        <div class="text-wrapper">
+            <div class="msg-title">
+                {% if message.level_tag == 'error' %}Error{% elif message.level_tag == 'warning' %}Atención{% elif message.level_tag == 'info' %}Información{% else %}Operación Correcta{% endif %}
+            </div>
+            <div class="msg-message">{{ message }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<script>
+(function () {
+    // TIEMPO EN MILISEGUNDOS QUE CADA AVISO PERMANECE EN PANTALLA. 0 = NO SE CIERRA SOLO.
+    var TIEMPOS_MS = {
+        success: 4000,
+        info: 6000,
+        warning: 8000,
+        error: 0
+    };
+    var SALIDA_MS = 300;
+
+    var SIN_MOVIMIENTO = window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    document.querySelectorAll('.aviso-ipp').forEach(function (aviso) {
+        var tipo = aviso.getAttribute('data-tipo') || 'success';
+
+        // Duracion propia opcional: messages.error(request, '...', extra_tags='dur-15000')
+        var propio = /dur-(\d+)/.exec(aviso.getAttribute('data-extra') || '');
+        var ms = propio ? parseInt(propio[1], 10) : (TIEMPOS_MS[tipo] || 0);
+        if (!ms) return;
+
+        var temporizador = null;
+        var cerrado = false;
+
+        function cerrar() {
+            if (cerrado) return;
+            cerrado = true;
+            aviso.style.transition = 'opacity ' + SALIDA_MS + 'ms ease' +
+                (SIN_MOVIMIENTO ? '' : ', transform ' + SALIDA_MS + 'ms ease');
+            aviso.style.opacity = '0';
+            if (!SIN_MOVIMIENTO) aviso.style.transform = 'translateX(24px)';
+            setTimeout(function () {
+                if (aviso.parentNode) aviso.parentNode.removeChild(aviso);
+            }, SALIDA_MS);
+        }
+
+        function programar() {
+            if (cerrado) return;
+            temporizador = setTimeout(cerrar, ms);
+        }
+
+        function pausar() {
+            if (temporizador) {
+                clearTimeout(temporizador);
+                temporizador = null;
+            }
+        }
+
+        // No cerrar mientras el usuario lo esta leyendo o navegando con teclado
+        aviso.addEventListener('mouseenter', pausar);
+        aviso.addEventListener('mouseleave', programar);
+        aviso.addEventListener('focusin', pausar);
+        aviso.addEventListener('focusout', programar);
+
+        programar();
+    });
+})();
+</script>
+{% endif %}

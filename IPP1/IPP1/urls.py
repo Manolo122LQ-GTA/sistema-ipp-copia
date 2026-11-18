@@ -141,6 +141,7 @@ urlpatterns = [
 
     # Historia Clínica
     path('historia-clinica/<int:paciente_id>/', views.historia_clinica_print, name='historia_clinica_print'),
+    path('historia-clinica/<int:paciente_id>/documento/', views.historia_clinica_exportar, name='historia_clinica_exportar'),
 
     # Editar / Eliminar Paciente
     path('paciente/editar/<int:paciente_id>/', views.editar_paciente, name='editar_paciente'),

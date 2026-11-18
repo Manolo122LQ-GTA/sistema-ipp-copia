@@ -16,7 +16,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 from django.conf import settings
 from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura, PerfilUsuario, TasaCambio
 from .forms import PacienteForm, LoginForm, PerfilForm, SolicitudSecretariaForm, SolicitudSecretariaRefinarForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm, TasaCambioForm
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.sessions.models import Session
@@ -29,6 +29,7 @@ from django.contrib.auth.views import LoginView
 from django.views.decorators.cache import never_cache
 from django.contrib.auth.decorators import login_required
 import csv
+import re
 
 
 
@@ -271,7 +272,7 @@ def login_view(request):
 
 # CIERRE DE SESION (LIMPIAR SESION Y CACHE)
 @login_required
-@require_http_methods(["GET", "POST"])
+@require_POST
 @never_cache
 def logout_view(request):
     """Cierra la sesión y redirige al login con un mensaje de éxito."""
@@ -311,8 +312,14 @@ def registro(request):
         elif email and User.objects.filter(email=email).exists():
             messages.error(request, 'El correo electrónico ya está registrado.')
         else:
+            # SE VALIDA CON UN USUARIO SIN GUARDAR PARA QUE LA CONTRASENA NO SE
+            # PAREZCA AL NOMBRE DE USUARIO, NOMBRE, APELLIDO NI CORREO
+            candidato = User(
+                username=username, email=email,
+                first_name=first_name, last_name=last_name,
+            )
             try:
-                validate_password(password)
+                validate_password(password, user=candidato)
             except ValidationError as e:
                 for error in e.messages:
                     messages.error(request, error)
@@ -331,10 +338,11 @@ def registro(request):
                 messages.error(request, 'Ese nombre de usuario o correo ya está registrado.')
                 return render(request, 'ipp1/compartidos/registro.html', {'request': request})
 
+            # EL ROL SOLICITADO NO SE ASIGNA EN EL REGISTRO PUBLICO: UN USUARIO
+            # PODRIA AUTOASIGNARSE 'Administracion'. EL ROL SOLO LO DEFINE QUIEN
+            # APRUEBA LA CUENTA (ver aprobar_usuario).
             if rol_elegido and rol_elegido in ROLES_PERMITIDOS_REGISTRO:
-                grupo, created = Group.objects.get_or_create(name=rol_elegido)
-                user.groups.add(grupo)
-                messages.success(request, f'Usuario {username} registrado como {rol_elegido}.')
+                messages.success(request, f'Usuario {username} registrado. Rol solicitado: {rol_elegido}.')
             else:
                 messages.success(request, 'Usuario registrado con éxito.')
             _registrar_log(request, f'Registró usuario {username}', 'User', user.id)
@@ -384,20 +392,40 @@ def aprobar_usuario(request, user_id):
             perfil.save()
             perfil.usuario.is_active = True
             perfil.usuario.save()
+            # EL ROL SE ASIGNA AQUI, NO EN EL REGISTRO PUBLICO
+            rol = (request.POST.get('rol') or '').strip()
+            if rol and rol in ROLES_PERMITIDOS_REGISTRO:
+                perfil.usuario.groups.clear()
+                grupo, _ = Group.objects.get_or_create(name=rol)
+                perfil.usuario.groups.add(grupo)
+                detalle = f'Rol asignado: {rol}'
+            else:
+                detalle = 'Sin cambio de rol'
+            _registrar_log(
+                request,
+                f'Aprobó al usuario {perfil.usuario.username}',
+                'User',
+                perfil.usuario_id,
+                detalle,
+            )
             messages.success(request, f'Usuario {perfil.usuario.username} aprobado correctamente.')
         elif accion == 'rechazar':
             username = perfil.usuario.username
-            tiene_datos = (
-                perfil.usuario.solicitudes_creadas.exists()
-                or perfil.usuario.citas_asignadas.exists()
-                or perfil.usuario.notificaciones.exists()
-                or perfil.usuario.logactividad_set.exists()
+            perfil.aprobado = False
+            perfil.fecha_aprobacion = timezone.now()
+            perfil.aprobado_por = request.user
+            perfil.session_key = None
+            perfil.save()
+            perfil.usuario.is_active = False
+            perfil.usuario.groups.clear()
+            perfil.usuario.save(update_fields=['is_active'])
+            _registrar_log(
+                request,
+                f'Rechazó y desactivó al usuario {username}',
+                'User',
+                perfil.usuario_id,
             )
-            if tiene_datos:
-                messages.error(request, f'No se pudo eliminar {username}: tiene registros asociados.')
-            else:
-                perfil.usuario.delete()
-                messages.success(request, f'Usuario {username} rechazado y eliminado.')
+            messages.success(request, f'Usuario {username} rechazado y desactivado.')
     return redirect('usuarios_pendientes')
 
 # PERFIL DE USUARIO
@@ -408,23 +436,36 @@ def perfil_usuario(request):
     if request.method == 'POST':
         user = request.user
         form = PerfilForm(request.POST, instance=user)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Perfil actualizado correctamente.')
-        else:
-            messages.error(request, 'Corrige los errores del perfil.')
-            return render(request, 'ipp1/compartidos/perfil.html', {'form': form, 'password_form': password_form})
 
-        if request.POST.get('old_password'):
+        # SI SE ESCRIBIO CUALQUIERA DE LOS TRES CAMPOS, SE INTENTA CAMBIAR LA CONTRASENA
+        intenta_cambiar_clave = any(
+            request.POST.get(campo)
+            for campo in ('old_password', 'new_password1', 'new_password2')
+        )
+        if intenta_cambiar_clave:
             password_form = PasswordChangeForm(user, request.POST)
-            if password_form.is_valid():
+
+        # NO SE GUARDA NADA HASTA QUE LOS DOS FORMULARIOS SEAN VALIDOS
+        perfil_valido = form.is_valid()
+        clave_valida = password_form.is_valid() if intenta_cambiar_clave else True
+
+        if perfil_valido and clave_valida:
+            form.save()
+            if intenta_cambiar_clave:
                 password_form.save()
+                # MANTENER LA SESION ABIERTA DESPUES DE CAMBIAR LA CONTRASENA
+                update_session_auth_hash(request, user)
                 messages.success(request, 'Perfil y contraseña actualizados correctamente.')
             else:
-                messages.error(request, 'Corrige los errores de la contraseña.')
-                return render(request, 'ipp1/compartidos/perfil.html', {'form': form, 'password_form': password_form})
+                messages.success(request, 'Perfil actualizado correctamente.')
+            return redirect('perfil_usuario')
 
-        return redirect('perfil_usuario')
+        if not perfil_valido:
+            messages.error(request, 'Corrige los errores del perfil.')
+        if not clave_valida:
+            messages.error(request, 'Corrige los errores de la contraseña.')
+
+        return render(request, 'ipp1/compartidos/perfil.html', {'form': form, 'password_form': password_form})
 
     form = PerfilForm(instance=request.user)
     return render(request, 'ipp1/compartidos/perfil.html', {'form': form, 'password_form': password_form})
@@ -2082,7 +2123,7 @@ def factura_generar(request, cita_id):
 @login_required
 def historia_clinica_print(request, paciente_id):
     """Vista imprimible de la historia clínica del paciente."""
-    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria', 'Medico', 'Odontologo', 'Especialista']).exists()):
+    if not _puede_ver_historia_clinica(request.user):
         messages.error(request, 'No tienes permisos para ver la historia clínica.')
         return redirect('home')
     paciente = get_object_or_404(Paciente, id=paciente_id)
@@ -2095,6 +2136,154 @@ def historia_clinica_print(request, paciente_id):
         'laboratorios': laboratorios,
         'recetas': recetas,
     })
+
+
+#  EXPORTAR HISTORIA CLINICA A EXCEL
+_ROLES_HISTORIA_CLINICA = ['Administracion', 'Secretaria', 'Medico', 'Odontologo', 'Especialista']
+
+
+def _puede_ver_historia_clinica(user):
+    return user.is_superuser or user.groups.filter(name__in=_ROLES_HISTORIA_CLINICA).exists()
+
+
+@login_required
+def historia_clinica_exportar(request, paciente_id):
+    """Descarga la historia clinica del paciente como documento Excel (.xlsx).
+
+    Mismas secciones que la ficha imprimible: datos del paciente, consultas,
+    recetas y examenes de laboratorio.
+    """
+    if not _puede_ver_historia_clinica(request.user):
+        messages.error(request, 'No tienes permisos para ver la historia clínica.')
+        return redirect('home')
+
+    import openpyxl
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    paciente = get_object_or_404(Paciente, id=paciente_id)
+    citas = (
+        SolicitudSecretaria.objects.filter(paciente=paciente)
+        .select_related('especialista')
+        .order_by('-fecha_cita', '-hora_cita')
+    )
+    recetas = (
+        Receta.objects.filter(cita__paciente=paciente)
+        .select_related('medicamento', 'cita__especialista')
+        .order_by('-fecha_prescrita')
+    )
+    laboratorios = SolicitudLaboratorio.objects.filter(paciente=paciente).order_by('-fecha_solicitud')
+
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="2C6E9C", end_color="2C6E9C", fill_type="solid")
+    title_font = Font(bold=True, size=14, color="2C6E9C")
+
+    wb = openpyxl.Workbook()
+
+    def _encabezados(ws, headers):
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center')
+
+    # HOJA 1: DATOS DEL PACIENTE
+    ws1 = wb.active
+    ws1.title = "Datos del Paciente"
+    ws1["A1"] = "Historia Clínica — IPP-IUTAG"
+    ws1["A1"].font = title_font
+    ws1["A2"] = "Fecha de emisión:"
+    ws1["B2"] = now().strftime("%d/%m/%Y %H:%M")
+
+    datos = [
+        ("Nombre", f"{paciente.nombre} {paciente.apellido}"),
+        ("Cédula", paciente.cedula),
+        ("Código de afiliado", paciente.codigo_afiliado or "—"),
+        ("Teléfono", paciente.telefono or "—"),
+        ("Dirección", paciente.direccion or "—"),
+        ("Fecha de nacimiento", paciente.fecha_nacimiento.strftime("%d/%m/%Y") if paciente.fecha_nacimiento else "—"),
+        ("Status del afiliado", paciente.status_afiliado),
+        ("Categoría del afiliado", paciente.categoria_afiliado or "—"),
+        ("Saldo del plan de salud", float(paciente.saldo_plan_salud)),
+    ]
+    fila = 4
+    for etiqueta, valor in datos:
+        ws1.cell(row=fila, column=1, value=etiqueta).font = Font(bold=True)
+        ws1.cell(row=fila, column=2, value=valor)
+        fila += 1
+    ws1.column_dimensions['A'].width = 24
+    ws1.column_dimensions['B'].width = 45
+
+    # HOJA 2: CONSULTAS
+    ws2 = wb.create_sheet("Consultas")
+    _encabezados(ws2, ["Fecha", "Hora", "Especialista", "Motivo / Diagnóstico", "Estado", "Costo"])
+    fila = 2
+    for c in citas:
+        especialista = "—"
+        if c.especialista:
+            especialista = c.especialista.get_full_name() or c.especialista.username
+        ws2.cell(row=fila, column=1, value=c.fecha_cita.strftime("%d/%m/%Y") if c.fecha_cita else "—")
+        ws2.cell(row=fila, column=2, value=c.hora_cita.strftime("%H:%M") if c.hora_cita else "—")
+        ws2.cell(row=fila, column=3, value=especialista)
+        ws2.cell(row=fila, column=4, value=c.motivo_consulta or "—")
+        ws2.cell(row=fila, column=5, value=c.estado)
+        ws2.cell(row=fila, column=6, value=float(c.costo_consulta) if c.costo_consulta else 0)
+        fila += 1
+    if fila == 2:
+        ws2.cell(row=2, column=1, value="Sin consultas registradas.")
+    for col, ancho in zip("ABCDEF", [14, 8, 28, 45, 14, 12]):
+        ws2.column_dimensions[col].width = ancho
+
+    # HOJA 3: RECETAS
+    ws3 = wb.create_sheet("Recetas")
+    _encabezados(ws3, ["Fecha", "Medicamento", "Cantidad", "Dosis", "Duración", "Indicaciones"])
+    fila = 2
+    for r in recetas:
+        ws3.cell(row=fila, column=1, value=r.fecha_prescrita.strftime("%d/%m/%Y") if r.fecha_prescrita else "—")
+        ws3.cell(row=fila, column=2, value=r.medicamento.nombre if r.medicamento else "—")
+        ws3.cell(row=fila, column=3, value=r.cantidad)
+        ws3.cell(row=fila, column=4, value=r.dosis or "—")
+        ws3.cell(row=fila, column=5, value=r.duracion or "—")
+        ws3.cell(row=fila, column=6, value=r.indicaciones or "—")
+        fila += 1
+    if fila == 2:
+        ws3.cell(row=2, column=1, value="Sin recetas registradas.")
+    for col, ancho in zip("ABCDEF", [14, 28, 10, 24, 16, 45]):
+        ws3.column_dimensions[col].width = ancho
+
+    # HOJA 4: EXAMENES DE LABORATORIO
+    ws4 = wb.create_sheet("Laboratorio")
+    _encabezados(ws4, ["Fecha", "Examen", "Resultado", "Estado", "Bioanalista", "Costo"])
+    fila = 2
+    for lab in laboratorios:
+        ws4.cell(row=fila, column=1, value=lab.fecha_solicitud.strftime("%d/%m/%Y") if lab.fecha_solicitud else "—")
+        ws4.cell(row=fila, column=2, value=lab.prueba_laboratorio or "—")
+        ws4.cell(row=fila, column=3, value=lab.resultado or "Pendiente")
+        ws4.cell(row=fila, column=4, value=lab.estado)
+        ws4.cell(row=fila, column=5, value=lab.bioanalista or "—")
+        ws4.cell(row=fila, column=6, value=float(lab.costo) if lab.costo else 0)
+        fila += 1
+    if fila == 2:
+        ws4.cell(row=2, column=1, value="Sin exámenes registrados.")
+    for col, ancho in zip("ABCDEF", [14, 28, 40, 16, 22, 12]):
+        ws4.column_dimensions[col].width = ancho
+
+    _registrar_log(
+        request,
+        f'Extrajo el documento de historia clínica de {paciente.nombre} {paciente.apellido}',
+        'Paciente',
+        paciente.id,
+    )
+
+    # NOMBRE DE ARCHIVO SEGURO: SOLO LETRAS, NUMEROS, GUION Y GUION BAJO
+    slug = re.sub(r'[^A-Za-z0-9_-]+', '_', f"{paciente.cedula}_{paciente.apellido}").strip('_')
+    filename = f"historia_clinica_{slug or paciente.id}.xlsx"
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
 
 
 #  EDITAR / DESACTIVAR PACIENTE 
@@ -2894,3 +3083,12 @@ def tasa_cambio_lista(request):
         'tasas': tasas,
         'form': form,
     })
+
+# SISTEMA DESARROLLADO POR:
+# - Abraham Gonzalez (Manolo122LQ)
+# PROGRAMACIÓN, REVISIÓN, TESTER GENERAL:
+# - Abraham Gonzalez (Manolo122LQ)
+# DOCUMENTACIÓN, APORTES DE IDEAS CONCEPTUALES, OTROS:
+# - Michael Martinez
+# - Richard Molina
+# - José Medina

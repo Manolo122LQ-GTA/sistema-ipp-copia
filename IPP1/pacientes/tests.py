@@ -4,6 +4,9 @@ import io
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, Client
 from django.urls import reverse
+from django.template.loader import render_to_string
+from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import User, Group, Permission
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
@@ -11,7 +14,7 @@ from .models import (
     Paciente, SolicitudSecretaria, SolicitudLaboratorio,
     PlanSalud, Poliza, GastoPaciente, Familiar,
     TarifaEspecialidad, Medicamento, Receta, Factura, ExamenLaboratorio,
-    PerfilUsuario
+    PerfilUsuario, LogActividad
 )
 from .forms import (
     LoginForm, PacienteForm, PerfilForm, SolicitudSecretariaForm,
@@ -614,13 +617,30 @@ class LoginViewTest(BaseTest):
         self.assertContains(response_noexiste, 'Usuario o contraseña incorrectos.')
         self.assertContains(response_existe, 'Usuario o contraseña incorrectos.')
 
+    def test_login_no_activa_usuario_pendiente_de_aprobacion(self):
+        user = self._crear_usuario()
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+        PerfilUsuario.objects.create(usuario=user, aprobado=False)
+
+        response = self.client.post(reverse('login'), {
+            'username': 'testuser', 'password': 'Abc123!@#$%xyz78'
+        })
+
+        self.assertRedirects(response, reverse('pendiente_aprobacion'))
+        self.assertNotIn('_auth_user_id', self.client.session)
+        user.refresh_from_db()
+        self.assertFalse(user.is_active)
+        self.assertFalse(user.perfil.aprobado)
+
 
 class LogoutViewTest(BaseTest):
-    def test_logout_acepta_get(self):
-        self._login()
+    def test_logout_rechaza_get(self):
+        user = self._login()
         response = self.client.get(reverse('logout'))
-        self.assertRedirects(response, reverse('login'))
-        self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertEqual(response.status_code, 405)
+        self.assertIn('_auth_user_id', self.client.session)
+        user.refresh_from_db()
 
     def test_logout_requiere_autenticacion(self):
         response = self.client.get(reverse('logout'))
@@ -630,6 +650,152 @@ class LogoutViewTest(BaseTest):
         self._login()
         response = self.client.post(reverse('logout'))
         self.assertRedirects(response, reverse('login'))
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+
+class AvisoDuracionTest(BaseTest):
+    """Los avisos viven en un solo parcial (avisos.html) y se cierran solos."""
+
+    def test_login_usa_el_parcial_de_avisos(self):
+        respuesta = self.client.get(reverse('login') + '?timeout=1')
+        self.assertContains(respuesta, 'aviso-ipp')
+        self.assertContains(respuesta, 'TIEMPOS_MS')
+        self.assertContains(respuesta, 'data-tipo="warning"')
+        self.assertContains(respuesta, 'modern-warning-message')
+
+    def test_login_con_error_marca_aviso_error(self):
+        respuesta = self.client.post(
+            reverse('login'),
+            {'username': 'noexiste', 'password': 'clave-mala'},
+        )
+        self.assertContains(respuesta, 'data-tipo="error"')
+        self.assertContains(respuesta, 'modern-error-message')
+
+    def test_pagina_con_base_usa_el_parcial_de_avisos(self):
+        # Poliza no puede registrar pacientes: genera un error y redirige a una
+        # pagina que extiende base.html (aqui se comprueba el include compartido).
+        self._login(grupo='Poliza')
+        respuesta = self.client.post(reverse('registrar_paciente'), follow=True)
+        self.assertRedirects(respuesta, reverse('pacientes_recientes'))
+        self.assertContains(respuesta, 'data-tipo="error"')
+
+
+class AutocompletadoTest(BaseTest):
+    """Los datos del paciente/familiar no se rellenan con los del operador."""
+
+    def test_paciente_no_autocompleta_nombre_apellido_direccion(self):
+        form = PacienteForm()
+        for campo in ('nombre', 'apellido', 'direccion'):
+            self.assertEqual(
+                form.fields[campo].widget.attrs.get('autocomplete'), 'off',
+                f'El campo {campo} deberia desactivar el autocompletado',
+            )
+
+    def test_familiar_no_autocompleta_nombre_apellido(self):
+        form = FamiliarForm()
+        for campo in ('nombre', 'apellido'):
+            self.assertEqual(
+                form.fields[campo].widget.attrs.get('autocomplete'), 'off',
+                f'El campo {campo} deberia desactivar el autocompletado',
+            )
+
+    def test_alta_paciente_desactiva_autocompletado_en_el_form(self):
+        self._login(grupo='Secretaria')
+        respuesta = self.client.get(reverse('registrar_paciente'))
+        self.assertContains(respuesta, '<form method="post" autocomplete="off"')
+
+    def test_perfil_declara_contrasena_actual_y_nuevas(self):
+        self._login()
+        respuesta = self.client.get(reverse('perfil_usuario'))
+        self.assertContains(respuesta, 'autocomplete="current-password"')
+        contenido = respuesta.content.decode()
+        self.assertEqual(contenido.count('autocomplete="new-password"'), 2)
+
+    def test_reset_declara_contrasena_nueva(self):
+        html = render_to_string(
+            'ipp1/contrasena/password_reset_confirm.html',
+            {'validlink': True, 'form': SetPasswordForm(User())},
+        )
+        self.assertEqual(html.count('autocomplete="new-password"'), 2)
+        self.assertNotIn('autocomplete="off"', html)
+
+
+class ContrasenaSeguridadTest(BaseTest):
+    """Validaciones de contrasenas: similitud, coincidencia y longitud."""
+
+    def test_registro_rechaza_password_similar_al_usuario(self):
+        respuesta = self.client.post(reverse('registro'), {
+            'username': 'juanperezgarcia2026',
+            'password': 'juanperezgarcia2026!A1',
+            'password2': 'juanperezgarcia2026!A1',
+            'name': 'Juan', 'last_name': 'Perez',
+            'email': 'juanperezgarcia2026@test.com',
+        })
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, 'similar')
+        self.assertFalse(User.objects.filter(username='juanperezgarcia2026').exists())
+
+    def test_registro_rechaza_password_distinta(self):
+        respuesta = self.client.post(reverse('registro'), {
+            'username': 'nuevo2',
+            'password': 'Abc123!@#$%xyz78',
+            'password2': 'Abc123!@#$%xyz99',
+        })
+        self.assertContains(respuesta, 'no coinciden')
+        self.assertFalse(User.objects.filter(username='nuevo2').exists())
+
+    def test_un_solo_mensaje_de_longitud(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_password('corta', user=User(username='x'))
+        self.assertEqual(
+            sum('16 caracteres' in m for m in ctx.exception.messages), 1
+        )
+
+    def test_login_no_limita_la_longitud(self):
+        respuesta = self.client.get(reverse('login'))
+        self.assertNotContains(respuesta, 'maxlength="16"')
+        self.assertNotContains(respuesta, 'minlength="16"')
+
+    def test_registro_no_limita_la_longitud(self):
+        respuesta = self.client.get(reverse('registro'))
+        self.assertNotContains(respuesta, 'maxlength="16"')
+
+    def test_perfil_no_guarda_si_falta_la_contrasena_actual(self):
+        user = self._login()
+        user.first_name = 'Original'
+        user.save()
+
+        respuesta = self.client.post(reverse('perfil_usuario'), {
+            'first_name': 'Cambiado',
+            'last_name': '',
+            'email': '',
+            'old_password': '',
+            'new_password1': 'Nueva123!@#$%xy9',
+            'new_password2': 'Nueva123!@#$%xy9',
+        })
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, 'Corrige los errores de la contraseña.')
+
+        user.refresh_from_db()
+        self.assertEqual(user.first_name, 'Original')
+        self.assertTrue(user.check_password('Abc123!@#$%xyz78'))
+
+    def test_perfil_cambia_contrasena_y_mantiene_sesion(self):
+        user = self._login()
+
+        respuesta = self.client.post(reverse('perfil_usuario'), {
+            'first_name': 'Test',
+            'last_name': 'User',
+            'email': '',
+            'old_password': 'Abc123!@#$%xyz78',
+            'new_password1': 'Nueva123!@#$%xy9',
+            'new_password2': 'Nueva123!@#$%xy9',
+        })
+
+        # assertRedirects comprueba tambien que la sesion siga activa
+        self.assertRedirects(respuesta, reverse('perfil_usuario'))
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('Nueva123!@#$%xy9'))
 
 
 class RegistroViewTest(BaseTest):
@@ -650,7 +816,26 @@ class RegistroViewTest(BaseTest):
         self.assertRedirects(response, reverse('login'))
         self.assertTrue(User.objects.filter(username='nuevousuario').exists())
         user = User.objects.get(username='nuevousuario')
-        self.assertTrue(user.groups.filter(name='Medico').exists())
+        # EL ROL NO SE ASIGNA EN EL REGISTRO: QUEDA PENDIENTE DE APROBACION
+        self.assertFalse(user.groups.exists())
+        self.assertFalse(user.is_active)
+        self.assertFalse(user.perfil.aprobado)
+
+    def test_registro_no_permite_autoasignarse_administracion(self):
+        response = self.client.post(reverse('registro'), {
+            'username': 'aspirante',
+            'password': 'Abc123!@#$%xyz78',
+            'password2': 'Abc123!@#$%xyz78',
+            'name': 'Ana',
+            'last_name': 'Perez',
+            'email': 'ana@test.com',
+            'rol': 'Administracion'
+        })
+        self.assertRedirects(response, reverse('login'))
+        user = User.objects.get(username='aspirante')
+        self.assertFalse(user.groups.filter(name='Administracion').exists())
+        self.assertFalse(user.is_staff)
+        self.assertFalse(user.is_superuser)
 
     def test_registro_usuario_duplicado(self):
         self._crear_usuario(username='existente')
@@ -1169,6 +1354,63 @@ class PolizaFlowTest(BaseTest):
 
 
 class AdminMenuTest(BaseTest):
+    def test_rechazar_usuario_pendiente_lo_desactiva_sin_eliminarlo(self):
+        user = self._crear_usuario('pendiente', 'Abc123!@#$%xyz78')
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+        perfil = PerfilUsuario.objects.create(usuario=user, aprobado=False)
+        admin = self._login(grupo='Administracion')
+
+        response = self.client.post(
+            reverse('aprobar_usuario', args=[user.id]),
+            {'accion': 'rechazar'},
+        )
+
+        self.assertRedirects(response, reverse('usuarios_pendientes'))
+        self.assertTrue(User.objects.filter(id=user.id).exists())
+        user.refresh_from_db()
+        perfil.refresh_from_db()
+        self.assertFalse(user.is_active)
+        self.assertFalse(perfil.aprobado)
+        self.assertEqual(perfil.aprobado_por, admin)
+        self.assertContains(
+            self.client.get(reverse('ver_logs')),
+            'Rechazó y desactivó al usuario pendiente',
+        )
+
+    def test_aprobar_usuario_asigna_el_rol_elegido(self):
+        user = self._crear_usuario('nuevo', 'Abc123!@#$%xyz78')
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+        PerfilUsuario.objects.create(usuario=user, aprobado=False)
+        self._login(grupo='Administracion')
+
+        response = self.client.post(
+            reverse('aprobar_usuario', args=[user.id]),
+            {'accion': 'aprobar', 'rol': 'Medico'},
+        )
+
+        self.assertRedirects(response, reverse('usuarios_pendientes'))
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertTrue(user.groups.filter(name='Medico').exists())
+
+    def test_aprobar_usuario_ignora_rol_invalido(self):
+        user = self._crear_usuario('nuevo2', 'Abc123!@#$%xyz78')
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+        PerfilUsuario.objects.create(usuario=user, aprobado=False)
+        self._login(grupo='Administracion')
+
+        self.client.post(
+            reverse('aprobar_usuario', args=[user.id]),
+            {'accion': 'aprobar', 'rol': 'Superuser'},
+        )
+
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertFalse(user.groups.exists())
+
     def test_menu_admin_agrega_rol_sin_borrar(self):
         user = self._crear_usuario('target', 'Abc123!@', 'Medico')
         self._login(grupo='Administracion')
@@ -1528,6 +1770,104 @@ class HistoriaClinicaPrintTest(BaseTest):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Historia Clínica')
         self.assertContains(response, p.nombre)
+
+
+class HistoriaClinicaExportarTest(BaseTest):
+    def _crear_datos(self):
+        p = self._crear_paciente(cedula='12345678')
+        medico = self._crear_usuario('dr_hist', 'Abc123!@', 'Medico')
+        cita = SolicitudSecretaria.objects.create(
+            paciente=p, especialista=medico,
+            fecha_cita=date(2026, 7, 20), hora_cita=time(10, 0),
+            estado='Atendido', costo_consulta=Decimal('30.00'),
+            motivo_consulta='Control general',
+        )
+        return p, cita
+
+    def test_descarga_documento_en_excel(self):
+        p, cita = self._crear_datos()
+        self._login(grupo='Medico')
+
+        response = self.client.get(reverse('historia_clinica_exportar', args=[p.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn('attachment', response['Content-Disposition'])
+        self.assertIn('.xlsx', response['Content-Disposition'])
+
+        from openpyxl import load_workbook
+        wb = load_workbook(io.BytesIO(response.content))
+        self.assertEqual(wb.sheetnames, ['Datos del Paciente', 'Consultas', 'Recetas', 'Laboratorio'])
+
+        ws_datos = wb['Datos del Paciente']
+        valores = [str(c.value) for row in ws_datos.iter_rows() for c in row if c.value]
+        self.assertIn(f"{p.nombre} {p.apellido}", valores)
+        self.assertIn(p.cedula, valores)
+
+        ws_consultas = wb['Consultas']
+        self.assertEqual(ws_consultas['A2'].value, '20/07/2026')
+        self.assertEqual(ws_consultas['E2'].value, 'Atendido')
+
+    def test_documento_en_sin_consultas(self):
+        p = self._crear_paciente()
+        self._login(grupo='Medico')
+
+        response = self.client.get(reverse('historia_clinica_exportar', args=[p.id]))
+
+        self.assertEqual(response.status_code, 200)
+        from openpyxl import load_workbook
+        wb = load_workbook(io.BytesIO(response.content))
+        self.assertEqual(wb['Consultas']['A2'].value, 'Sin consultas registradas.')
+
+    def test_exportar_exige_permisos(self):
+        p = self._crear_paciente()
+        self._login()  # sin rol
+        response = self.client.get(reverse('historia_clinica_exportar', args=[p.id]))
+        self.assertRedirects(response, reverse('home'))
+
+    def test_exportar_sin_login_redirige(self):
+        p = self._crear_paciente()
+        response = self.client.get(reverse('historia_clinica_exportar', args=[p.id]))
+        self.assertEqual(response.status_code, 302)
+
+    def test_exportar_registra_la_bitacora(self):
+        p, _ = self._crear_datos()
+        self._login(grupo='Especialista')
+
+        self.client.get(reverse('historia_clinica_exportar', args=[p.id]))
+
+        self.assertTrue(
+            LogActividad.objects.filter(
+                accion__icontains='Extrajo el documento de historia clínica'
+            ).exists()
+        )
+
+    def test_boton_extraer_documento_en_el_historial(self):
+        p = self._crear_paciente(cedula='12345678')
+        medico = self._login(grupo='Medico')
+        SolicitudSecretaria.objects.create(
+            paciente=p, especialista=medico,
+            fecha_cita=date(2026, 7, 20), hora_cita=time(10, 0), estado='Atendido',
+        )
+
+        respuesta = self.client.get(reverse('consulta_historial_medico'))
+
+        self.assertContains(respuesta, 'Extraer Documento')
+        self.assertContains(respuesta, reverse('historia_clinica_exportar', args=[p.id]))
+
+    def test_boton_extraer_documento_en_historial_especialista(self):
+        p = self._crear_paciente()
+        especialista = self._crear_usuario('esp_hist', 'Abc123!@', 'Especialista')
+        SolicitudSecretaria.objects.create(
+            paciente=p, especialista=especialista,
+            fecha_cita=date(2026, 7, 21), hora_cita=time(9, 0), estado='Atendido',
+        )
+        self.client.force_login(especialista)
+        respuesta = self.client.get(reverse('consulta_historial_especialista'))
+        self.assertContains(respuesta, 'Extraer Documento')
 
 
 class FacturaTest(BaseTest):

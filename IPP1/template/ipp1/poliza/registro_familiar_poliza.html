@@ -15,7 +15,7 @@
     <div class="uiverse-card shadow-sm">
         <div class="card-header bg-success text-white py-3"><h5 class="mb-0 fw-bold">Datos del Familiar</h5></div>
         <div class="card-body">
-            <form method="POST">
+            <form method="POST" autocomplete="off">
                 {% csrf_token %}
                 <div class="row g-3">
                     {% for field in form %}
