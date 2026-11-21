@@ -3,6 +3,8 @@
 {% block title %}Receta Médica - Imprimir{% endblock %}
 {% block content %}
 
+<!-- ESTILOS -->
+
 <style>
     @media print {
         .no-print, .no-print * {
@@ -24,11 +26,13 @@
     }
 </style>
 
+<!-- TITULO Y BASE DE PAGINA -->
+
 <div class="no-print">
     <div class="row mb-4 align-items-center">
         <div class="col-md-8">
             <h2 class="fw-bold text-dark"><i class="bi bi-capsule me-2"></i>Receta Médica</h2>
-            <p class="text-muted">{{ receta.cita.paciente.nombre }} {{ receta.cita.paciente.apellido }}</p>
+            <a href="{% if 'Medico' in receta.cita.especialista.groups.all|join:',' %}{% url 'citas_recibidas_medico' %}{% elif 'Odontologo' in receta.cita.especialista.groups.all|join:',' %}{% url 'citas_odonto' %}{% else %}{% url 'citas_especialista' %}{% endif %}" class="btn btn-outline-secondary uiverse-btn">
         </div>
         <div class="col-md-4 text-md-end">
             <button onclick="window.print()" class="btn btn-primary uiverse-btn"><i class="bi bi-printer me-1"></i>Imprimir Receta</button>
@@ -47,6 +51,7 @@
             <p class="text-muted mb-0">Receta Médica</p>
         </div>
 
+        <!-- DATOS -->
         <div class="row mb-4">
             <div class="col-md-6">
                 <p class="mb-1"><strong>Paciente:</strong> {{ receta.cita.paciente.nombre }} {{ receta.cita.paciente.apellido }}</p>
@@ -58,6 +63,7 @@
             </div>
         </div>
 
+        <!-- DATOS #2 -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="border p-3 rounded bg-light">
@@ -79,6 +85,7 @@
             </div>
         </div>
 
+        <!-- INDICACION DE RECETAS -->
         {% if receta.indicaciones %}
         <div class="mb-4">
             <h5 class="fw-bold text-primary mb-2">Indicaciones Adicionales</h5>
@@ -86,6 +93,7 @@
         </div>
         {% endif %}
 
+        <!-- FIRMA DE MEDICO -->
         <div class="text-center mt-5 pt-3 border-top">
             <p class="text-muted small mb-0">Firma del Médico: _________________________________</p>
             <p class="text-muted small mb-0">Sistema IPP - {{ receta.fecha_prescrita|date:"d/m/Y H:i" }}</p>

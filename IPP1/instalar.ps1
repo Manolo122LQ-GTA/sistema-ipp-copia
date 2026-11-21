@@ -145,8 +145,9 @@ echo.
 echo === SISTEMA IPP ===
 echo Iniciando servidor...
 echo Accede en: http://localhost:8000
+echo Acceso red local: http://192.168.1.108:8000
 echo.
-"$venvPython" manage.py runserver 127.0.0.1:8000
+"$venvPython" manage.py runserver 0.0.0.0:8000
 pause
 "@
 $batPath = "$desktop\Iniciar IPP.bat"
@@ -167,6 +168,7 @@ Write-Host "  INSTALACION COMPLETADA EXITOSAMENTE" -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Accede en: http://localhost:8000"
+Write-Host "  Acceso red local: http://192.168.1.108:8000"
 Write-Host "  Usuarios y pass: los mismos del sistema original"
 Write-Host ""
 Write-Host "  Para iniciar el sistema cada vez:"

@@ -72,7 +72,7 @@ TESTING = 'test' in sys.argv
 RUNNING_DEVSERVER = 'runserver' in sys.argv
 
 # PARA COLOCAR EL IP DE HOSTING
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,192.168.1.108').split(',')
 
 # Orígenes permitidos para POST (requerido si se publica con HTTPS/dominio)
 # Debe incluir el puerto exacto (ej. http://localhost:8000) para que CSRF funcione en desarrollo
@@ -80,6 +80,7 @@ _CSRF_TRUSTED_DEFAULT = [
     'http://localhost', 'http://127.0.0.1',
     'http://localhost:8000', 'http://127.0.0.1:8000',
     'http://localhost:8080', 'http://127.0.0.1:8080',
+    'http://192.168.1.108:8000', 'http://192.168.1.108:8080',
 ]
 _env_origins = [o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
 CSRF_TRUSTED_ORIGINS = _env_origins if _env_origins else _CSRF_TRUSTED_DEFAULT
