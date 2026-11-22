@@ -272,9 +272,12 @@ def login_view(request):
 
 # CIERRE DE SESION (LIMPIAR SESION Y CACHE)
 @login_required
-@require_POST
 @never_cache
 def logout_view(request):
+    """Cierra la sesion y redirige al login con un mensaje de Exito."""
+    # GET NO CIERRA LA SESION: redirige al login (evita 405 Method Not Allowed)
+    if request.method == 'GET':
+        return redirect('login')
     """Cierra la sesión y redirige al login con un mensaje de éxito."""
     # LIMPIAR SESIÓN ACTIVA EN EL PERFIL
     if hasattr(request.user, 'perfil'):

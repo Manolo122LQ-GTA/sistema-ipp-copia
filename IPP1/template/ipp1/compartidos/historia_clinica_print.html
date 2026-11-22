@@ -6,20 +6,8 @@
     <title>Historia Clínica - {{ paciente.nombre }} {{ paciente.apellido }}</title>
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'css/uiverse.css' %}?v=5" rel="stylesheet">
-    <style>
-        body { padding: 20px; }
-        @media print { .no-print { display: none !important; } }
-        .header { border-bottom: 3px solid #2c6e9c; padding-bottom: 15px; margin-bottom: 20px; }
-        .header h1 { color: #2c6e9c; font-size: 24px; }
-        .section-title { background: #f0f4f8; padding: 8px 12px; font-weight: bold; margin: 20px 0 10px; border-left: 4px solid #2c6e9c; }
-        table { font-size: 13px; }
-        .badge-print { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
-        .badge-print-success { background: #d4edda; color: #155724; }
-        .badge-print-danger { background: #f8d7da; color: #721c24; }
-        .badge-print-warning { background: #fff3cd; color: #856404; }
-    </style>
 </head>
-<body>
+<body class="historia-print-page">
     <div class="no-print mb-3">
         <button class="btn btn-primary uiverse-btn" onclick="window.print()">Imprimir</button>
         {% if "Medico" in user.groups.all|join:"," %}

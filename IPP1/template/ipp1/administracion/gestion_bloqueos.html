@@ -1,63 +1,42 @@
-{% load static %}
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Bloqueos - IPP</title>
-    <link rel="icon" type="image/svg+xml" href="{% static 'icon/LOGO_IPP_IUTAG.svg' %}">
-    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}">
-    <link href="{% static 'css/uiverse.css' %}?v=5" rel="stylesheet">
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            background: linear-gradient(90deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%);
-            font-family: Verdana, Geneva, Tahoma, sans-serif;
-            display: flex;
-            flex-direction: column;
-        }
-        .main-content {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 1rem;
-        }
-        .form-box {
-            background: #fff;
-            border-radius: 16px;
-            padding: 2rem;
-            max-width: 700px;
-            width: 100%;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-    </style>
-</head>
-<body>
-    <div class="container text-center py-4">
-        <div class="d-inline-block bg-white bg-opacity-10 rounded-3 px-4 py-2 mb-3" style="backdrop-filter: blur(4px);">
-            <span class="text-white fw-bold" style="letter-spacing: 2px; font-size: 13px;">SISTEMA IPP — IUTAG</span>
-        </div>
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Gestion de Bloqueos{% endblock %}
+{% block title %}Usuarios Pendientes - IPP{% endblock %}
+{% block content %}
+
+<!-- TITUTLO DEL MODULO - GESTION BLOQUEO -->
+<div class="bloqueos-page">
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <!-- TITULO -->
+        <h2 class="fw-bold text-dark"><i class="bi bi-shield me-2"></i>Gestion de Bloqueo de Cuentas</h2>
+        <p class="text-muted mb-0">Usuarios bloqueados por exceder intentos de inicio de sesión.</p>
     </div>
+    <!-- BOTON DE VOLVER -->
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'menu_admin' %}" class="uiverse-btn btn btn-outline-secondary shadow-sm">
+            <i class="bi bi-arrow-left me-1"></i>Volver al Panel
+        </a>
+    </div>
+</div>
 
-    <div class="main-content position-relative">
-        {% include 'ipp1/compartidos/avisos.html' %}
-
-        <div class="form-box">
-            <span class="title">Gestión de Bloqueos de Cuenta</span>
-            <span class="subtitle">Usuarios bloqueados por exceder intentos de inicio de sesión.</span>
-
+<!-- TABLA DE USUARIOS PENDIENTES -->
+<div class="uiverse-card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3" style="border-radius: 15px 15px 0 0;">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-list me-2"></i>Usuarios Bloqueados</h5>
+        <span class="badge bg-light text-primary fs-6">{{ bloqueados.count }} bloqueado(s)</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <!-- UN IF DE BLOQUEADOS -->
             {% if bloqueados %}
-            <table class="table table-hover align-middle mt-4">
+            <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>Usuario</th>
-                        <th>Dirección IP</th>
+                        <th>Direccion IP</th>
                         <th>Intentos Fallidos</th>
                         <th>Estado</th>
-                        <th class="text-center">Acción</th>
+                        <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -67,7 +46,7 @@
                         <td>{{ intento.ip_address }}</td>
                         <td class="text-danger">{{ intento.failures_since_start }}</td>
                         <td><span class="badge bg-danger">Bloqueado</span></td>
-                        <td class="text-center">
+                               <td class="text-center">
                             <form method="POST" style="display:inline;">
                                 {% csrf_token %}
                                 <input type="hidden" name="username" value="{{ intento.username }}">
@@ -79,27 +58,18 @@
                         </td>
                     </tr>
                     {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="text-center py-4">
-                <i class="bi bi-shield-check text-success fs-1 mb-3"></i>
-                <p class="text-muted">No hay cuentas bloqueadas actualmente.</p>
-            </div>
-            {% endif %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-shield-check text-success fs-1 mb-3"></i>
+                    <p class="text-muted">No hay cuentas bloqueadas actualmente.</p>
+                </div>
+                {% endif %}
 
-            <div class="form-section mt-4">
-                <a href="{% url 'menu_admin' %}" class="btn btn-outline-secondary uiverse-btn">
-                    <i class="bi bi-arrow-left me-1"></i>Volver al Menú de Administración
-                </a>
-            </div>
         </div>
     </div>
+</div>
+</div>
 
-    <footer class="py-3 text-center" style="background: rgba(0,0,0,0.15);">
-        <div class="container-fluid">
-            <small class="text-white text-opacity-75">© {% now "Y" %} IPP-IUTAG. Todos los derechos reservados.</small>
-        </div>
-    </footer>
-</body>
-</html>
+{% endblock %}

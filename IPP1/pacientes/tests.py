@@ -635,10 +635,13 @@ class LoginViewTest(BaseTest):
 
 
 class LogoutViewTest(BaseTest):
-    def test_logout_rechaza_get(self):
+    def test_logout_get_redirige_a_login(self):
         user = self._login()
         response = self.client.get(reverse('logout'))
-        self.assertEqual(response.status_code, 405)
+        # GET /logout/ debe redirigir al login (302) sin cerrar la sesion
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('login'))
+        # La sesion NO debe cerrarse con un GET
         self.assertIn('_auth_user_id', self.client.session)
         user.refresh_from_db()
 

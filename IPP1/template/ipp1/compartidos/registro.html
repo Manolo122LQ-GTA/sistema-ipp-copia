@@ -59,12 +59,12 @@
                     <div style="display:flex; gap:12px; margin-bottom:16px;">
                         <!-- CONTRASEÑA CON MINIMO 16 CARACTERES -->
                         <div style="flex:1; position:relative;">
-                            <input type="password" name="password" minlength="16" id="id_password" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;" autocomplete="new-password">
+                            <input type="password" name="password" maxlength="16" minlenght="16" id="id_password" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;" autocomplete="new-password">
                             <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
                         </div>
                         <!-- CONFIRMAR LA CONTRASEÑA ESCRITA -->
                         <div style="flex:1; position:relative;">
-                            <input type="password" name="password2" minlength="16" id="id_password2" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;" autocomplete="new-password">
+                            <input type="password" name="password2" maxlength="16" minlenght="16" id="id_password2" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;" autocomplete="new-password">
                             <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
                         </div>
                     </div>

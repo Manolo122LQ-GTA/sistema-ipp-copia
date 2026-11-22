@@ -7,15 +7,8 @@
     <title>Recibo {{ factura.numero_factura }}</title>
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'css/uiverse.css' %}?v=5" rel="stylesheet">
-    <style>
-        body { padding: 20px; }
-        @media print { .no-print { display: none !important; } }
-        .recibo-box { max-width: 400px; margin: 0 auto; border: 2px dashed #333; padding: 20px; }
-        .line { border-top: 1px dashed #333; margin: 10px 0; }
-        .total-row { font-size: 1.3em; }
-    </style>
 </head>
-<body>
+<body class="recibo-page">
     <div class="no-print text-center mb-3">
         <button class="uiverse-btn btn btn-primary" onclick="window.print()">Imprimir Recibo</button>
         <a href="{% url 'factura_detalle' factura.id %}" class="uiverse-btn btn btn-outline-secondary">Volver</a>

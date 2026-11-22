@@ -71,19 +71,25 @@ import sys
 TESTING = 'test' in sys.argv
 RUNNING_DEVSERVER = 'runserver' in sys.argv
 
-# PARA COLOCAR EL IP DE HOSTING
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,192.168.1.108').split(',')
+# PARA COLOCAR EL IP DE HOSTING Y EL ENLACE PUENTE DE VSC
+ALLOWED_HOSTS = [
+    h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.devtunnels.ms').split(',') if h.strip()
+]
 
-# Orígenes permitidos para POST (requerido si se publica con HTTPS/dominio)
-# Debe incluir el puerto exacto (ej. http://localhost:8000) para que CSRF funcione en desarrollo
+# Orígenes permitidos para POST (incluye el enlace puente de VS Code)
 _CSRF_TRUSTED_DEFAULT = [
     'http://localhost', 'http://127.0.0.1',
     'http://localhost:8000', 'http://127.0.0.1:8000',
-    'http://localhost:8080', 'http://127.0.0.1:8080',
-    'http://192.168.1.108:8000', 'http://192.168.1.108:8080',
+    'http://localhost:5000', 'http://127.0.0.1:5000',
+    'https://*.devtunnels.ms',
 ]
+
 _env_origins = [o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
 CSRF_TRUSTED_ORIGINS = _env_origins if _env_origins else _CSRF_TRUSTED_DEFAULT
+
+# Cabeceras necesarias para que el enlace puente de VS Code genere URLs válidas hacia el celular
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Configuración SSL/HTTPS
 # Solo forzar HTTPS en producción real, no en runserver local
@@ -251,7 +257,8 @@ AXES_ENABLED = True
 AXES_FAILURE_LIMIT = 3  # 3 intentos fallidos bloquean la cuenta
 # Bloqueo TEMPORAL: se libera solo a los 15 minutos. Antes era permanente (None)
 # y si se bloqueaba el administrador no habia forma de aprobar usuarios nuevos.
-AXES_COOLOFF_TIME = timedelta(minutes=15)
+# AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_COOLOFF_TIME = None
 AXES_LOCKOUT_TEMPLATE = 'ipp1/compartidos/axes/lockout.html'
 AXES_RESET_ON_SUCCESS = True
 # IMPORTANTE: una lista plana genera bloqueos INDEPENDIENTES por cada elemento.

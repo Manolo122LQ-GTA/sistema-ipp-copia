@@ -1,5 +1,5 @@
 /*  URL PARA LA TIPOGRAFIAS O FUENTE DE LEGRAS DE GOOGLE APIS */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+/* @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap'); */
 
 /*  TEMA ESTILO SALUD  */
 :root {
@@ -562,3 +562,112 @@ body.auth-register #password-requisitos.show-requirements {
   margin-top: 8px;
   margin-bottom: 8px;
 }
+
+/* ============================================================
+   ESTILOS MIGRADOS DESDE PLANTILLAS HTML (PROYECTO IPP)
+   Centralizados en esta hoja para eliminar los bloques
+   <style> inline de cada plantilla y optimizar el CSS.
+   Los selectores se acotan por pagina para no afectar otras
+   pantallas que tambien cargan esta hoja de estilos.
+   ============================================================ */
+
+/* ===== COMPARTIDOS / AXES: BLOQUEO DE CUENTA ===== */
+html.lockout-page, body.lockout-page { height: 100%; margin: 0; }
+body.lockout-page {
+  background: linear-gradient(135deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%);
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+body.lockout-page .lockout-card { background: #ffffff; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); padding: 2.5rem; max-width: 420px; width: 100%; text-align: center; }
+body.lockout-page .lockout-icon { font-size: 4rem; color: #dc3545; margin-bottom: 1rem; }
+body.lockout-page .lockout-title { font-weight: bold; color: #dc3545; margin-bottom: 0.5rem; }
+body.lockout-page .lockout-text { color: #6c757d; margin-bottom: 1.5rem; }
+body.lockout-page .alert-warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: left; }
+body.lockout-page .btn-return { background: #2c6e9c; border: none; color: #fff; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-block; transition: background 0.3s ease; }
+body.lockout-page .btn-return:hover { background: #1a4e70; color: #fff; }
+
+/* ===== COMPARTIDOS / HISTORIA CLINICA: IMPRESION ===== */
+body.historia-print-page { padding: 20px; }
+@media print { body.historia-print-page .no-print { display: none !important; } }
+body.historia-print-page .header { border-bottom: 3px solid #2c6e9c; padding-bottom: 15px; margin-bottom: 20px; }
+body.historia-print-page .header h1 { color: #2c6e9c; font-size: 24px; }
+body.historia-print-page .section-title { background: #f0f4f8; padding: 8px 12px; font-weight: bold; margin: 20px 0 10px; border-left: 4px solid #2c6e9c; }
+body.historia-print-page table { font-size: 13px; }
+body.historia-print-page .badge-print { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+body.historia-print-page .badge-print-success { background: #d4edda; color: #155724; }
+body.historia-print-page .badge-print-danger { background: #f8d7da; color: #721c24; }
+body.historia-print-page .badge-print-warning { background: #fff3cd; color: #856404; }
+
+/* ===== COMPARTIDOS / PENDIENTE APROBACION ===== */
+html.pendiente-page, body.pendiente-page { height: 100%; margin: 0; }
+body.pendiente-page { background: #2c6e9c; background: linear-gradient(135deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%); font-family: Verdana, Geneva, Tahoma, sans-serif; display: flex; flex-direction: column; }
+body.pendiente-page .main-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+
+/* ===== COMPARTIDOS / SELECCION DE ROLES ===== */
+html.roles-page, body.roles-page { height: 100%; margin: 0; }
+body.roles-page { background: #2c6e9c; background: linear-gradient(135deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%); font-family: Verdana, Geneva, Tahoma, sans-serif; display: flex; flex-direction: column; }
+body.roles-page .main-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+body.roles-page .role-card { border: none; border-radius: 16px; padding: 1.5rem; transition: transform .2s, box-shadow .2s; cursor: pointer; }
+body.roles-page .role-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important; }
+body.roles-page .role-card.disabled { opacity: 0.5; cursor: not-allowed; }
+body.roles-page .role-card.disabled:hover { transform: none; box-shadow: none !important; }
+
+/* ===== CONTRASENA / FLUJOS DE RESET DE PASSWORD ===== */
+html.auth-reset-page, body.auth-reset-page { height: 100%; margin: 0; }
+body.auth-reset-page { background: #2c6e9c; background: linear-gradient(90deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%); font-family: Verdana, Geneva, Tahoma, sans-serif; display: flex; flex-direction: column; }
+body.auth-reset-page .main-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+body.auth-reset-page .form-box .form-text ul { margin: 0; padding-left: 1.1rem; }
+body.auth-reset-page .form-box .form-text li { margin-bottom: 2px; }
+body.auth-reset-page .requisitos { list-style: none; padding-left: 0; margin: 10px 0 0; font-size: .8rem; }
+body.auth-reset-page .requisitos li { margin-bottom: 2px; }
+
+/* ===== CONTRASENA / EMAIL DE RESET DE PASSWORD ===== */
+body.auth-email-page { font-family: Verdana, Geneva, Tahoma, sans-serif; background: #e9ecef; margin: 0; padding: 0; }
+body.auth-email-page .container { max-width: 560px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
+body.auth-email-page .header { background: linear-gradient(135deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%); padding: 32px 24px; text-align: center; }
+body.auth-email-page .header .badge { display: inline-block; background: rgba(255,255,255,0.2); color: #fff; padding: 4px 16px; border-radius: 20px; font-size: 12px; letter-spacing: 1px; margin-bottom: 12px; }
+body.auth-email-page .header h1 { color: #fff; margin: 0; font-size: 22px; font-weight: 600; }
+body.auth-email-page .header p { color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 13px; }
+body.auth-email-page .body { padding: 36px 32px; }
+body.auth-email-page .body p { color: #444; font-size: 14px; line-height: 1.7; margin: 0 0 16px; }
+body.auth-email-page .btn-wrap { text-align: center; margin: 24px 0; }
+body.auth-email-page .btn { display: inline-block; padding: 14px 40px; background: linear-gradient(135deg, #2c6e9c, #4a90d9); color: #ffffff !important; text-decoration: none !important; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 12px rgba(44,110,156,0.3); }
+body.auth-email-page .divider { height: 1px; background: #e9ecef; margin: 24px 0; }
+body.auth-email-page .fallback { font-size: 12px; color: #6c757d; word-break: break-all; background: #f8f9fa; padding: 12px; border-radius: 6px; margin: 8px 0 0; }
+body.auth-email-page .footer { padding: 24px 32px; background: #f8f9fa; text-align: center; font-size: 12px; color: #868e96; border-top: 1px solid #e9ecef; }
+body.auth-email-page .footer p { margin: 4px 0; }
+
+/* ===== ERRORES 403 / 404 / 500 ===== */
+html.error-page, body.error-page { height: 100%; margin: 0; }
+body.error-page { background: #2c6e9c; background: linear-gradient(90deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%); font-family: Verdana, Geneva, Tahoma, sans-serif; display: flex; align-items: center; justify-content: center; }
+
+/* ===== FACTURACION / RECIBO FACTURA ===== */
+body.recibo-page { padding: 20px; }
+@media print { body.recibo-page .no-print { display: none !important; } }
+body.recibo-page .recibo-box { max-width: 400px; margin: 0 auto; border: 2px dashed #333; padding: 20px; }
+body.recibo-page .line { border-top: 1px dashed #333; margin: 10px 0; }
+body.recibo-page .total-row { font-size: 1.3em; }
+
+/* ===== ADMINISTRACION / GESTION DE BLOQUEOS ===== */
+.bloqueos-page { min-height: 100vh; background: #2c6e9c; background: linear-gradient(90deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%); font-family: Verdana, Geneva, Tahoma, sans-serif; display: flex; flex-direction: column; }
+.bloqueos-page .main-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+.bloqueos-page .form-box { background: #fff; border-radius: 16px; padding: 2rem; max-width: 700px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+
+/* ===== ESPECIALISTA / INICIO ESPECIALISTA ===== */
+.inicio-espec-card .card-body { display: grid; grid-template-rows: 1fr auto; }
+
+/* ===== ESPECIALISTA / RECETA: IMPRESION ===== */
+@media print {
+  .no-print, .no-print * { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .card { border: none !important; box-shadow: none !important; }
+  .print-header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+}
+
+/* ===== FACTURACION / FACTURA DETALLE: IMPRESION ===== */
+@media print { .no-print { display: none !important; } }
+
+/* ===== SECRETARIA / INICIO SECRETARIA ===== */
+.panel-card { min-height: 180px; }

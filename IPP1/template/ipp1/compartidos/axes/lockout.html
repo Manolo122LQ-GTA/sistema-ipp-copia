@@ -9,66 +9,8 @@
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'css/bootstrap-icons.css' %}" rel="stylesheet">
     <link href="{% static 'css/uiverse.css' %}?v=5" rel="stylesheet">
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            background: linear-gradient(135deg, #2c6e9c 0%, #4a90d9 50%, #2b7a62 100%);
-            font-family: Verdana, Geneva, Tahoma, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .lockout-card {
-            background: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            padding: 2.5rem;
-            max-width: 420px;
-            width: 100%;
-            text-align: center;
-        }
-        .lockout-icon {
-            font-size: 4rem;
-            color: #dc3545;
-            margin-bottom: 1rem;
-        }
-        .lockout-title {
-            font-weight: bold;
-            color: #dc3545;
-            margin-bottom: 0.5rem;
-        }
-        .lockout-text {
-            color: #6c757d;
-            margin-bottom: 1.5rem;
-        }
-        .alert-warning {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            color: #856404;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            text-align: left;
-        }
-        .btn-return {
-            background: #2c6e9c;
-            border: none;
-            color: #fff;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-block;
-            transition: background 0.3s ease;
-        }
-        .btn-return:hover {
-            background: #1a4e70;
-            color: #fff;
-        }
-    </style>
 </head>
-<body>
+<body class="lockout-page">
     <div class="lockout-card">
         <div class="lockout-icon">
             <i class="bi bi-shield-lock-fill"></i>
@@ -80,8 +22,7 @@
         </p>
         <div class="alert alert-warning">
             <i class="bi bi-clock me-2"></i>
-            El acceso se restablece automáticamente después de 15 minutos.
-            Si el problema persiste, contacta al administrador.
+            Contacta con el Administrador para restablecer la cuenta.
         </div>
         <a href="{% url 'login' %}" class="btn-return">
             <i class="bi bi-arrow-left me-1"></i>Volver al inicio de sesión
