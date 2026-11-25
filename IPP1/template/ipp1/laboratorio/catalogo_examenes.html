@@ -116,9 +116,9 @@
                 <input type="hidden" name="examen_id" value="{{ e.id }}">
                 <div class="modal-header bg-warning text-white"><h5 class="modal-title">Editar Examen</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <div class="mb-3"><label class="form-label" for="nombre-{{ e.id }}">Nombre</label><input type="text" id="nombre-{{ e.id }}" name="nombre" class="form-control uiverse-input" value="{{ e.nombre }}" required></div>
+                    <div class="mb-3"><label class="form-label" for="nombre-{{ e.id }}">Nombre</label><input type="text" id="nombre-{{ e.id }}" name="nombre" class="form-control uiverse-input" value="{{ e.nombre }}" required autocomplete="off"></div>
                     <div class="mb-3"><label class="form-label" for="descripcion-{{ e.id }}">Descripción</label><textarea id="descripcion-{{ e.id }}" name="descripcion" class="form-control uiverse-input" rows="2">{{ e.descripcion|default:"" }}</textarea></div>
-                    <div class="mb-3"><label class="form-label" for="costo-{{ e.id }}">Costo Base ($)</label><input type="number" id="costo-{{ e.id }}" name="costo" class="form-control uiverse-input" step="0.01" value="{{ e.costo }}" required></div>
+                    <div class="mb-3"><label class="form-label" for="costo-{{ e.id }}">Costo Base ($)</label><input type="number" id="costo-{{ e.id }}" name="costo" class="form-control uiverse-input" step="0.01" min="0" value="{{ e.costo }}" required></div>
                 </div>
                 <div class="modal-footer"><button type="submit" class="btn btn-warning uiverse-btn">Guardar Cambios</button></div>
             </form>
@@ -156,7 +156,7 @@
                 <div class="modal-body">
                     <div class="mb-3"><label class="form-label" for="crear-nombre">Nombre</label><input type="text" id="crear-nombre" name="nombre" class="form-control uiverse-input" required></div>
                     <div class="mb-3"><label class="form-label" for="crear-descripcion">Descripción</label><textarea id="crear-descripcion" name="descripcion" class="form-control uiverse-input" rows="2"></textarea></div>
-                    <div class="mb-3"><label class="form-label" for="crear-costo">Costo Base ($)</label><input type="number" id="crear-costo" name="costo" class="form-control uiverse-input" step="0.01" required></div>
+                    <div class="mb-3"><label class="form-label" for="crear-costo">Costo Base ($)</label><input type="number" id="crear-costo" name="costo" class="form-control uiverse-input" step="0.01" min="0" required autocomplete="off"></div>
                 </div>
                 <div class="modal-footer"><button type="submit" class="btn btn-success uiverse-btn">Crear Examen</button></div>
             </form>

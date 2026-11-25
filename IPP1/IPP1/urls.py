@@ -6,6 +6,10 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
 
 
+def handler400(request, exception):
+    return render(request, 'ipp1/errores/400.html', status=400)
+
+
 def handler404(request, exception):
     return render(request, 'ipp1/errores/404.html', status=404)
 
@@ -107,7 +111,7 @@ urlpatterns = [
     path('secretaria/solicitud/', views.crear_solicitud_view, name='crear_solicitud'),
 
     # 1 PANTALLA PARA PEDIR EL CORREO
-    path('solicitud/correo/', auth_views.PasswordResetView.as_view(
+    path('solicitud/correo/', views.PasswordResetViewConLog.as_view(
         template_name='ipp1/contrasena/recuperar_password.html',
         subject_template_name='ipp1/contrasena/password_reset_subject.txt',
         html_email_template_name='ipp1/contrasena/password_reset_email.html',
@@ -121,6 +125,14 @@ urlpatterns = [
 
     # 4 PANTALLA QUE AVISA QUE SE RESTABLECIO LA CONTRASEÑA
     path('solicitud/restablecer_completo/', auth_views.PasswordResetCompleteView.as_view(template_name='ipp1/contrasena/password_reset_complete.html'), name='password_reset_complete'),
+
+    # DESBLOQUEO CON CÓDIGO ALFANUMÉRICO ENVIADO POR CORREO
+    path('desbloquear/', views.desbloqueo_solicitar, name='desbloqueo_solicitar'),
+    path('desbloquear/verificar/', views.desbloqueo_verificar, name='desbloqueo_verificar'),
+
+    # DESBLOQUEO POR PREGUNTAS DE SEGURIDAD
+    path('desbloquear/preguntas/', views.desbloqueo_preguntas_solicitar, name='desbloqueo_preguntas_solicitar'),
+    path('desbloquear/preguntas/verificar/', views.desbloqueo_preguntas_verificar, name='desbloqueo_preguntas_verificar'),
 
     # EXPORTAR DATOS (Solo Administración)
     path('exportar/pacientes/excel/', views.exportar_pacientes_excel, name='exportar_pacientes_excel'),

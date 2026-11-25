@@ -32,7 +32,9 @@
                     </div>
                     <p class="card-text text-muted">Ver y asignar roles al personal del sistema.</p>
                 </div>
+                {% if user.is_superuser or "Administracion" in user.groups.all|join:"," %}
                 <a href="{% url 'menu_admin' %}" class="btn btn-outline-primary mt-3 uiverse-btn w-100">Asignar Roles</a>
+                {% endif %}
             </div>
         </div>
     </div>

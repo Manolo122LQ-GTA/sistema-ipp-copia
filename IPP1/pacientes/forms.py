@@ -1,9 +1,46 @@
 # MODELOS IMPORTADOS
 import re
-from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, TarifaEspecialidad, Medicamento, Receta, PlanSalud, Poliza, GastoPaciente, Familiar, TasaCambio
+from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, TarifaEspecialidad, Medicamento, Receta, PlanSalud, Poliza, GastoPaciente, Familiar, TasaCambio, Factura, PreguntaSeguridad, RespuestaSeguridad
 from django import forms
+from django.contrib.auth.forms import PasswordResetForm
 from django.contrib.auth.models import User
+from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.core.mail import EmailMultiAlternatives
+from django.template import loader
+from axes.models import AccessAttempt
 from django.utils import timezone
+
+class PasswordResetFormConError(PasswordResetForm):
+    """Igual a la de Django, pero sin tragarse el error de envío.
+
+    ``PasswordResetForm.send_mail()`` de Django 6 captura toda excepción y
+    solo la escribe en el log, así que la vista siempre muestra "correo
+    enviado" aunque SMTP haya fallado. Aquí se propaga para que la vista
+    pueda avisar al usuario y registrar el contexto del error.
+    """
+
+    def send_mail(
+        self,
+        subject_template_name,
+        email_template_name,
+        context,
+        from_email,
+        to_email,
+        html_email_template_name=None,
+    ):
+        subject = loader.render_to_string(subject_template_name, context)
+        subject = ''.join(subject.splitlines())
+        body = loader.render_to_string(email_template_name, context)
+
+        mensaje = EmailMultiAlternatives(subject, body, from_email, [to_email])
+        if html_email_template_name is not None:
+            html = loader.render_to_string(html_email_template_name, context)
+            mensaje.attach_alternative(html, 'text/html')
+
+        mensaje.send()
+
 
 # VALIDACION PARA NO ESCRIBIR/USAR CORREO YA EXISTENTE EN "EDITAR PERFIL"
 
@@ -20,6 +57,124 @@ def _solo_digitos(valor, campo):
     if valor and not re.match(r'^\d+$', str(valor)):
         raise forms.ValidationError(f'{campo} debe contener solo números.')
     return valor
+
+
+def _solo_letras(valor, campo, maximo=30):
+    valor = ' '.join((valor or '').split())
+    if not valor:
+        return valor
+    if len(valor) > maximo:
+        raise forms.ValidationError(f'{campo} no puede superar {maximo} caracteres.')
+    if not re.fullmatch(r'[A-Za-zÁÉÍÓÚÜáéíóúüÑñ ]+', valor):
+        raise forms.ValidationError(f'{campo} solo puede contener letras y espacios.')
+    return valor
+
+
+MAX_LONGITUD_CONTRASENA = 128
+
+ROLES_PERMITIDOS_REGISTRO = (
+    'Secretaria', 'Medico', 'Odontologo', 'Laboratorio',
+    'Especialista', 'Poliza', 'Administracion',
+)
+
+
+# REGISTRO PÚBLICO (antes se leía request.POST directo sin validar longitud/tipo)
+class RegistroUsuarioForm(forms.Form):
+    name = forms.CharField(label='Nombre', max_length=30, strip=True)
+    last_name = forms.CharField(label='Apellido', max_length=30, strip=True)
+    username = forms.CharField(
+        label='Usuario', max_length=150, strip=True,
+        validators=[UnicodeUsernameValidator()],
+    )
+    email = forms.EmailField(label='Correo', max_length=254, required=False)
+    password = forms.CharField(
+        label='Contraseña', widget=forms.PasswordInput,
+        min_length=16, max_length=MAX_LONGITUD_CONTRASENA,
+    )
+    password2 = forms.CharField(
+        label='Confirmar contraseña', widget=forms.PasswordInput,
+        min_length=16, max_length=MAX_LONGITUD_CONTRASENA,
+    )
+    rol = forms.ChoiceField(
+        label='Rol solicitado',
+        choices=[('', 'Rol solicitado')] + [(r, r) for r in ROLES_PERMITIDOS_REGISTRO],
+    )
+
+    def clean_name(self):
+        return _solo_letras(self.cleaned_data.get('name'), 'El nombre')
+
+    def clean_last_name(self):
+        return _solo_letras(self.cleaned_data.get('last_name'), 'El apellido')
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if username and User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError('Ese nombre de usuario ya existe.')
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email and User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError('Ese correo ya está registrado.')
+        return email
+
+    def clean(self):
+        cleaned = super().clean()
+        password = cleaned.get('password')
+        password2 = cleaned.get('password2')
+        if password and password2 and password != password2:
+            self.add_error('password2', 'Las contraseñas no coinciden.')
+        if password:
+            candidato = User(
+                username=cleaned.get('username', ''),
+                email=cleaned.get('email', ''),
+                first_name=cleaned.get('name', ''),
+                last_name=cleaned.get('last_name', ''),
+            )
+            try:
+                validate_password(password, user=candidato)
+            except ValidationError as error:
+                self.add_error('password', error.messages)
+        return cleaned
+
+
+# DESBLOQUEO DE CUENTAS (django-axes)
+class GestionBloqueosForm(forms.Form):
+    username = forms.CharField(label='Usuario', max_length=150, strip=True)
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if username and not AccessAttempt.objects.filter(username=username).exists():
+            raise forms.ValidationError('No hay intentos registrados para ese usuario.')
+        return username
+
+
+# CATÁLOGO DE EXÁMENES (antes se armaba con request.POST.get)
+class ExamenLaboratorioForm(forms.ModelForm):
+    class Meta:
+        model = ExamenLaboratorio
+        fields = ['nombre', 'descripcion', 'costo']
+        widgets = {
+            'costo': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+        }
+
+    def clean_costo(self):
+        return _no_negativo(self.cleaned_data.get('costo'), 'El costo')
+
+
+# FACTURACIÓN
+class FacturaGenerarForm(forms.Form):
+    descripcion = forms.CharField(
+        label='Descripción', required=False, max_length=500,
+        widget=forms.Textarea(attrs={'rows': 3}),
+    )
+
+
+class MarcarPagoForm(forms.Form):
+    metodo_pago = forms.ChoiceField(
+        label='Método de pago',
+        choices=[('', 'Seleccione un método')] + list(Factura.METODO_PAGO_CHOICES),
+    )
 
 
 # LOGIN
@@ -59,6 +214,68 @@ class PerfilForm(forms.ModelForm):
             )
 
         return email
+
+
+# PREGUNTAS DE SEGURIDAD EN EL PERFIL
+class RespuestasSeguridadForm(forms.Form):
+    """Actualiza las respuestas de seguridad del usuario autenticado.
+
+    Los campos se generan desde el catálogo activo de preguntas. Las respuestas
+    vacías se ignoran para permitir cambiar solo algunas sin borrar las demás.
+    """
+
+    password_actual = forms.CharField(
+        label='Contraseña actual',
+        strip=False,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control uiverse-input',
+            'autocomplete': 'current-password',
+        }),
+    )
+
+    def __init__(self, *args, usuario=None, preguntas=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.usuario = usuario
+        self.preguntas_por_campo = {}
+        if preguntas is None:
+            preguntas = PreguntaSeguridad.objects.filter(activa=True).order_by('orden')
+        for pregunta in preguntas:
+            nombre = f'respuesta_{pregunta.pk}'
+            self.fields[nombre] = forms.CharField(
+                label=pregunta.texto,
+                required=False,
+                max_length=128,
+                widget=forms.PasswordInput(attrs={
+                    'class': 'form-control uiverse-input',
+                    'autocomplete': 'off',
+                    'placeholder': 'Nueva respuesta',
+                }),
+            )
+            self.preguntas_por_campo[nombre] = pregunta
+
+    def clean_password_actual(self):
+        password = self.cleaned_data.get('password_actual', '')
+        if self.usuario is None or not self.usuario.check_password(password):
+            raise ValidationError('La contraseña actual no es correcta.')
+        return password
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.errors:
+            return cleaned
+        if not any(cleaned.get(nombre) for nombre in self.preguntas_por_campo):
+            raise ValidationError('Escribe al menos una nueva respuesta.')
+        return cleaned
+
+    def save(self):
+        """Guarda las respuestas escritas y devuelve cuántas se actualizaron."""
+        actualizadas = 0
+        for nombre, pregunta in self.preguntas_por_campo.items():
+            respuesta = self.cleaned_data.get(nombre)
+            if respuesta:
+                RespuestaSeguridad.crear_o_actualizar(self.usuario, pregunta, respuesta)
+                actualizadas += 1
+        return actualizadas
 
 # CODIGOS DE TELEFONO VENEZOLANOS
 CODIGOS_TELEFONO_VE = [
@@ -128,22 +345,8 @@ class PacienteForm(forms.ModelForm):
 
     
 # CEDULA VALIDACION: SOLO NUMEROS, ENTRE 6 Y 8 DIGITOS, UNICA EN LA BASE DE DATOS 
-    def clean_cedula(self):
-        cedula = self.cleaned_data.get('cedula', '')
-        if not cedula:
-            return cedula
-
-        limpia = ''.join(c for c in str(cedula) if c.isdigit())
-        if not limpia:
-            raise forms.ValidationError('La cédula debe contener solo números.')
-        if len(limpia) < 6 or len(limpia) > 8:
-            raise forms.ValidationError('La cédula debe tener entre 6 y 8 dígitos.')
-
-        self.cleaned_data['cedula'] = limpia
-        if Paciente.objects.filter(cedula=limpia).exists():
-            if not self.instance or self.instance.cedula != limpia:
-                raise forms.ValidationError('Ya existe un paciente registrado con esta cédula.')
-        return limpia
+    # NOTA: no existe cleanup de `cedula` aquí porque `cedula` no es campo del
+    # formulario (se compone desde codigo_cedula + numero_cedula en clean()).
 
 # METODO CLEAN CODIGO NUMERO CEDULA
     def clean(self):
@@ -166,6 +369,16 @@ class PacienteForm(forms.ModelForm):
             existentes = existentes.exclude(pk=self.instance.pk)
         if existentes.exists():
             self.add_error('numero_cedula', 'Ya existe un paciente con esta cédula.')
+
+        # El modelo guarda `telefono` como una sola cadena. Antes el campo
+        # HiddenInput no se renderizaba y los campos separados se descartaban.
+        codigo = (cleaned.get('codigo_telefono') or '').strip()
+        numero_tel = (cleaned.get('numero_telefono') or '').strip()
+        if codigo and numero_tel:
+            if not re.fullmatch(r'\d+', numero_tel):
+                self.add_error('numero_telefono', 'El teléfono debe contener solo números.')
+            else:
+                cleaned['telefono'] = f'{codigo}{numero_tel}'
 
         return cleaned
 
@@ -337,9 +550,13 @@ class ProcesarLaboratorioForm(forms.ModelForm):
         fields = ['resultado', 'costo', 'bioanalista']
         widgets = {
             'resultado': forms.Textarea(attrs={'class': 'form-control uiverse-input', 'rows': 4, 'placeholder': 'Describa los resultados del examen...'}),
-            'costo': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'placeholder': '0.00', 'step': '0.01'}),
-            'bioanalista': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Nombre del bioanalista'}),
+            'costo': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'placeholder': '0.00', 'step': '0.01', 'min': '0'}),
+            'bioanalista': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'maxlength': '100', 'placeholder': 'Nombre del bioanalista'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['resultado'].required = True
 
     def clean_costo(self):
         return _no_negativo(self.cleaned_data.get('costo'), 'El costo')
@@ -352,8 +569,8 @@ class TarifaEspecialidadForm(forms.ModelForm):
         fields = ['especialidad', 'costo_consulta', 'porcentaje_medico', 'descripcion']
         widgets = {
             'especialidad': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ej: Cardiología'}),
-            'costo_consulta': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01'}),
-            'porcentaje_medico': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01'}),
+            'costo_consulta': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'min': '0'}),
+            'porcentaje_medico': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'min': '0', 'max': '100'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control uiverse-input', 'rows': 3, 'placeholder': 'Descripción del servicio...'}),
         }
 
@@ -377,8 +594,8 @@ class MedicamentoForm(forms.ModelForm):
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Nombre del medicamento'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control uiverse-input', 'rows': 2, 'placeholder': 'Descripción...'}),
-            'precio': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01'}),
-            'cantidad_stock': forms.NumberInput(attrs={'class': 'form-control uiverse-input'}),
+            'precio': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'min': '0'}),
+            'cantidad_stock': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'min': '0'}),
             'lote': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Número de lote'}),
             'fecha_vencimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
         }
@@ -398,9 +615,9 @@ class PlanSaludForm(forms.ModelForm):
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control uiverse-input'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control uiverse-input', 'rows': 3}),
-            'costo_mensual': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01'}),
+            'costo_mensual': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'min': '0'}),
             'cobertura': forms.Textarea(attrs={'class': 'form-control uiverse-input', 'rows': 3}),
-            'servicios_maximos_anuales': forms.NumberInput(attrs={'class': 'form-control uiverse-input'}),
+            'servicios_maximos_anuales': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'min': '0'}),
         }
 
     def clean_costo_mensual(self):
@@ -417,7 +634,7 @@ class PolizaForm(forms.ModelForm):
         widgets = {
             'fecha_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
             'fecha_vencimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
-            'saldo_restante': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01'}),
+            'saldo_restante': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'min': '0'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -426,7 +643,7 @@ class PolizaForm(forms.ModelForm):
         self.fields['paciente'].widget.attrs.update({'class': 'form-control uiverse-input'})
         self.fields['plan'].widget.attrs.update({'class': 'form-control uiverse-input'})
         self.fields['estado'].widget.attrs.update({'class': 'form-control uiverse-input'})
-        self.fields['cuota_inicial'].widget.attrs.update({'class': 'form-control uiverse-input', 'step': '0.01'})
+        self.fields['cuota_inicial'].widget.attrs.update({'class': 'form-control uiverse-input', 'step': '0.01', 'min': '0'})
         if not self.instance.pk:
             # Para póliza nueva: saldo_restante visible y editable (plan único)
             self.fields['saldo_restante'].required = True
@@ -460,7 +677,7 @@ class GastoPacienteForm(forms.ModelForm):
         fields = ['concepto', 'monto', 'fecha', 'factura', 'beneficiario']
         widgets = {
             'concepto': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'Ej: Medicamentos'}),
-            'monto': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01'}),
+            'monto': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'min': '0'}),
             'fecha': forms.DateInput(attrs={'type': 'date', 'class': 'form-control uiverse-input'}),
             'factura': forms.TextInput(attrs={'class': 'form-control uiverse-input', 'placeholder': 'N° de factura'}),
         }
@@ -501,7 +718,10 @@ class FamiliarForm(forms.ModelForm):
         }
 
     def clean_cedula(self):
-        return _solo_digitos(self.cleaned_data.get('cedula'), 'La cédula')
+        cedula = _solo_digitos(self.cleaned_data.get('cedula'), 'La cédula')
+        if cedula and not (6 <= len(cedula) <= 10):
+            raise forms.ValidationError('La cédula debe tener entre 6 y 10 dígitos.')
+        return cedula
 
 # TASA DE CAMBIO
 class TasaCambioForm(forms.ModelForm):
@@ -509,8 +729,11 @@ class TasaCambioForm(forms.ModelForm):
         model = TasaCambio
         fields = ['tasa']
         widgets = {
-            'tasa': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'placeholder': 'Ej: 36.50'}),
+            'tasa': forms.NumberInput(attrs={'class': 'form-control uiverse-input', 'step': '0.01', 'min': '0', 'placeholder': 'Ej: 36.50'}),
         }
+
+    def clean_tasa(self):
+        return _no_negativo(self.cleaned_data.get('tasa'), 'La tasa')
 
 # RECETAS
 class RecetaForm(forms.ModelForm):

@@ -6,6 +6,7 @@ from .poliza import PlanSalud, Poliza, GastoPaciente, Familiar, TasaCambio
 from .facturacion import Factura
 from .medicamentos import Medicamento, Receta
 from .tarifas import TarifaEspecialidad
+from .seguridad import PreguntaSeguridad, RespuestaSeguridad
 
 __all__ = [
     'Paciente',
@@ -16,4 +17,5 @@ __all__ = [
     'Factura',
     'Medicamento', 'Receta',
     'TarifaEspecialidad',
+    'PreguntaSeguridad', 'RespuestaSeguridad',
 ]

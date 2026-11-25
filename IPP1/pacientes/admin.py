@@ -1,6 +1,7 @@
 
 from django.contrib import admin
 from .models import PerfilUsuario, Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura
+from .models.seguridad import PreguntaSeguridad, RespuestaSeguridad
 
 # Register your models here.
 
@@ -95,3 +96,18 @@ class ExamenLaboratorioAdmin(admin.ModelAdmin):
     list_display = ('id', 'nombre', 'costo', 'activo')
     list_filter = ('activo',)
     search_fields = ('nombre',)
+
+
+@admin.register(PreguntaSeguridad)
+class PreguntaSeguridadAdmin(admin.ModelAdmin):
+    list_display = ('texto', 'activa', 'orden')
+    list_filter = ('activa',)
+    search_fields = ('texto',)
+
+
+@admin.register(RespuestaSeguridad)
+class RespuestaSeguridadAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'pregunta', 'creado_en')
+    list_filter = ('pregunta', 'creado_en')
+    search_fields = ('usuario__username',)
+    raw_id_fields = ('usuario', 'pregunta')

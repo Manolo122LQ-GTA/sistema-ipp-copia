@@ -563,6 +563,25 @@ body.auth-register #password-requisitos.show-requirements {
   margin-bottom: 8px;
 }
 
+/* --- REQUISITOS DE CONTRASEÑA (DESBLOQUEO) --- */
+body.auth-reset-page #password-requisitos {
+  list-style: none;
+  padding: 4px 12px;
+  margin: 0 0 16px 0;
+  font-size: 11px;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+}
+
+body.auth-reset-page #password-requisitos.show-requirements {
+  max-height: 150px;
+  opacity: 1;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
 /* ============================================================
    ESTILOS MIGRADOS DESDE PLANTILLAS HTML (PROYECTO IPP)
    Centralizados en esta hoja para eliminar los bloques

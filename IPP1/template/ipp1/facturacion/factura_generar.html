@@ -28,9 +28,9 @@
             {% csrf_token %}
             <div class="mb-3">
                 <label class="form-label fw-semibold">Descripción adicional</label>
-                <textarea name="descripcion" class="uiverse-input form-control" rows="3" placeholder="Opcional"></textarea>
+                <textarea name="descripcion" class="uiverse-input form-control" rows="3" maxlength="500" placeholder="Opcional"></textarea>
             </div>
-            <input type="hidden" name="iva" value="0">
+            <input type="hidden" name="iva" value="0" autocomplete="off">
             <button type="submit" class="uiverse-btn btn btn-primary"><i class="bi bi-check-lg me-1"></i>Generar Factura</button>
         </form>
     </div>

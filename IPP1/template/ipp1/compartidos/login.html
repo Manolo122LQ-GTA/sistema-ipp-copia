@@ -29,10 +29,10 @@
                 <span class="subtitle">Ingresa tus credenciales para acceder al sistema IPP-IUTAG.</span>
                 <div class="form-container">
                     <!-- NOMBRE DE USUARIO -->
-                    <input type="text" name="username" class="input" placeholder="Usuario" autocomplete="username" required>
+                    <input type="text" name="username" class="input" placeholder="Usuario" autocomplete="off" required>
                     <div class="position-relative">
                     <!-- CONTRASEÑA -->
-                    <input type="password" name="password" class="input" placeholder="Contraseña" required style="padding-right: 40px;" autocomplete="new-password" maxlength="16" minlenght="16">
+                    <input type="password" name="password" class="input" placeholder="Contraseña" required style="padding-right: 40px;" autocomplete="current-password" maxlength="128">
                     <i class="bi bi-eye-slash" onclick="togglePassword(this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #6c757d;"></i>
                     </div>
                 </div>
@@ -40,7 +40,9 @@
             </form>
             <div class="form-section">
                 <p>¿No tienes cuenta? <a href="{% url 'registro' %}">Registrarse</a></p>
-                <p style="margin-top:4px;">¿Olvidaste tu contraseña? <a href="{% url 'password_reset' %}">Recuperar</a></p>
+<!--                 <p style="margin-top:4px;">¿Olvidaste tu contraseña? <a href="{% url 'password_reset' %}">Recuperar</a></p>
+                <p style="margin-top:4px;">¿Cuenta bloqueada? <a href="{% url 'desbloqueo_solicitar' %}">Desbloquear con código</a></p> -->
+                <p style="margin-top:4px;">¿Prefieres preguntas de seguridad? <a href="{% url 'desbloqueo_preguntas_solicitar' %}">Desbloquear con preguntas</a></p>
                 {# Portal Paciente eliminado #}
             </div>
         </div>

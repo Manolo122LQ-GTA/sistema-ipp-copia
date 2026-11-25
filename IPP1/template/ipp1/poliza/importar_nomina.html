@@ -21,7 +21,7 @@
             {% csrf_token %}
             <div class="mb-3">
                 <label class="form-label fw-semibold">Archivo Excel de Nómina</label>
-                <input type="file" name="archivo" class="form-control uiverse-input" accept=".xlsx,.xls" required>
+                <input type="file" name="archivo" class="form-control uiverse-input" accept=".xlsx" required autocomplete="off">
                 <div class="form-text">Formato: columnas <strong>Cédula, Concepto, Monto, Fecha (dd/mm/aaaa)</strong>. La cédula debe pertenecer a un familiar registrado en esta póliza. La primera fila debe contener los encabezados.</div>
             </div>
             <button type="submit" class="btn btn-primary uiverse-btn"><i class="bi bi-upload me-1"></i>Importar Nómina</button>

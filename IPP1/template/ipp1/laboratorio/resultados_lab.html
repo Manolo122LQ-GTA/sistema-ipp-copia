@@ -18,7 +18,7 @@
 
     <form method="GET" class="mb-4">
         <div class="input-group">
-            <input type="text" name="q" class="form-control uiverse-input" placeholder="Buscar por paciente, cédula o tipo de examen..." value="{{ q }}">
+            <input type="text" name="q" class="form-control uiverse-input" placeholder="Buscar por paciente, cédula o tipo de examen..." value="{{ q }}" autocomplete="off">
             <button type="submit" class="btn btn-primary uiverse-btn"><i class="bi bi-search"></i> Buscar</button>
             {% if q %}
                 <a href="{% url 'resultados_laboratorio' %}" class="btn btn-outline-secondary uiverse-btn">Limpiar</a>

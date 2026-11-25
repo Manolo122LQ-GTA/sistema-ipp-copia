@@ -27,7 +27,7 @@
 <!-- BARRA DE BUSQUEDA DE USUARIOS -->
 <form method="GET" class="mb-4">
     <div class="input-group">
-        <input type="text" name="q" class="form-control uiverse-input" placeholder="Buscar personal por nombre..." value="{{ query }}">
+        <input type="text" name="q" class="form-control uiverse-input" placeholder="Buscar personal por nombre..." value="{{ query }}" autocomplete="off">
         <button type="submit" class="btn btn-primary uiverse-btn"><i class="bi bi-search"></i> Buscar</button>
         {% if query %}
             <a href="{% url 'menu_admin' %}" class="btn btn-outline-secondary uiverse-btn">Limpiar</a>
@@ -72,7 +72,7 @@
                             {% endif %}
                             <form method="POST" style="display: inline;">
                                 {% csrf_token %}
-                                <input type="hidden" name="usuario_id" value="{{ usuario.id }}">
+                                <input type="hidden" name="usuario_id" value="{{ usuario.id }}" autocomplete="off">
                                 <input type="hidden" name="toggle_status" value="1">
                                 <button type="submit" class="btn btn-sm btn-link p-0 ms-1 text-decoration-none" title="Alternar Estado de Acceso">
                                     <i class="bi bi-power text-secondary"></i>
@@ -82,7 +82,7 @@
                         <td>
                             <form method="POST" class="d-flex gap-2">
                                 {% csrf_token %}
-                                <input type="hidden" name="usuario_id" value="{{ usuario.id }}">
+                                <input type="hidden" name="usuario_id" value="{{ usuario.id }}" autocomplete="off">
                                 <select name="rol_nombre" class="form-select form-select-sm uiverse-input" style="max-width: 200px;">
                                     <option value="">-- Quitar Roles --</option>
                                     {% for grupo in grupos %}

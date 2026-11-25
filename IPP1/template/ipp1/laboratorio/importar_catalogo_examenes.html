@@ -23,7 +23,7 @@
             {% csrf_token %}
             <div class="mb-3">
                 <label class="form-label fw-semibold" for="archivo">Archivo Excel</label>
-                <input type="file" id="archivo" name="archivo" class="form-control uiverse-input" accept=".xlsx,.xlsm" aria-describedby="archivo-help" required>
+                <input type="file" id="archivo" name="archivo" class="form-control uiverse-input" accept=".xlsx,.xlsm" aria-describedby="archivo-help" required autocomplete="off">
                 <div class="form-text" id="archivo-help">Formato: columnas <strong>Nombre, Descripción, Costo Base, Estado</strong>. La primera fila debe contener los encabezados. El precio afiliado se calcula automáticamente (20% de descuento).</div>
             </div>
             <button type="submit" class="btn btn-primary uiverse-btn"><i class="bi bi-upload me-1"></i>Importar Examenes</button>

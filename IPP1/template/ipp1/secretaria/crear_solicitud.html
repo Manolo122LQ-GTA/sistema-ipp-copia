@@ -137,7 +137,11 @@
         const pacienteId = pacienteSelect.value;
         const div = document.getElementById('historial-meses-visita');
         if (pacienteId && mesesVisita[pacienteId] !== undefined) {
-            div.innerHTML = `<strong><i class="bi bi-clock-history me-2"></i>Historial de Visitas:</strong> ${mesesVisita[pacienteId]} cita(s) atendida(s) registrada(s).`;
+            const titulo = document.createElement('strong');
+            const icono = document.createElement('i');
+            icono.className = 'bi bi-clock-history me-2';
+            titulo.append(icono, 'Historial de Visitas:');
+            div.replaceChildren(titulo, ` ${mesesVisita[pacienteId]} cita(s) atendida(s) registrada(s).`);
             div.style.display = 'block';
         } else {
             div.style.display = 'none';

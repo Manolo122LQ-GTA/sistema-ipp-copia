@@ -1,0 +1,42 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block page_title %}Error{% endblock %} - IPP</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'icon/LOGO_IPP_IUTAG.svg' %}">
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}">
+    <link rel="stylesheet" href="{% static 'css/errores.css' %}">
+</head>
+<body class="error-page">
+    <main class="error-shell">
+        <img src="{% static 'img/ipp_logo.png' %}" class="error-logo" alt="IPP-IUTAG">
+
+        <div class="error-icon">
+            <i class="bi {% block icon %}bi-exclamation-triangle{% endblock %}" aria-hidden="true"></i>
+        </div>
+
+        <p class="error-code">{% block code %}500{% endblock %}</p>
+        <h1 class="error-title">{% block title %}Error inesperado{% endblock %}</h1>
+        <p class="error-message">{% block message %}Ocurrió un problema al procesar tu solicitud.{% endblock %}</p>
+
+        {% block actions %}
+        <div class="error-actions">
+            <a href="{% url 'home' %}" class="btn btn-primary">
+                <i class="bi bi-house-door me-1" aria-hidden="true"></i> Ir al inicio
+            </a>
+            <button type="button" class="btn btn-outline-primary" onclick="history.back()">
+                <i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Volver atrás
+            </button>
+        </div>
+        {% endblock %}
+
+        <p class="error-hint">
+            {% block hint %}Si el problema continúa, contacta al administrador del sistema.{% endblock %}
+        </p>
+    </main>
+</body>
+</html>

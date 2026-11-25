@@ -18,43 +18,20 @@ from decimal import Decimal
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
-load_dotenv(override=True)
+# override=False: las variables reales del entorno prevalecen sobre un .env olvidado.
+load_dotenv(override=False)
 
-# CONFIGURACION DE CONEXION A LA BASE DE DATOS
+# CONFIGURACION DE CONEXION A LA BASE DE DATOS (MySQL / MariaDB)
 # Solo los valores NO sensibles tienen defecto aqui. La contrasena se toma
 # exclusivamente del entorno (.env) para no dejar credenciales en el codigo.
-_db_defaults = {
-    'DB_NAME': os.getenv('DB_NAME') or 'ippbd',
-    'DB_USER': os.getenv('DB_USER') or 'postgres',
-    'DB_HOST': os.getenv('DB_HOST') or 'localhost',
-    'DB_PORT': os.getenv('DB_PORT') or '5432',
-    'DB_PASSWORD': os.getenv('DB_PASSWORD') or '',
-}
-for _k, _v in _db_defaults.items():
-    os.environ[_k] = _v
-
-# Limpiar variables PG* que psycopg2 lee del entorno y pueden tener caracteres no-UTF-8
-for _pg_var in ['PGHOST', 'PGPASSWORD', 'PGUSER', 'PGDATABASE', 'PGPORT', 'PGSSLMODE', 'PGSERVICE', 'PGSERVICEFILE']:
-    os.environ.pop(_pg_var, None)
+DB_NAME = os.getenv('DB_NAME') or 'ippbd'
+DB_USER = os.getenv('DB_USER') or 'root'
+DB_HOST = os.getenv('DB_HOST') or '127.0.0.1'
+DB_PORT = os.getenv('DB_PORT') or '3306'
+DB_PASSWORD = os.getenv('DB_PASSWORD') or ''
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# CODIGO DE PRUEBA
-# settings.py (Configuración temporal de desarrollo)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = '127.0.0.1'
-EMAIL_PORT = 1025
-EMAIL_HOST_USER = ''
-EMAIL_HOST_PASSWORD = ''
-EMAIL_USE_TLS = False
-EMAIL_USE_SSL = False
-
-# Tip extra: Asegúrate de que el dominio de tus enlaces use localhost en desarrollo
-# Si usas el framework 'sites' de Django o una variable propia:
-# DEFAULT_FROM_EMAIL = 'no-reply@tu-laboratorio.local'
-DEFAULT_FROM_EMAIL = 'ipp.uptag01@gmail.com'
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -72,8 +49,9 @@ TESTING = 'test' in sys.argv
 RUNNING_DEVSERVER = 'runserver' in sys.argv
 
 # PARA COLOCAR EL IP DE HOSTING Y EL ENLACE PUENTE DE VSC
+# Sin comodines: cada túnel/dominio debe declararse explícitamente en .env
 ALLOWED_HOSTS = [
-    h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.devtunnels.ms').split(',') if h.strip()
+    h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()
 ]
 
 # Orígenes permitidos para POST (incluye el enlace puente de VS Code)
@@ -81,15 +59,17 @@ _CSRF_TRUSTED_DEFAULT = [
     'http://localhost', 'http://127.0.0.1',
     'http://localhost:8000', 'http://127.0.0.1:8000',
     'http://localhost:5000', 'http://127.0.0.1:5000',
-    'https://*.devtunnels.ms',
+    # Los túneles de VS Code se agregan uno por uno en CSRF_TRUSTED_ORIGINS
 ]
 
 _env_origins = [o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
 CSRF_TRUSTED_ORIGINS = _env_origins if _env_origins else _CSRF_TRUSTED_DEFAULT
 
-# Cabeceras necesarias para que el enlace puente de VS Code genere URLs válidas hacia el celular
-USE_X_FORWARDED_HOST = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# Solo confiar en cabeceras de proxy si se activa explícitamente (TRUST_PROXY_HEADERS=1).
+# Confiar en X-Forwarded-Host de cualquier cliente permite falsificar URLs absolutas y orígenes CSRF.
+TRUST_PROXY_HEADERS = os.getenv('TRUST_PROXY_HEADERS', '0') == '1'
+USE_X_FORWARDED_HOST = TRUST_PROXY_HEADERS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if TRUST_PROXY_HEADERS else None
 
 # Configuración SSL/HTTPS
 # Solo forzar HTTPS en producción real, no en runserver local
@@ -113,7 +93,8 @@ X_FRAME_OPTIONS = 'DENY'
 CORS_ALLOWED_ORIGINS = [
     o.strip() for o in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()
 ]
-CORS_ALLOW_CREDENTIALS = True
+# Nunca combinar credenciales con un origen comodín
+CORS_ALLOW_CREDENTIALS = bool(CORS_ALLOWED_ORIGINS) and '*' not in CORS_ALLOWED_ORIGINS
 
 # DEFINICIONES DE LA APLICACION
 
@@ -131,6 +112,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'IPP1.middleware.ReferrerPolicyMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -165,28 +147,31 @@ WSGI_APPLICATION = 'IPP1.wsgi.application'
 
 
 # BASE DE DATOS
-# https://docs.djangoproject.com/en/6.0/ref/settings/
-
-# PostgreSQL
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ.get('DB_NAME', 'IPPBD'),
-#         'USER': os.environ.get('DB_USER', 'postgres'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-#         'HOST': os.environ.get('DB_HOST', 'localhost'),
-#         'PORT': os.environ.get('DB_PORT', '5432'),
-#     }
-# }
-
-# SQLITE
-database_path = BASE_DIR / 'db.sqlite3'
+# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# MySQL 8.4+ o MariaDB 10.6+. Django usa el mismo backend para ambos.
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': DB_NAME,
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            # Django recomienda modo estricto: evita truncar datos sin avisar.
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
+
+if TESTING:
+    # Los tests no deben depender de la versión de MariaDB instalada en la máquina
+    # (Django 6 exige 10.6+). Producción sigue usando MySQL/MariaDB.
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
 
 # CIFRADO DE CONTRAÑEAS
 # PASSWORD_HASHERS = [
@@ -255,10 +240,9 @@ AUTHENTICATION_BACKENDS = [
 # AXES CONFIGURACION
 AXES_ENABLED = True
 AXES_FAILURE_LIMIT = 3  # 3 intentos fallidos bloquean la cuenta
-# Bloqueo TEMPORAL: se libera solo a los 15 minutos. Antes era permanente (None)
-# y si se bloqueaba el administrador no habia forma de aprobar usuarios nuevos.
-# AXES_COOLOFF_TIME = timedelta(minutes=15)
-AXES_COOLOFF_TIME = None
+# Bloqueo TEMPORARIO: se libera a los 15 minutos. Un bloqueo permanente (None)
+# permite a un atacante dejar inaccesibles todas las cuentas del consultorio.
+AXES_COOLOFF_TIME = timedelta(minutes=15)
 AXES_LOCKOUT_TEMPLATE = 'ipp1/compartidos/axes/lockout.html'
 AXES_RESET_ON_SUCCESS = True
 # IMPORTANTE: una lista plana genera bloqueos INDEPENDIENTES por cada elemento.
@@ -267,20 +251,54 @@ AXES_RESET_ON_SUCCESS = True
 # la combinacion usuario + IP, sin afectar a las demas cuentas del consultorio.
 AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
 
-# CONFIGURACION PARA EL ENVIO DE LOS CORREOS (Gmail)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+# CONFIGURACION PARA EL ENVIO DE LOS CORREOS
+# Gmail/SMTP sigue siendo el modo por defecto, pero muchas redes bloquean los
+# puertos 25/465/587. Para esos casos se puede enviar por HTTPS con una API.
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', '1') == '1'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
+
+# ENVIO POR HTTPS (recomendado si la red bloquea SMTP)
+# Proveedores soportados: brevo, resend, sendgrid.
+EMAIL_API_PROVIDER = os.getenv('EMAIL_API_PROVIDER', 'brevo').strip().lower()
+EMAIL_API_KEY = os.getenv('EMAIL_API_KEY', '').strip()
+EMAIL_API_FROM = os.getenv('EMAIL_API_FROM', '').strip()
+EMAIL_API_TIMEOUT = int(os.getenv('EMAIL_API_TIMEOUT', '15'))
+
+# GMAIL POR HTTPS (Google Apps Script)
+# Permite seguir usando Gmail cuando la red bloquea los puertos SMTP.
+GMAIL_WEBAPP_URL = os.getenv('GMAIL_WEBAPP_URL', '').strip()
+GMAIL_WEBAPP_TOKEN = os.getenv('GMAIL_WEBAPP_TOKEN', '').strip()
+GMAIL_WEBAPP_TIMEOUT = int(os.getenv('GMAIL_WEBAPP_TIMEOUT', '30'))
+
+# Prioridad: EMAIL_BACKEND explicito > Gmail Web App > API HTTPS > SMTP.
+# Un EMAIL_BACKEND explicito en .env siempre tiene prioridad.
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', '').strip() or (
+    'pacientes.email_backends.GmailWebAppBackend'
+    if GMAIL_WEBAPP_URL
+    else 'pacientes.email_backends.HTTPEmailBackend'
+    if EMAIL_API_KEY
+    else 'django.core.mail.backends.smtp.EmailBackend'
+)
 
 # CORREO DE RECUPERACION POR DEFECTO
-DEFAULT_FROM_EMAIL = 'IPP - IUTAG <ipp.uptag01@gmail.com>'
+# El remitente debe estar verificado en el proveedor de la API. Si no se indica,
+# se usa la cuenta SMTP o el remitente por defecto de Django.
+DEFAULT_FROM_EMAIL = (
+    os.getenv('DEFAULT_FROM_EMAIL')
+    or EMAIL_API_FROM
+    or (f'IPP - IUTAG <{EMAIL_HOST_USER}>' if EMAIL_HOST_USER else 'webmaster@localhost')
+)
 
 
 # PARA CUANDO PASA MUCHO TIEMPO Y NO HAY ACTIVIDAD EN LA PAGINA
-SESSION_COOKIE_AGE = 300 # ANTES ERAN DE 10 MINUTOS, AHORA SON DE 5 MINUTOS (300 SEGUNDOS)
+# El enlace de restablecimiento puede tardar en llegar; 5 min cerraban la
+# sesión (y con ella el token CSRF) antes de que el usuario pudiera usar el
+# formulario. 15 min dan margen sin dejar la sesión abierta todo el día.
+SESSION_COOKIE_AGE = int(os.getenv('SESSION_COOKIE_AGE', '900'))
 SESSION_SAVE_EVERY_REQUEST = True  # Reinicia el contador de tiempo en cada solicitud
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Expira la sesión al cerrar el navegador
 

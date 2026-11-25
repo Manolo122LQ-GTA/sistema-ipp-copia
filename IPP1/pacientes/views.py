@@ -1,7 +1,7 @@
 # MODELOS IMPORTADOS EN VISTAS
 from django.contrib.auth import get_user_model
 from decimal import Decimal
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.db import transaction, IntegrityError
@@ -9,28 +9,47 @@ from django.db.models import Q, Sum, Count, F
 from django.db.models.functions import Greatest
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
-from django.utils.safestring import mark_safe
 from django.contrib.auth.models import Group, User
 from django.contrib import messages
 from django.views.decorators.http import require_POST, require_http_methods
 from django.conf import settings
-from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura, PerfilUsuario, TasaCambio
-from .forms import PacienteForm, LoginForm, PerfilForm, SolicitudSecretariaForm, SolicitudSecretariaRefinarForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm, TasaCambioForm
+from django.core.cache import cache
+from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura, PerfilUsuario, TasaCambio, PreguntaSeguridad, RespuestaSeguridad
+from .forms import PacienteForm, LoginForm, PerfilForm, SolicitudSecretariaForm, SolicitudSecretariaRefinarForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm, TasaCambioForm, RegistroUsuarioForm, GestionBloqueosForm, ExamenLaboratorioForm, FacturaGenerarForm, MarcarPagoForm, PasswordResetFormConError, RespuestasSeguridadForm
+from .seguridad import (
+    fila_csv_segura, proteger_exportacion_excel, validar_archivo_excel,
+    iterar_filas_excel, monto_no_negativo, MAX_EXCEL_ROWS,
+)
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.sessions.models import Session
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 from axes.models import AccessAttempt
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now, localdate
-from django.contrib.sessions.models import Session
-from django.contrib.auth.views import LoginView
+from django.contrib.auth.views import LoginView, PasswordResetView
 from django.views.decorators.cache import never_cache
 from django.contrib.auth.decorators import login_required
+from datetime import datetime, timedelta
 import csv
+import logging
 import re
+import secrets
+import random
 
+logger = logging.getLogger(__name__)
+
+
+def _id_post_seguro(request, campo):
+    """Un id de un POST debe ser numérico: evita ValueError (500) con entradas arbitrarias."""
+    valor = request.POST.get(campo, '')
+    if not str(valor).isdigit():
+        raise Http404('Identificador no válido.')
+    return int(valor)
 
 
 # CATEGORIA DE ROLES (GRUPO)
@@ -193,6 +212,466 @@ class CustomLoginView(LoginView):
             next_url = reverse('home')
         return next_url
 
+
+class PasswordResetViewConLog(PasswordResetView):
+    """Restablecimiento que registra el error SMTP y avisa al usuario.
+
+    El ``PasswordResetForm`` de Django 6 captura el error de SMTP y solo lo
+    escribe en el log: el usuario ve "correo enviado" aunque haya fallado.
+    Usamos ``PasswordResetFormConError`` para que la excepción llegue hasta
+    aquí, se registre con contexto SMTP (nunca la contraseña) y se vuelva al
+    formulario con un mensaje entendible.
+    """
+
+    form_class = PasswordResetFormConError
+
+    def form_valid(self, form):
+        """Genera y envía un código de desbloqueo al correo en lugar de
+        el clásico enlace de restablecimiento de Django.
+
+        1. Se obtiene el usuario con ese correo.
+        2. Se crea un código alfanumérico de 8 caracteres.
+        3. Se guardan los datos en la sesión (con expiración de 10 min
+           y contador de intentos a 0).
+        4. Se envía el correo con la plantilla ``desbloqueo_codigo.html``.
+        5. Se avisa al usuario y se redirige a la verificación del código.
+        """
+        correo = (form.cleaned_data.get('email') or '').strip()
+        usuario = User.objects.filter(email__iexact=correo).first()
+        if not usuario:
+            messages.error(self.request,
+                'No hay una cuenta con ese correo electrónico.')
+            return self.form_invalid(form)
+
+        # Código y sesión
+        codigo = _generar_codigo_desbloqueo()
+        ahora = timezone.now()
+        self.request.session['desbloqueo_codigo'] = codigo
+        self.request.session['desbloqueo_usuario'] = usuario.username
+        self.request.session['desbloqueo_correo'] = usuario.email
+        self.request.session['desbloqueo_expira'] = (
+            ahora + timedelta(minutes=DESBLOQUEO_VIGENCIA_MINUTOS)
+        ).isoformat(timespec='seconds')
+        self.request.session['desbloqueo_ultimo_envio'] = ahora.isoformat(timespec='seconds')
+        self.request.session['desbloqueo_intentos'] = 0
+
+        # Enviar correo
+        try:
+            _enviar_codigo_desbloqueo(usuario.email, usuario.username, codigo)
+        except Exception:
+            logger.exception(
+                'No se pudo enviar el código de desbloqueo a %s '
+                '(host=%s, usuario=%s)',
+                usuario.username,
+                getattr(settings, 'EMAIL_HOST', ''),
+                getattr(settings, 'EMAIL_HOST_USER', ''),
+            )
+            messages.error(
+                self.request,
+                'No pudimos enviar el correo. Inténtalo nuevamente en unos minutos.'
+            )
+            return self.form_invalid(form)
+
+        messages.success(
+            self.request,
+            'Se envió un código de 8 caracteres a tu correo registrado.'
+        )
+        return redirect('desbloqueo_verificar')
+
+
+# ── DESBLOQUEO CON CÓDIGO POR CORREO ──────────────────────────────────────
+DESBLOQUEO_VIGENCIA_MINUTOS = 10
+DESBLOQUEO_MAX_INTENTOS = 3
+DESBLOQUEO_REENVIO_SEGUNDOS = 60
+CLAVES_SESION_DESBLOQUEO = (
+    'desbloqueo_codigo',
+    'desbloqueo_usuario',
+    'desbloqueo_correo',
+    'desbloqueo_expira',
+    'desbloqueo_ultimo_envio',
+    'desbloqueo_intentos',
+)
+
+
+def _limpiar_sesion_desbloqueo(request):
+    for clave in CLAVES_SESION_DESBLOQUEO:
+        request.session.pop(clave, None)
+
+
+def _generar_codigo_desbloqueo():
+    """8 caracteres alfanuméricos, sin 0/O/1/I para evitar confusiones."""
+    alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+    return ''.join(secrets.choice(alfabeto) for _ in range(8))
+
+
+def _formato_codigo(codigo):
+    """Devuelve el código con formato IPP-XXXX-XXXX para mostrar en el correo."""
+    return f'IPP-{codigo[:4]}-{codigo[4:]}'
+
+
+def _enviar_codigo_desbloqueo(correo, username, codigo):
+    formato = _formato_codigo(codigo)
+    contexto = {
+        'codigo': codigo,
+        'formato_codigo': formato,
+        'usuario': username,
+        'vigencia_minutos': DESBLOQUEO_VIGENCIA_MINUTOS,
+    }
+    texto = (
+        f'Tu código de desbloqueo del Sistema IPP-IUTAG es: {codigo}\n\n'
+        f'Vence en {DESBLOQUEO_VIGENCIA_MINUTOS} minutos.\n'
+        f'Usuario: {username}\n\n'
+        'Si no solicitaste este código, ignora este correo.'
+    )
+    html = render_to_string('ipp1/contrasena/desbloqueo_codigo.html', contexto)
+    mensaje = EmailMultiAlternatives(
+        'Código de desbloqueo - Sistema IPP-IUTAG',
+        texto,
+        settings.DEFAULT_FROM_EMAIL,
+        [correo],
+    )
+    mensaje.attach_alternative(html, 'text/html')
+    mensaje.send()
+
+
+def desbloqueo_solicitar(request):
+    """Paso 1: identificar la cuenta y enviar el código por correo."""
+    contexto = {'identifier': ''}
+
+    if request.method == 'POST':
+        identifier = request.POST.get('identifier', '').strip()
+        contexto['identifier'] = identifier
+
+        usuario = User.objects.filter(
+            Q(username__iexact=identifier) | Q(email__iexact=identifier)
+        ).first() if identifier else None
+
+        if not usuario or not usuario.is_active or not usuario.email:
+            messages.error(
+                request,
+                'Si la cuenta existe y tiene un correo registrado, enviamos un código. '
+                'Si está bloqueada, contacta con un administrador para recuperarla.',
+            )
+            return render(request, 'ipp1/contrasena/desbloqueo_solicitar.html', contexto)
+
+        ultimo = parse_datetime(request.session.get('desbloqueo_ultimo_envio', '') or '')
+        if (
+            ultimo
+            and (timezone.now() - ultimo).total_seconds() < DESBLOQUEO_REENVIO_SEGUNDOS
+            and request.session.get('desbloqueo_usuario') == usuario.username
+        ):
+            messages.info(request, 'Ya enviamos un código. Espera un minuto antes de pedir otro.')
+            return redirect('desbloqueo_verificar')
+
+        codigo = _generar_codigo_desbloqueo()
+        try:
+            _enviar_codigo_desbloqueo(usuario.email, usuario.username, codigo)
+        except Exception:
+            logger.exception(
+                'No se pudo enviar el código de desbloqueo a %s '
+                '(backend=%s, host=%s, usuario=%s)',
+                usuario.username,
+                getattr(settings, 'EMAIL_BACKEND', ''),
+                getattr(settings, 'EMAIL_HOST', ''),
+                getattr(settings, 'EMAIL_HOST_USER', ''),
+            )
+            messages.error(request, 'No pudimos enviar el correo. Inténtalo nuevamente en unos minutos.')
+            return render(request, 'ipp1/contrasena/desbloqueo_solicitar.html', contexto)
+
+        ahora = timezone.now()
+        request.session['desbloqueo_codigo'] = codigo
+        request.session['desbloqueo_usuario'] = usuario.username
+        request.session['desbloqueo_correo'] = usuario.email
+        request.session['desbloqueo_expira'] = (
+            ahora + timedelta(minutes=DESBLOQUEO_VIGENCIA_MINUTOS)
+        ).isoformat(timespec='seconds')
+        request.session['desbloqueo_ultimo_envio'] = ahora.isoformat(timespec='seconds')
+        request.session['desbloqueo_intentos'] = 0
+        messages.success(request, 'Enviamos un código de 8 caracteres a tu correo registrado.')
+        return redirect('desbloqueo_verificar')
+
+    return render(request, 'ipp1/contrasena/desbloqueo_solicitar.html', contexto)
+
+
+def _cambiar_password_opcional_al_desbloquear(request, username):
+    """Cambia la clave solo si el usuario escribió una nueva.
+
+    Devuelve (sufijo_mensaje, error). Con los campos vacíos conserva la clave
+    anterior, tal como pide el flujo de desbloqueo.
+    """
+    nueva = request.POST.get('nueva_password1', '')
+    confirmar = request.POST.get('nueva_password2', '')
+    if not nueva.strip() and not confirmar.strip():
+        return '', None
+
+    if nueva != confirmar:
+        return None, 'Las contraseñas nuevas no coinciden.'
+
+    usuario = User.objects.filter(username=username).first()
+    if not usuario:
+        return None, 'No se encontró la cuenta para cambiar la contraseña.'
+
+    try:
+        validate_password(nueva, user=usuario)
+    except ValidationError as exc:
+        return None, ' '.join(exc.messages)
+
+    usuario.set_password(nueva)
+    usuario.save(update_fields=['password'])
+    return ' Contraseña actualizada.', None
+
+
+def desbloqueo_verificar(request):
+    """Paso 2: validar el código; correcto desbloquea, 3 fallos bloquean."""
+    if not request.session.get('desbloqueo_codigo'):
+        messages.error(request, 'Solicita un código de desbloqueo primero.')
+        return redirect('desbloqueo_solicitar')
+
+    username = request.session.get('desbloqueo_usuario', '')
+    correo = request.session.get('desbloqueo_correo', '')
+    expira = parse_datetime(request.session.get('desbloqueo_expira', '') or '')
+    contexto = {
+        'usuario': username,
+        'correo': correo,
+        'intentos_restantes': DESBLOQUEO_MAX_INTENTOS
+        - request.session.get('desbloqueo_intentos', 0),
+    }
+
+    if not expira or timezone.now() >= expira:
+        _limpiar_sesion_desbloqueo(request)
+        messages.error(request, 'El código venció. Solicita uno nuevo.')
+        return redirect('desbloqueo_solicitar')
+
+    if request.method == 'POST':
+        codigo = re.sub(r'[^A-Za-z0-9]', '', request.POST.get('codigo', '')).upper()
+        # Normalizar: quitar prefijo IPP- y guiones si el usuario los incluyó
+        if codigo.startswith('IPP'):
+            codigo = codigo[3:]
+        codigo = re.sub(r'-', '', codigo)
+        # Garantizar solo los primeros 8 caracteres alfanuméricos
+        codigo = codigo[:8]
+
+        if codigo == request.session.get('desbloqueo_codigo', ''):
+            sufijo, error = _cambiar_password_opcional_al_desbloquear(request, username)
+            if error:
+                messages.error(request, error)
+                return render(request, 'ipp1/contrasena/desbloqueo_verificar.html', contexto)
+            AccessAttempt.objects.filter(username=username).update(failures_since_start=0)
+            _limpiar_sesion_desbloqueo(request)
+            messages.success(
+                request,
+                'Cuenta desbloqueada. Ya puedes iniciar sesión.' + sufijo,
+            )
+            return redirect('login')
+
+        intentos = request.session.get('desbloqueo_intentos', 0) + 1
+        request.session['desbloqueo_intentos'] = intentos
+        contexto['intentos_restantes'] = max(0, DESBLOQUEO_MAX_INTENTOS - intentos)
+
+        if intentos >= DESBLOQUEO_MAX_INTENTOS:
+            usuario = User.objects.filter(username=username).first()
+            if usuario:
+                usuario.is_active = False
+                usuario.save(update_fields=['is_active'])
+            AccessAttempt.objects.filter(username=username).update(
+                failures_since_start=getattr(settings, 'AXES_FAILURE_LIMIT', 3)
+            )
+            _limpiar_sesion_desbloqueo(request)
+            messages.error(
+                request,
+                'Cuenta bloqueada tras 3 intentos fallidos. '
+                'Contacta con un administrador para recuperarla.',
+            )
+            return redirect('login')
+
+        restantes = contexto['intentos_restantes']
+        messages.error(request, f'Código incorrecto. Te quedan {restantes} intentos.')
+        return render(request, 'ipp1/contrasena/desbloqueo_verificar.html', contexto)
+
+    return render(request, 'ipp1/contrasena/desbloqueo_verificar.html', contexto)
+
+
+# ── DESBLOQUEO POR PREGUNTAS DE SEGURIDAD ──────────────────────────────────────
+
+DESBLOQUEO_PREGUNTAS_LIMITE = 3
+DESBLOQUEO_PREGUNTAS_VENTANA_SEGUNDOS = 15 * 60
+CLAVES_SESION_PREGUNTAS = (
+    'desbloqueo_preguntas_ids',
+    'desbloqueo_preguntas_respuestas',
+    'desbloqueo_preguntas_intentos',
+    'desbloqueo_preguntas_ultimo_intento',
+)
+
+
+def _limpiar_sesion_preguntas(request):
+    for clave in CLAVES_SESION_PREGUNTAS:
+        request.session.pop(clave, None)
+
+
+def _obtener_o_registrar_intentos_preguntas(request, username):
+    """Cuenta intentos por IP + usuario en ventana de 15 min (igual que código)."""
+    ip = request.META.get('REMOTE_ADDR', 'desconocida')
+    clave = f'desbloqueo-preguntas:{ip}:{username}'
+    ahora = timezone.now()
+    # cache.get puede traer valores de una versión anterior: solo aceptar datetimes.
+    intentos = [
+        t for t in (cache.get(clave, []) or [])
+        if isinstance(t, datetime)
+        and (ahora - t).total_seconds() < DESBLOQUEO_PREGUNTAS_VENTANA_SEGUNDOS
+    ]
+    intentos.append(ahora)
+    cache.set(clave, intentos, DESBLOQUEO_PREGUNTAS_VENTANA_SEGUNDOS)
+    return len(intentos)
+
+
+def _buscar_usuario_desbloqueo(identifier):
+    """Busca un usuario por username o email. Devuelve None si no existe."""
+    if not identifier:
+        return None
+    return User.objects.filter(
+        Q(username__iexact=identifier) | Q(email__iexact=identifier)
+    ).first()
+
+
+@never_cache
+def desbloqueo_preguntas_solicitar(request):
+    """Paso 1: identificar la cuenta y cargar 2 preguntas de seguridad."""
+    contexto = {'identifier': ''}
+
+    if request.method == 'POST':
+        identifier = request.POST.get('identifier', '').strip()
+        contexto['identifier'] = identifier
+
+        user = _buscar_usuario_desbloqueo(identifier)
+        if not user:
+            messages.error(request, 'Si la cuenta existe, tiene preguntas de seguridad configuradas.')
+            return render(request, 'ipp1/contrasena/desbloqueo_preguntas_solicitar.html', contexto)
+
+        # Verificar que el usuario tenga al menos 2 respuestas activas
+        preguntas_list = list(
+            RespuestaSeguridad.objects.filter(
+                usuario=user, pregunta__activa=True
+            ).select_related('pregunta')
+        )
+        if len(preguntas_list) < 2:
+            messages.error(request, 'Esta cuenta no tiene preguntas de seguridad configuradas. Contacta al administrador.')
+            return render(request, 'ipp1/contrasena/desbloqueo_preguntas_solicitar.html', contexto)
+
+        # Elegir 2 preguntas al azar
+        seleccionadas = random.sample(preguntas_list, 2)
+
+        # Guardar los datos en sesión (evita manipulación del formulario)
+        request.session['desbloqueo_usuario'] = user.username
+        request.session['desbloqueo_preguntas_ids'] = [p.pk for p in seleccionadas]
+        request.session['desbloqueo_preguntas_respuestas'] = [
+            {"id": p.pk, "pregunta": p.pregunta.texto} for p in seleccionadas
+        ]
+        request.session['desbloqueo_preguntas_intentos'] = 0
+        return redirect('desbloqueo_preguntas_verificar')
+
+    # GET con ?identifier= (opcional): precarga el campo
+    contexto['identifier'] = request.GET.get('identifier', '')
+    return render(request, 'ipp1/contrasena/desbloqueo_preguntas_solicitar.html', contexto)
+
+
+@never_cache
+def desbloqueo_preguntas_verificar(request):
+    """Paso 2: validar las 2 respuestas a las preguntas de seguridad."""
+    username = request.session.get('desbloqueo_usuario', '')
+    ids_preguntas = request.session.get('desbloqueo_preguntas_ids', [])
+    respuestas_guardadas = request.session.get('desbloqueo_preguntas_respuestas', [])
+
+    if not username or not ids_preguntas:
+        messages.error(request, 'Solicita primero el desbloqueo por preguntas.')
+        return redirect('desbloqueo_preguntas_solicitar')
+
+    # Los ids de la sesión son de RespuestaSeguridad (ver solicitar), no de
+    # PreguntaSeguridad. Buscar por pregunta_id hacía que nunca se encontraran.
+    validar = {
+        obj.pk: obj
+        for obj in RespuestaSeguridad.objects.filter(
+            usuario__username=username, pk__in=ids_preguntas
+        )
+    }
+
+    contexto = {
+        'preguntas': respuestas_guardadas,
+        'usuario': username,
+        'intentos_restantes': DESBLOQUEO_PREGUNTAS_LIMITE
+        - request.session.get('desbloqueo_preguntas_intentos', 0),
+    }
+
+    if request.method == 'POST':
+        # El formulario envía los campos con nombre "respuesta[<id>]"
+        respuestas_usuario = [
+            request.POST.get(f'respuesta[{pid}]', '') for pid in ids_preguntas
+        ]
+        if any(not r.strip() for r in respuestas_usuario):
+            messages.error(request, 'Debe responder todas las preguntas.')
+            return render(request, 'ipp1/contrasena/desbloqueo_preguntas_verificar.html', contexto)
+
+        valido = all(
+            validar.get(int(pid)) is not None
+            and validar[int(pid)].verificar_respuesta(respuesta_texto)
+            if validar.get(int(pid)) is not None
+            else False
+            for pid, respuesta_texto in zip(ids_preguntas, respuestas_usuario)
+        )
+
+        if valido:
+            sufijo, error = _cambiar_password_opcional_al_desbloquear(request, username)
+            if error:
+                messages.error(request, error)
+                return render(request, 'ipp1/contrasena/desbloqueo_preguntas_verificar.html', contexto)
+            AccessAttempt.objects.filter(username=username).update(failures_since_start=0)
+            usuario = User.objects.filter(username=username).first()
+            if usuario:
+                usuario.is_active = True
+                usuario.save(update_fields=['is_active'])
+                LogActividad.objects.create(
+                    usuario=usuario,
+                    accion='Desbloqueo por preguntas de seguridad',
+                    detalle=f'Cuenta {username} desbloqueada mediante preguntas de seguridad',
+                )
+            else:
+                messages.warning(request, 'Usuario no encontrado en la base de datos.')
+            _limpiar_sesion_preguntas(request)
+            request.session.pop('desbloqueo_usuario', None)
+            messages.success(
+                request,
+                'Cuenta desbloqueada. Ya puedes iniciar sesión.' + sufijo,
+            )
+            return redirect('login')
+
+        # Registrar intento (en caché, por IP+usuario, y en sesión)
+        _obtener_o_registrar_intentos_preguntas(request, username)
+        intentos_actuales = request.session.get('desbloqueo_preguntas_intentos', 0) + 1
+        request.session['desbloqueo_preguntas_intentos'] = intentos_actuales
+        contexto['intentos_restantes'] = max(0, DESBLOQUEO_PREGUNTAS_LIMITE - intentos_actuales)
+
+        if intentos_actuales >= DESBLOQUEO_PREGUNTAS_LIMITE:
+            usuario = User.objects.filter(username=username).first()
+            if usuario:
+                usuario.is_active = False
+                usuario.save(update_fields=['is_active'])
+            AccessAttempt.objects.filter(username=username).update(
+                failures_since_start=getattr(settings, 'AXES_FAILURE_LIMIT', 3)
+            )
+            _limpiar_sesion_preguntas(request)
+            request.session.pop('desbloqueo_usuario', None)
+            messages.error(
+                request,
+                'Cuenta bloqueada tras 3 intentos fallidos. '
+                'Contacta con un administrador para recuperarla.',
+            )
+            return redirect('login')
+
+        messages.error(request, f'Respuestas incorrectas. Te quedan {contexto["intentos_restantes"]} intentos.')
+        return render(request, 'ipp1/contrasena/desbloqueo_preguntas_verificar.html', contexto)
+
+    return render(request, 'ipp1/contrasena/desbloqueo_preguntas_verificar.html', contexto)
+
+
 # LOGIN
 # INICIO DE CODIGO DE LOGIN
 def login_view(request):
@@ -297,75 +776,56 @@ ROLES_PERMITIDOS_REGISTRO = ['Secretaria', 'Medico', 'Odontologo', 'Laboratorio'
 
 def registro(request):
     """Vista para el registro de nuevos usuarios del sistema."""
-    if request.method == 'POST':
-        first_name = request.POST.get('name', '').strip()
-        last_name = request.POST.get('last_name', '').strip()
-        username = request.POST.get('username', '').strip()
-        email = request.POST.get('email', '').strip()
-        password = request.POST.get('password')
-        password2 = request.POST.get('password2')
-        rol_elegido = request.POST.get('rol', '').strip()
+    form = RegistroUsuarioForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        datos = form.cleaned_data
+        username = datos['username']
+        email = datos['email']
+        password = datos['password']
+        first_name = datos['name']
+        last_name = datos['last_name']
+        rol_elegido = datos['rol']
 
-        if not username or not password:
-            messages.error(request, 'El nombre de usuario y la contraseña son obligatorios.')
-        elif password != password2:
-            messages.error(request, 'Las contraseñas no coinciden.')
-        elif User.objects.filter(username=username).exists():
-            messages.error(request, 'El nombre de usuario ya existe.')
-        elif email and User.objects.filter(email=email).exists():
-            messages.error(request, 'El correo electrónico ya está registrado.')
+        try:
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=username, email=email, password=password,
+                    first_name=first_name, last_name=last_name
+                )
+                user.is_active = False
+                user.save()
+                PerfilUsuario.objects.create(usuario=user, aprobado=False)
+        except IntegrityError:
+            messages.error(request, 'Ese nombre de usuario o correo ya está registrado.')
         else:
-            # SE VALIDA CON UN USUARIO SIN GUARDAR PARA QUE LA CONTRASENA NO SE
-            # PAREZCA AL NOMBRE DE USUARIO, NOMBRE, APELLIDO NI CORREO
-            candidato = User(
-                username=username, email=email,
-                first_name=first_name, last_name=last_name,
-            )
-            try:
-                validate_password(password, user=candidato)
-            except ValidationError as e:
-                for error in e.messages:
-                    messages.error(request, error)
-                return render(request, 'ipp1/compartidos/registro.html', {'request': request})
-
-            try:
-                with transaction.atomic():
-                    user = User.objects.create_user(
-                        username=username, email=email, password=password,
-                        first_name=first_name, last_name=last_name
-                    )
-                    user.is_active = False
-                    user.save()
-                    PerfilUsuario.objects.create(usuario=user, aprobado=False)
-            except IntegrityError:
-                messages.error(request, 'Ese nombre de usuario o correo ya está registrado.')
-                return render(request, 'ipp1/compartidos/registro.html', {'request': request})
-
             # EL ROL SOLICITADO NO SE ASIGNA EN EL REGISTRO PUBLICO: UN USUARIO
             # PODRIA AUTOASIGNARSE 'Administracion'. EL ROL SOLO LO DEFINE QUIEN
             # APRUEBA LA CUENTA (ver aprobar_usuario).
-            if rol_elegido and rol_elegido in ROLES_PERMITIDOS_REGISTRO:
+            if rol_elegido:
                 messages.success(request, f'Usuario {username} registrado. Rol solicitado: {rol_elegido}.')
             else:
                 messages.success(request, 'Usuario registrado con éxito.')
             _registrar_log(request, f'Registró usuario {username}', 'User', user.id)
 
             # NOTIFICAR A ADMINISTRADORES SOBRE NUEVO USUARIO PENDIENTE DE APROBACIÓN
-            from django.contrib.auth.models import User as DjangoUser
-            admins = DjangoUser.objects.filter(
+            admins = User.objects.filter(
                 Q(is_superuser=True) | Q(groups__name='Administracion')
             ).distinct()
             for admin in admins:
-                if admin.id != request.user.id if request.user.is_authenticated else True:
+                if not request.user.is_authenticated or admin.id != request.user.id:
                     _crear_notificacion(
                         admin,
                         f"Nuevo usuario pendiente de aprobación: {username} ({rol_elegido or 'Sin rol'})",
                         reverse('usuarios_pendientes')
                     )
-
             return redirect('login')
-    
-    return render(request, 'ipp1/compartidos/registro.html')
+    elif request.method == 'POST':
+        # Los errores se muestran con el sistema de mensajes ya usado por la plantilla.
+        for campo, errores in form.errors.items():
+            for error in errores:
+                messages.error(request, error)
+
+    return render(request, 'ipp1/compartidos/registro.html', {'form': form})
 
 # APROBACION PENDIENTE
 def pendiente_aprobacion(request):
@@ -434,9 +894,41 @@ def aprobar_usuario(request, user_id):
 # PERFIL DE USUARIO
 @login_required
 def perfil_usuario(request):
+    preguntas_seguridad = list(
+        PreguntaSeguridad.objects.filter(activa=True).order_by('orden')
+    )
     password_form = PasswordChangeForm(request.user)
+    form = PerfilForm(instance=request.user)
+    seguridad_form = RespuestasSeguridadForm(
+        usuario=request.user, preguntas=preguntas_seguridad
+    )
+
+    def contexto():
+        return {
+            'form': form,
+            'password_form': password_form,
+            'seguridad_form': seguridad_form,
+            'preguntas_seguridad': preguntas_seguridad,
+        }
 
     if request.method == 'POST':
+        # El perfil tiene dos formularios: datos/contraseña y respuestas de seguridad.
+        if request.POST.get('accion') == 'seguridad':
+            seguridad_form = RespuestasSeguridadForm(
+                request.POST,
+                usuario=request.user,
+                preguntas=preguntas_seguridad,
+            )
+            if seguridad_form.is_valid():
+                cantidad = seguridad_form.save()
+                messages.success(
+                    request,
+                    f'Respuestas de seguridad actualizadas ({cantidad}).',
+                )
+                return redirect('perfil_usuario')
+            messages.error(request, 'Corrige las respuestas de seguridad.')
+            return render(request, 'ipp1/compartidos/perfil.html', contexto())
+
         user = request.user
         form = PerfilForm(request.POST, instance=user)
 
@@ -468,10 +960,9 @@ def perfil_usuario(request):
         if not clave_valida:
             messages.error(request, 'Corrige los errores de la contraseña.')
 
-        return render(request, 'ipp1/compartidos/perfil.html', {'form': form, 'password_form': password_form})
+        return render(request, 'ipp1/compartidos/perfil.html', contexto())
 
-    form = PerfilForm(instance=request.user)
-    return render(request, 'ipp1/compartidos/perfil.html', {'form': form, 'password_form': password_form})
+    return render(request, 'ipp1/compartidos/perfil.html', contexto())
 
 # VISTA SECRETARIA
 @login_required
@@ -856,8 +1347,7 @@ def costos_especialista(request):
                     for error in errors:
                         messages.error(request, f"{field}: {error}")
         elif accion == 'editar':
-            tarifa_id = request.POST.get('tarifa_id')
-            tarifa = get_object_or_404(TarifaEspecialidad, id=tarifa_id)
+            tarifa = get_object_or_404(TarifaEspecialidad, id=_id_post_seguro(request, 'tarifa_id'))
             form = TarifaEspecialidadForm(request.POST, instance=tarifa)
             if form.is_valid():
                 form.save()
@@ -868,8 +1358,7 @@ def costos_especialista(request):
                     for error in errors:
                         messages.error(request, f"{field}: {error}")
         elif accion == 'eliminar':
-            tarifa_id = request.POST.get('tarifa_id')
-            tarifa = get_object_or_404(TarifaEspecialidad, id=tarifa_id)
+            tarifa = get_object_or_404(TarifaEspecialidad, id=_id_post_seguro(request, 'tarifa_id'))
             tarifa.activo = False
             tarifa.save()
             _registrar_log(request, f'Desactivó tarifa {tarifa.especialidad}', 'TarifaEspecialidad', tarifa.id)
@@ -928,8 +1417,7 @@ def medicamentos_especialista(request):
                     for error in errors:
                         messages.error(request, f"{field}: {error}")
         elif accion == 'editar':
-            med_id = request.POST.get('medicamento_id')
-            med = get_object_or_404(Medicamento, id=med_id)
+            med = get_object_or_404(Medicamento, id=_id_post_seguro(request, 'medicamento_id'))
             form = MedicamentoForm(request.POST, instance=med)
             if form.is_valid():
                 form.save()
@@ -940,8 +1428,7 @@ def medicamentos_especialista(request):
                     for error in errors:
                         messages.error(request, f"{field}: {error}")
         elif accion == 'eliminar':
-            med_id = request.POST.get('medicamento_id')
-            med = get_object_or_404(Medicamento, id=med_id)
+            med = get_object_or_404(Medicamento, id=_id_post_seguro(request, 'medicamento_id'))
             med.activo = False
             med.save()
             _registrar_log(request, f'Desactivó medicamento {med.nombre}', 'Medicamento', med.id)
@@ -1059,8 +1546,7 @@ def solicitudes_pendientes_laboratorio(request):
         if not puede_procesar:
             messages.error(request, "No tienes permiso para procesar solicitudes de laboratorio.")
             return redirect('home')
-        solicitud_id = request.POST.get('solicitud_id')
-        solicitud = get_object_or_404(SolicitudLaboratorio, id=solicitud_id)
+        solicitud = get_object_or_404(SolicitudLaboratorio, id=_id_post_seguro(request, 'solicitud_id'))
         form = ProcesarLaboratorioForm(request.POST, instance=solicitud)
         if form.is_valid():
             solicitud = form.save(commit=False)
@@ -1092,7 +1578,9 @@ def inicio_admin(request):
 @login_required
 def menu_admin(request):
     """Menú detallado para asignar roles y especialidades."""
-    if not (request.user.is_superuser or request.user.groups.filter(name__in=['Administracion', 'Secretaria']).exists()):
+    # Solo Administración puede gestionar usuarios: una Secretaria podía desactivar
+    # cuentas y quitar roles sin control (escalada de privilegios).
+    if not _es_admin(request.user):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
 
@@ -1143,18 +1631,22 @@ def menu_admin(request):
     page_obj = paginator.get_page(page_number)
 
     if request.method == 'POST':
-        usuario_id = request.POST.get('usuario_id')
         rol_nombre = request.POST.get('rol_nombre')
         toggle_status = request.POST.get('toggle_status')
-        user_to_update = get_object_or_404(User, id=usuario_id)
+        user_to_update = get_object_or_404(User, id=_id_post_seguro(request, 'usuario_id'))
 
         # No permitir modificar superusuarios ni la propia cuenta
         if user_to_update.is_superuser or user_to_update == request.user:
             messages.error(request, 'No puedes modificar la cuenta de este usuario.')
             return redirect('menu_admin')
 
+        es_admin = request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()
+
         # Lógica para alternar estado de actividad (Activo/Inactivo)
         if 'toggle_status' in request.POST:
+            if not es_admin:
+                messages.error(request, 'Solo Administración puede activar o desactivar cuentas.')
+                return redirect('menu_admin')
             user_to_update.is_active = not user_to_update.is_active
             user_to_update.save()
             estado = "activado" if user_to_update.is_active else "desactivado"
@@ -1176,7 +1668,10 @@ def menu_admin(request):
             _registrar_log(request, f'Asignó rol {rol_nombre} a {user_to_update.username}', 'User', user_to_update.id)
             messages.success(request, f"Rol '{rol_nombre}' asignado a '{user_to_update.username}'.")
         else:
-            # "-- Quitar Roles --" sí elimina todos
+            # "-- Quitar Roles --" elimina todos: solo Administración
+            if not es_admin:
+                messages.error(request, 'Solo Administración puede quitar todos los roles.')
+                return redirect('menu_admin')
             user_to_update.groups.clear()
             _registrar_log(request, f'Quitó todos los roles de {user_to_update.username}', 'User', user_to_update.id)
             messages.success(request, f"Se han quitado todos los roles de '{user_to_update.username}'.")
@@ -1202,11 +1697,6 @@ def menu_admin(request):
         'user_first_group': user_first_group,
         'roles_permitidos': roles_permitidos,
         'es_administrador': es_administrador,
-    })
-
-    return render(request, 'ipp1/administracion/menu_admin.html', {
-        'usuarios': usuarios,
-        'grupos': grupos
     })
 
 @login_required
@@ -1386,8 +1876,7 @@ def poliza_menu(request):
 
     if request.method == 'POST':
         accion = request.POST.get('accion')
-        poliza_id = request.POST.get('poliza_id')
-        poliza = get_object_or_404(Poliza, id=poliza_id)
+        poliza = get_object_or_404(Poliza, id=_id_post_seguro(request, 'poliza_id'))
 
         if accion == 'toggle_estado':
             poliza.estado = 'Inactivo' if poliza.estado == 'Activo' else 'Activo'
@@ -1787,6 +2276,7 @@ def exportar_pacientes_excel(request):
     ws.append(["Nombre", "Apellido", "Cédula", "Teléfono", "Status", "Saldo"])
     for p in pacientes:
         ws.append([p.nombre, p.apellido, p.cedula, p.telefono, p.status_afiliado, float(p.saldo_plan_salud)])
+    proteger_exportacion_excel(wb)
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="pacientes.xlsx"'
     wb.save(response)
@@ -1807,9 +2297,9 @@ def exportar_pacientes_csv(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="pacientes.csv"'
     writer = csv.writer(response)
-    writer.writerow(["Nombre", "Apellido", "Cédula", "Teléfono", "Status", "Saldo"])
+    writer.writerow(fila_csv_segura(["Nombre", "Apellido", "Cédula", "Teléfono", "Status", "Saldo"]))
     for p in pacientes:
-        writer.writerow([p.nombre, p.apellido, p.cedula, p.telefono, p.status_afiliado, float(p.saldo_plan_salud)])
+        writer.writerow(fila_csv_segura([p.nombre, p.apellido, p.cedula, p.telefono, p.status_afiliado, float(p.saldo_plan_salud)]))
     return response
 
 
@@ -1834,6 +2324,7 @@ def exportar_reporte_excel(request):
             c.hora_cita.strftime("%H:%M"),
             "Sí" if c.cobro_nomina else "No"
         ])
+    proteger_exportacion_excel(wb)
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="reporte_consultas.xlsx"'
     wb.save(response)
@@ -1849,9 +2340,9 @@ def exportar_reporte_csv(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="reporte_consultas.csv"'
     writer = csv.writer(response)
-    writer.writerow(["#", "Paciente", "Cédula", "Especialista", "Fecha", "Hora", "Cobro Nómina"])
+    writer.writerow(fila_csv_segura(["#", "Paciente", "Cédula", "Especialista", "Fecha", "Hora", "Cobro Nómina"]))
     for i, c in enumerate(citas, 1):
-        writer.writerow([
+        writer.writerow(fila_csv_segura([
             i,
             f"{c.paciente.nombre} {c.paciente.apellido}",
             c.paciente.cedula,
@@ -1859,7 +2350,7 @@ def exportar_reporte_csv(request):
             c.fecha_cita.strftime("%d/%m/%Y"),
             c.hora_cita.strftime("%H:%M"),
             "Sí" if c.cobro_nomina else "No"
-        ])
+        ]))
     return response
 
 # IMPORTAR INFORMACION DE PACIENTES EXCEL
@@ -1872,31 +2363,39 @@ def importar_pacientes_excel(request):
     if request.method == 'POST' and request.FILES.get('archivo'):
         import openpyxl
         archivo = request.FILES['archivo']
+        error_archivo = validar_archivo_excel(archivo)
+        if error_archivo:
+            messages.error(request, error_archivo)
+            return render(request, 'ipp1/administracion/importar_pacientes.html', {'modo': 'Pacientes'})
         try:
-            wb = openpyxl.load_workbook(archivo, read_only=True)
+            wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
             ws = wb.active
             creados = 0
             errores = []
-            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            for i, row in iterar_filas_excel(ws):
                 try:
                     nombre, apellido, cedula, telefono, direccion, fecha_nac, status = (row + (None,)*7)[:7]
                     if not all([nombre, apellido, cedula, fecha_nac]):
                         errores.append(f"Fila {i}: faltan datos obligatorios")
                         continue
+                    cedula_limpia = ''.join(c for c in str(cedula).strip() if c.isdigit())
+                    if not (6 <= len(cedula_limpia) <= 8):
+                        errores.append(f"Fila {i}: cédula inválida (6 a 8 dígitos)")
+                        continue
                     if isinstance(fecha_nac, str):
                         from datetime import datetime
                         fecha_nac = datetime.strptime(fecha_nac, '%d/%m/%Y').date()
-                    if Paciente.objects.filter(cedula=cedula).exists():
-                        errores.append(f"Fila {i}: cédula {cedula} ya existe")
+                    if Paciente.objects.filter(cedula=cedula_limpia).exists():
+                        errores.append(f"Fila {i}: cédula {cedula_limpia} ya existe")
                         continue
                     Paciente.objects.create(
                         nombre=str(nombre).strip(),
                         apellido=str(apellido).strip(),
-                        cedula=str(cedula).strip(),
-                        telefono=str(telefono).strip() if telefono else None,
+                        cedula=cedula_limpia,
+                        telefono=str(telefono).strip()[:12] if telefono else None,
                         direccion=str(direccion).strip() if direccion else None,
                         fecha_nacimiento=fecha_nac,
-                        status_afiliado=str(status).strip() if status else 'Comunidad',
+                        status_afiliado=str(status).strip() if str(status).strip() in ('Afiliado', 'Comunidad', 'Convenio') else 'Comunidad',
                     )
                     creados += 1
                 except Exception as e:
@@ -1922,8 +2421,16 @@ def importar_gastos_excel(request):
         return redirect('home')
     if request.method == 'POST' and request.FILES.get('archivo'):
         import openpyxl
-        wb = openpyxl.load_workbook(request.FILES['archivo'], read_only=True)
+        archivo = request.FILES['archivo']
+        error_archivo = validar_archivo_excel(archivo)
+        if error_archivo:
+            messages.error(request, error_archivo)
+            return render(request, 'ipp1/administracion/importar_pacientes.html', {'modo': 'Gastos'})
+        wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
         ws = wb.active
+        if (ws.max_row or 1) - 1 > MAX_EXCEL_ROWS:
+            messages.error(request, f'El archivo supera el límite de {MAX_EXCEL_ROWS} filas.')
+            return render(request, 'ipp1/administracion/importar_pacientes.html', {'modo': 'Gastos'})
         creados, errores = 0, []
         for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
             try:
@@ -1931,6 +2438,7 @@ def importar_gastos_excel(request):
                 if not all([cedula, concepto, monto, fecha]):
                     errores.append(f"Fila {i}: faltan datos obligatorios")
                     continue
+                monto = monto_no_negativo(monto, 'El monto')
                 paciente = Paciente.objects.filter(cedula=str(cedula).strip()).first()
                 if not paciente:
                     errores.append(f"Fila {i}: no existe paciente con cédula {cedula}")
@@ -1944,7 +2452,7 @@ def importar_gastos_excel(request):
                     fecha = datetime.strptime(str(fecha).strip(), '%d/%m/%Y').date()
                 GastoPaciente.objects.create(
                     poliza=poliza, concepto=str(concepto).strip(),
-                    monto=Decimal(str(monto)), fecha=fecha,
+                    monto=monto, fecha=fecha,
                     factura=str(factura).strip() if factura else None,
                 )
                 creados += 1
@@ -1969,16 +2477,25 @@ def importar_medicamentos_excel(request):
     if request.method == 'POST' and request.FILES.get('archivo'):
         import openpyxl
         archivo = request.FILES['archivo']
+        error_archivo = validar_archivo_excel(archivo)
+        if error_archivo:
+            messages.error(request, error_archivo)
+            return render(request, 'ipp1/especialista/importar_medicamentos_excel.html')
         try:
-            wb = openpyxl.load_workbook(archivo, read_only=True)
+            wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
             ws = wb.active
             creados = 0
             errores = []
-            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            for i, row in iterar_filas_excel(ws):
                 try:
                     nombre, descripcion, precio, stock, lote, fecha_venc = (row + (None,)*6)[:6]
                     if not nombre:
                         errores.append(f"Fila {i}: falta el nombre del medicamento")
+                        continue
+                    precio = monto_no_negativo(precio, 'El precio')
+                    stock = int(stock or 0)
+                    if stock < 0:
+                        errores.append(f"Fila {i}: el stock no puede ser negativo")
                         continue
                     if isinstance(fecha_venc, str):
                         from datetime import datetime
@@ -1988,8 +2505,8 @@ def importar_medicamentos_excel(request):
                         lote=str(lote).strip() if lote else '',
                         defaults={
                             'descripcion': str(descripcion).strip() if descripcion else '',
-                            'precio': Decimal(str(precio)) if precio else Decimal('0.00'),
-                            'cantidad_stock': int(stock) if stock else 0,
+                            'precio': precio,
+                            'cantidad_stock': stock,
                             'fecha_vencimiento': fecha_venc,
                             'activo': True,
                         }
@@ -2019,17 +2536,22 @@ def importar_nomina_poliza(request, poliza_id):
     if request.method == 'POST' and request.FILES.get('archivo'):
         import openpyxl
         archivo = request.FILES['archivo']
+        error_archivo = validar_archivo_excel(archivo)
+        if error_archivo:
+            messages.error(request, error_archivo)
+            return render(request, 'ipp1/poliza/importar_nomina.html', {'poliza': poliza})
         try:
-            wb = openpyxl.load_workbook(archivo, read_only=True)
+            wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
             ws = wb.active
             creados = 0
             errores = []
-            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            for i, row in iterar_filas_excel(ws):
                 try:
                     cedula, concepto, monto, fecha = (row + (None,)*4)[:4]
                     if not all([cedula, concepto, monto, fecha]):
                         errores.append(f"Fila {i}: faltan datos obligatorios")
                         continue
+                    monto = monto_no_negativo(monto, 'El monto')
                     if isinstance(fecha, str):
                         from datetime import datetime
                         fecha = datetime.strptime(str(fecha).strip(), '%d/%m/%Y').date()
@@ -2041,11 +2563,11 @@ def importar_nomina_poliza(request, poliza_id):
                     GastoPaciente.objects.create(
                         poliza=poliza,
                         concepto=str(concepto).strip(),
-                        monto=Decimal(str(monto)),
+                        monto=monto,
                         fecha=fecha,
                         beneficiario=familiar,
                     )
-                    poliza.saldo_restante -= Decimal(str(monto))
+                    poliza.saldo_restante -= monto
                     poliza.actualizar_estado_por_saldo()
                     poliza.save(update_fields=['saldo_restante', 'estado'])
                     creados += 1
@@ -2100,26 +2622,30 @@ def factura_generar(request, cita_id):
     if hasattr(cita, 'factura'):
         messages.info(request, "Esta cita ya tiene una factura.")
         return redirect('factura_detalle', factura_id=cita.factura.id)
-    if request.method == 'POST':
-        descripcion = request.POST.get('descripcion', '')
+    form = FacturaGenerarForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        # subtotal e IVA se calculan en el servidor: no se confía en campos hidden.
         subtotal = cita.costo_consulta or Decimal('0.00')
         iva_monto = Decimal('0.00')
-        total = subtotal
         factura = Factura.objects.create(
             cita=cita,
             paciente_nombre=f"{cita.paciente.nombre} {cita.paciente.apellido}",
             paciente_cedula=cita.paciente.cedula,
             especialista_nombre=cita.especialista.get_full_name() or cita.especialista.username if cita.especialista else '',
-            descripcion=descripcion,
+            descripcion=form.cleaned_data['descripcion'],
             subtotal=subtotal,
             iva=iva_monto,
-            total=total,
+            total=subtotal,
         )
         _registrar_log(request, f'Generó factura {factura.numero_factura} para cita {cita.id}', 'Factura', factura.id)
         messages.success(request, f"Factura {factura.numero_factura} generada.")
         return redirect('factura_detalle', factura_id=factura.id)
+    elif request.method == 'POST':
+        for errores in form.errors.values():
+            messages.error(request, errores[0])
     return render(request, 'ipp1/facturacion/factura_generar.html', {
         'cita': cita,
+        'form': form,
     })
 
 
@@ -2285,6 +2811,7 @@ def historia_clinica_exportar(request, paciente_id):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    proteger_exportacion_excel(wb)
     wb.save(response)
     return response
 
@@ -2333,11 +2860,10 @@ def marcar_factura_pagada(request, factura_id):
         messages.error(request, 'No tienes permisos para acceder a esta seccion.')
         return redirect('home')
     factura = get_object_or_404(Factura, id=factura_id)
-    if request.method == 'POST':
-        metodo = request.POST.get('metodo_pago')
-        if not metodo:
-            messages.error(request, "Seleccione un método de pago.")
-            return redirect('marcar_factura_pagada', factura_id=factura.id)
+    form = MarcarPagoForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        # ChoiceField solo acepta los valores declarados en Factura.METODO_PAGO_CHOICES.
+        metodo = form.cleaned_data['metodo_pago']
         factura.pagada = True
         factura.metodo_pago = metodo
         factura.fecha_pago = now()
@@ -2345,7 +2871,13 @@ def marcar_factura_pagada(request, factura_id):
         _registrar_log(request, f'Registró pago de {factura.numero_factura} ({metodo})', 'Factura', factura.id)
         messages.success(request, f"Pago registrado para {factura.numero_factura}.")
         return redirect('factura_detalle', factura_id=factura.id)
-    return render(request, 'ipp1/facturacion/marcar_pagada.html', {'factura': factura})
+    elif request.method == 'POST':
+        for errores in form.errors.values():
+            messages.error(request, errores[0])
+    return render(request, 'ipp1/facturacion/marcar_pagada.html', {
+        'factura': factura,
+        'form': form,
+    })
 
 
 @login_required
@@ -2696,6 +3228,7 @@ def exportar_gastos_excel(request):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = 'attachment; filename=gastos_completos.xlsx'
+    proteger_exportacion_excel(wb)
     wb.save(response)
     return response
 
@@ -2741,6 +3274,7 @@ def exportar_pacientes_seleccionados(request):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = 'attachment; filename=pacientes_seleccionados.xlsx'
+    proteger_exportacion_excel(wb)
     wb.save(response)
     return response
 
@@ -2776,15 +3310,25 @@ def gestion_bloqueos(request):
         failures_since_start__gte=failure_limit
     ).order_by('-failures_since_start')
 
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        if username:
-            AccessAttempt.objects.filter(username=username).update(failures_since_start=0)
-            messages.success(request, f'Cuenta de "{username}" desbloqueada exitosamente.')
-            return redirect('gestion_bloqueos')
+    form = GestionBloqueosForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        username = form.cleaned_data['username']
+        AccessAttempt.objects.filter(username=username).update(failures_since_start=0)
+        # Si el bloqueo vino de 3 códigos fallidos, la cuenta queda inactiva;
+        # el desbloqueo del administrador también la reactiva.
+        User.objects.filter(username=username).update(is_active=True)
+        messages.success(
+            request,
+            f'Cuenta de "{username}" desbloqueada y reactivada exitosamente.',
+        )
+        return redirect('gestion_bloqueos')
+    elif request.method == 'POST':
+        for error in form.errors.values():
+            messages.error(request, error[0])
 
     return render(request, 'ipp1/administracion/gestion_bloqueos.html', {
         'bloqueados': bloqueados,
+        'form': form,
     })
 
 # LABORATORIO
@@ -2827,54 +3371,39 @@ def catalogo_examenes(request):
 
     if request.method == 'POST':
         accion = request.POST.get('accion')
-        if accion == 'crear':
-            nombre = request.POST.get('nombre', '').strip()
-            descripcion = request.POST.get('descripcion', '').strip()
-            try:
-                costo = Decimal(request.POST.get('costo', '0'))
-            except Exception:
-                costo = Decimal('0')
-            if costo < 0:
-                costo = Decimal('0')
-            if nombre:
-                ExamenLaboratorio.objects.create(
-                    nombre=nombre, descripcion=descripcion, costo=costo
-                )
-                _registrar_log(request, f'Creó examen {nombre}', 'ExamenLaboratorio', None)
-                messages.success(request, f'Examen "{nombre}" creado correctamente.')
-            else:
-                messages.error(request, 'El nombre del examen es obligatorio.')
-        elif accion == 'editar':
-            examen_id = request.POST.get('examen_id')
+        examen = None
+        if accion in ('editar', 'desactivar', 'eliminar'):
+            examen_id = request.POST.get('examen_id', '')
+            if not str(examen_id).isdigit():
+                raise Http404('Examen no encontrado.')
             examen = get_object_or_404(ExamenLaboratorio, id=examen_id)
-            examen.nombre = request.POST.get('nombre', examen.nombre).strip()
-            examen.descripcion = request.POST.get('descripcion', examen.descripcion).strip()
-            try:
-                costo = Decimal(request.POST.get('costo', examen.costo))
-            except Exception:
-                costo = examen.costo
-            if costo >= 0:
-                examen.costo = costo
-            examen.save()
-            _registrar_log(request, f'Editó examen {examen.nombre}', 'ExamenLaboratorio', examen.id)
-            messages.success(request, f'Examen "{examen.nombre}" actualizado.')
+
+        if accion in ('crear', 'editar'):
+            form = ExamenLaboratorioForm(request.POST, instance=examen)
+            if form.is_valid():
+                examen = form.save()
+                if accion == 'crear':
+                    _registrar_log(request, f'Creó examen {examen.nombre}', 'ExamenLaboratorio', examen.id)
+                    messages.success(request, f'Examen "{examen.nombre}" creado correctamente.')
+                else:
+                    _registrar_log(request, f'Editó examen {examen.nombre}', 'ExamenLaboratorio', examen.id)
+                    messages.success(request, f'Examen "{examen.nombre}" actualizado.')
+                return redirect('catalogo_examenes')
+            for errores in form.errors.values():
+                messages.error(request, errores[0])
         elif accion == 'desactivar':
-            examen_id = request.POST.get('examen_id')
-            examen = get_object_or_404(ExamenLaboratorio, id=examen_id)
             examen.activo = False
             examen.save()
             _registrar_log(request, f'Desactivó examen {examen.nombre}', 'ExamenLaboratorio', examen.id)
             messages.success(request, f'Examen "{examen.nombre}" desactivado.')
-        # return redirect('catalogo_examenes')
-
-        # ELIMINAR EXAMEN MAL ESCRITO
         elif accion == 'eliminar':
-            examen_id = request.POST.get('examen_id')
-            examen = get_object_or_404(ExamenLaboratorio, id=examen_id)
+            nombre = examen.nombre
             examen.delete()
-            _registrar_log(request, f'Eliminó examen {examen.nombre}', 'ExamenLaboratorio', examen.id)
-            messages.success(request, f'Examen "{examen.nombre}" eliminado.')
+            _registrar_log(request, f'Eliminó examen {nombre}', 'ExamenLaboratorio', None)
+            messages.success(request, f'Examen "{nombre}" eliminado.')
             return redirect('catalogo_examenes')
+        else:
+            messages.error(request, 'Acción no válida.')
 
     q = request.GET.get('q', '').strip()
     examenes = ExamenLaboratorio.objects.all()
@@ -2932,12 +3461,9 @@ def importar_catalogo_examenes(request):
 
     if request.method == 'POST':
         archivo = request.FILES.get('archivo')
-        if not archivo:
-            messages.error(request, 'Selecciona un archivo Excel.')
-            return redirect('importar_catalogo_examenes')
-
-        if not archivo.name.lower().endswith(('.xlsx', '.xlsm')):
-            messages.error(request, 'El archivo debe ser .xlsx o .xlsm.')
+        error_archivo = validar_archivo_excel(archivo, extensiones=('.xlsx', '.xlsm'))
+        if error_archivo:
+            messages.error(request, error_archivo)
             return redirect('importar_catalogo_examenes')
 
         import openpyxl
@@ -2951,6 +3477,9 @@ def importar_catalogo_examenes(request):
         try:
             wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
             ws = wb.active
+            if (ws.max_row or 1) - 1 > MAX_EXCEL_ROWS:
+                messages.error(request, f'El archivo supera el límite de {MAX_EXCEL_ROWS} filas.')
+                return redirect('importar_catalogo_examenes')
             filas = ws.iter_rows(values_only=True)
             encabezados = next(filas, None)
 
@@ -2996,13 +3525,17 @@ def importar_catalogo_examenes(request):
                         continue
 
                     costo_crudo = celda(col_costo)
-                    if costo_crudo in (None, ''):
-                        costo = Decimal('0.00')
-                    else:
-                        costo = Decimal(str(costo_crudo).replace(',', '.').strip())
-
-                    if costo < 0:
-                        errores.append(f'Fila {numero_fila}: el costo no puede ser negativo.')
+                    try:
+                        costo = monto_no_negativo(
+                            str(costo_crudo).replace(',', '.').strip() if costo_crudo not in (None, '') else '0',
+                            'El costo',
+                        )
+                    except ValueError as error:
+                        mensaje_costo = str(error)
+                        if 'no puede ser negativo' in mensaje_costo:
+                            errores.append(f'Fila {numero_fila}: el costo no puede ser negativo.')
+                        else:
+                            errores.append(f'Fila {numero_fila}: costo inválido.')
                         continue
 
                     descripcion = str(celda(col_desc) or '').strip()

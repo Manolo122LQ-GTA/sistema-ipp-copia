@@ -2,19 +2,19 @@
 .SYNOPSIS
     Instalador automático del Sistema IPP para Windows 10/11
 .DESCRIPTION
-    Instala PostgreSQL 18, Python 3.14, dependencias, migra la BD y
-    deja el sistema listo para usar. Un solo clic.
+    Verifica Python 3.13 y MySQL 8.4+ (o MariaDB 10.6+), instala dependencias,
+    genera los estaticos, migra la BD y deja el sistema listo para usar.
 .NOTES
-    Ejecutar como Administrador. En PC sin internet, descargar los
-    instaladores antes y colocarlos en la misma carpeta.
+    Ejecutar como Administrador. Se necesita tener MySQL/MariaDB instalado
+    (XAMPP incluye MariaDB) o saber la contraseña de root.
 #>
 
 #Requires -RunAsAdministrator
 
 $ErrorActionPreference = "Stop"
 $ProjectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+# No se usa Start-Transcript: el transcript guardaría la contraseña de MySQL en texto plano.
 $LogFile = "$env:TEMP\ipp_instalacion.log"
-Start-Transcript -Path $LogFile -Append | Out-Null
 
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "  INSTALADOR AUTOMATICO SISTEMA IPP" -ForegroundColor Cyan
@@ -22,90 +22,148 @@ Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
 # ------- 1. VERIFICAR / INSTALAR PYTHON -------
-Write-Host "[1/7] Verificando Python..."
-$python = $null
-try { $python = (Get-Command python).Source } catch {}
-if (-not $python) {
-    Write-Host "  > Python no encontrado. Instalando..."
-    $pyUrl = "https://www.python.org/ftp/python/3.14.0/python-3.14.0-amd64.exe"
-    $pyInstaller = "$env:TEMP\python-3.14.0-amd64.exe"
+Write-Host "[1/7] Verificando Python 3.13..."
+$pythonExe = $null
+try { $pythonExe = (& py -3.13 -c "import sys; print(sys.executable)" 2>$null).Trim() } catch {}
+if (-not $pythonExe) {
+    Write-Host "  > Python 3.13 no encontrado. Instalando..."
+    $pyUrl = "https://www.python.org/ftp/python/3.13.5/python-3.13.5-amd64.exe"
+    $pyInstaller = "$env:TEMP\python-3.13.5-amd64.exe"
     if (-not (Test-Path $pyInstaller)) {
         Invoke-WebRequest -Uri $pyUrl -OutFile $pyInstaller
     }
     Start-Process -Wait -FilePath $pyInstaller -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1"
-    # Refrescar PATH para la sesion actual
     $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
-    Write-Host "  OK: Python instalado."
-} else {
-    Write-Host "  OK: $python"
-}
-
-# ------- 2. VERIFICAR / INSTALAR POSTGRESQL -------
-Write-Host "[2/7] Verificando PostgreSQL..."
-$pgBin = "C:\Program Files\PostgreSQL\18\bin"
-$pgInstalled = Test-Path "$pgBin\psql.exe"
-$pgPassword = Read-Host -Prompt "  Contraseña para PostgreSQL (superuser)" -AsSecureString
-$pgPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($pgPassword))
-if (-not $pgInstalled) {
-    Write-Host "  > PostgreSQL no encontrado. Instalando..."
-    $pgUrl = "https://get.enterprisedb.com/postgresql/postgresql-18.4-1-windows-x64.exe"
-    $pgInstaller = "$env:TEMP\postgresql-18.4-1-windows-x64.exe"
-    if (-not (Test-Path $pgInstaller)) {
-        Invoke-WebRequest -Uri $pgUrl -OutFile $pgInstaller
+    try { $pythonExe = (& py -3.13 -c "import sys; print(sys.executable)" 2>$null).Trim() } catch {}
+    if (-not $pythonExe) {
+        Write-Host "  ERROR: no se pudo instalar Python 3.13." -ForegroundColor Red
+        exit 1
     }
-    Write-Host "  > Instalando PostgreSQL (varios minutos)..."
-    Start-Process -Wait -FilePath $pgInstaller -ArgumentList @(
-        "--unattendedmodeui", "minimal",
-        "--mode", "unattended",
-        "--superpassword", $pgPasswordPlain,
-        "--servicename", "postgresql18",
-        "--serverport", "5432"
-    )
-    Write-Host "  OK: PostgreSQL instalado."
-    $env:Path += ";$pgBin"
-} else {
-    Write-Host "  OK: PostgreSQL 18 encontrado."
-    $env:Path += ";$pgBin"
 }
+Write-Host "  OK: $pythonExe"
 
-# ------- 3. INICIAR SERVICIO Y CREAR BD -------
-Write-Host "[3/7] Asegurando que PostgreSQL este corriendo..."
-$svc = Get-Service -Name "postgresql18*" -ErrorAction SilentlyContinue
-if ($svc -and $svc.Status -ne "Running") {
+# ------- 2. VERIFICAR MYSQL / MARIADB -------
+Write-Host "[2/7] Verificando MySQL/MariaDB..."
+$mysqlClient = $null
+$candidates = @()
+try {
+    $cmd = Get-Command mysql.exe -ErrorAction SilentlyContinue
+    if ($cmd) { $candidates += $cmd.Source }
+} catch {}
+$candidates += @(
+    "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe",
+    "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe",
+    "C:\xampp\mysql\bin\mysql.exe"
+)
+foreach ($c in $candidates) {
+    if ($c -and (Test-Path $c)) { $mysqlClient = $c; break }
+}
+if (-not $mysqlClient) {
+    Write-Host "  ERROR: no se encontro mysql.exe." -ForegroundColor Red
+    Write-Host "  Instale MySQL 8.4+ o MariaDB 10.6+ (XAMPP trae MariaDB) y vuelva a ejecutar." -ForegroundColor Yellow
+    exit 1
+}
+Write-Host "  OK: $mysqlClient"
+
+$mysqlPassword = Read-Host -Prompt "  Contrasena de root de MySQL (Enter si no tiene)" -AsSecureString
+# Convertida solo en memoria y liberada inmediatamente; nunca se escribe en logs.
+$bstrPassword = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($mysqlPassword)
+try {
+    $mysqlPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstrPassword)
+} finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstrPassword)
+}
+# MYSQL_PWD evita pasar la contrasena en la linea de comandos (visible en el proceso).
+$env:MYSQL_PWD = $mysqlPasswordPlain
+
+# ------- 3. INICIAR SERVICIO, VALIDAR VERSION Y CREAR BD -------
+Write-Host "[3/7] Asegurando que MySQL este corriendo..."
+$svc = Get-Service -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'mysql|mariadb' -and $_.Status -ne 'Running' }
+if ($svc) {
     Start-Service $svc.Name
     Start-Sleep 2
 }
-Write-Host "  OK: Servicio PostgreSQL activo."
-
-Write-Host "  Creando base de datos IPPBD..."
-$env:PGPASSWORD = $pgPasswordPlain
-$exists = & "$pgBin\psql.exe" -U postgres -lqt 2>&1 | Select-String "IPPBD"
-if (-not $exists) {
-    & "$pgBin\createdb.exe" -U postgres IPPBD 2>&1 | Out-Null
-    Write-Host "  OK: Base de datos IPPBD creada."
-} else {
-    Write-Host "  OK: IPPBD ya existe."
+$version = (& $mysqlClient -u root -N -B -e "SELECT VERSION();" 2>$null)
+if ($LASTEXITCODE -ne 0 -or -not $version) {
+    Write-Host "  ERROR: no se pudo conectar con MySQL. Revise la contrasena de root." -ForegroundColor Red
+    exit 1
 }
+$isMaria = $version -match 'mariadb'
+$m = [regex]::Match($version, '(\d+)\.(\d+)\.(\d+)')
+$major = [int]$m.Groups[1].Value
+$minor = [int]$m.Groups[2].Value
+$soportado = if ($isMaria) { $major -gt 10 -or ($major -eq 10 -and $minor -ge 6) } else { $major -ge 8 }
+if (-not $soportado) {
+    Write-Host "  ERROR: Django 6 requiere MySQL 8+ o MariaDB 10.6+ (encontrado: $version)." -ForegroundColor Red
+    exit 1
+}
+Write-Host "  OK: $version"
 
-# ------- 4. INSTALAR DEPENDENCIAS -------
+Write-Host "  Creando base de datos ippbd..."
+& $mysqlClient -u root -e "CREATE DATABASE IF NOT EXISTS ippbd CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ERROR al crear la base de datos." -ForegroundColor Red
+    exit 1
+}
+Write-Host "  OK: ippbd lista."
+
+# ------- 4. INSTALAR DEPENDENCIAS Y GENERAR ESTATICOS -------
 Write-Host "[4/7] Instalando dependencias Python..."
 Set-Location -Path $ProjectDir
 
-# Usar el virtualenv del proyecto si existe; si no, crearlo
 $venvPython = Join-Path $ProjectDir "venv\Scripts\python.exe"
 if (-not (Test-Path $venvPython)) {
     Write-Host "  > Creando virtualenv..."
-    python -m venv venv
+    & $pythonExe -m venv venv
 }
 & $venvPython -m pip install -r requirements.txt 2>&1 | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ERROR al instalar dependencias." -ForegroundColor Red
+    exit 1
+}
+& $venvPython -m pip check 2>&1 | Out-Host
 Write-Host "  OK: Dependencias instaladas."
+
+$envFile = Join-Path $ProjectDir '.env'
+if (-not (Test-Path $envFile)) {
+    $secret = (& $venvPython -c "import secrets; print(secrets.token_urlsafe(50))").Trim()
+    @"
+SECRET_KEY=$secret
+ALLOWED_HOSTS=localhost,127.0.0.1
+DB_NAME=ippbd
+DB_USER=root
+DB_PASSWORD=$mysqlPasswordPlain
+DB_HOST=127.0.0.1
+DB_PORT=3306
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+CSRF_TRUSTED_ORIGINS=
+TRUST_PROXY_HEADERS=0
+"@ | Set-Content -Path $envFile -Encoding UTF8
+    Write-Host "  OK: .env generado (no se versiona)."
+} else {
+    Write-Host "  OK: .env ya existe; no se modifica."
+}
+
+# Con DEBUG=False, WhiteNoise sirve desde STATIC_ROOT: hay que generarlo siempre.
+Write-Host "  Generando archivos estaticos..."
+& $venvPython manage.py collectstatic --noinput 2>&1 | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ERROR en collectstatic." -ForegroundColor Red
+    exit 1
+}
+Write-Host "  OK: estaticos generados."
+
+# La contrasena ya no se necesita: se elimina del entorno y de la memoria del script.
+Remove-Item Env:\MYSQL_PWD -ErrorAction SilentlyContinue
+$mysqlPasswordPlain = $null
+[GC]::Collect()
 
 # ------- 5. MIGRACIONES -------
 Write-Host "[5/7] Ejecutando migraciones..."
 & $venvPython manage.py migrate 2>&1 | Out-Host
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  ERROR en migraciones." -ForegroundColor Red
-    Stop-Transcript
     exit 1
 }
 Write-Host "  OK: Migraciones aplicadas."
@@ -135,7 +193,6 @@ if ($crearSuper -eq "s" -or $crearSuper -eq "S") {
 
 # ------- 7. ACCESO DIRECTO + FIREWALL -------
 Write-Host "[7/7] Creando acceso directo y configurando firewall..."
-# .bat de inicio
 $desktop = [Environment]::GetFolderPath("Desktop")
 $batContent = @"
 @echo off
@@ -153,7 +210,6 @@ $batPath = "$desktop\Iniciar IPP.bat"
 Set-Content -Path $batPath -Value $batContent -Encoding ASCII
 Write-Host "  OK: Acceso directo en $batPath"
 
-# Firewall
 try {
     netsh advfirewall firewall add rule name="IPP Sistema (8000)" dir=in action=allow protocol=TCP localport=8000 2>&1 | Out-Null
     Write-Host "  OK: Puerto 8000 abierto en firewall."
@@ -173,7 +229,6 @@ Write-Host "  Para iniciar el sistema cada vez:"
 Write-Host "    Dar doble clic en el acceso del escritorio:"
 Write-Host "    'Iniciar IPP.bat'"
 Write-Host ""
-Write-Host "  LOG: $LogFile"
+Write-Host "  LOG: $LogFile (sin credenciales; se desactivó Start-Transcript)"
 Write-Host ""
-Stop-Transcript
 pause

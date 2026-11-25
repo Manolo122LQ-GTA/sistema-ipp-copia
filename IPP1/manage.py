@@ -2,22 +2,6 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
-import ctypes
-
-# Limpiar del entorno real de Windows las variables PG* que pueda haber
-# heredado el proceso y que psycopg2 leerian con codificacion no UTF-8.
-_kernel32 = ctypes.windll.kernel32
-
-for _key in list(os.environ.keys()):
-    if _key.startswith('PG'):
-        try:
-            _kernel32.SetEnvironmentVariableW(_key, None)
-        except OSError:
-            pass
-        try:
-            del os.environ[_key]
-        except KeyError:
-            pass
 
 
 def main():

@@ -1,8 +1,10 @@
 from decimal import Decimal
 from datetime import date, time, timedelta
+from unittest.mock import patch
 import io
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, Client
+from django.core import mail
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.contrib.auth.forms import SetPasswordForm
@@ -10,18 +12,25 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import User, Group, Permission
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
+from axes.models import AccessAttempt
 from .models import (
     Paciente, SolicitudSecretaria, SolicitudLaboratorio,
     PlanSalud, Poliza, GastoPaciente, Familiar,
     TarifaEspecialidad, Medicamento, Receta, Factura, ExamenLaboratorio,
-    PerfilUsuario, LogActividad
+    PerfilUsuario, LogActividad, PreguntaSeguridad, RespuestaSeguridad
 )
 from .forms import (
     LoginForm, PacienteForm, PerfilForm, SolicitudSecretariaForm,
     SolicitudLaboratorioForm, ProcesarLaboratorioForm,
     TarifaEspecialidadForm, MedicamentoForm, RecetaForm,
-    PlanSaludForm, GastoPacienteForm, FamiliarForm
+    PlanSaludForm, GastoPacienteForm, FamiliarForm, TasaCambioForm,
+    RegistroUsuarioForm, GestionBloqueosForm, ExamenLaboratorioForm,
+    FacturaGenerarForm, MarcarPagoForm,
 )
+from .seguridad import (
+    sanitizar_valor_exportacion, validar_archivo_excel, monto_no_negativo,
+)
+from django.conf import settings
 from .validators import ValidarContrasenaFuerte
 
 
@@ -800,6 +809,43 @@ class ContrasenaSeguridadTest(BaseTest):
         user.refresh_from_db()
         self.assertTrue(user.check_password('Nueva123!@#$%xy9'))
 
+    def test_perfil_muestra_preguntas_de_seguridad(self):
+        self._login()
+        respuesta = self.client.get(reverse('perfil_usuario'))
+        self.assertContains(respuesta, 'Preguntas de seguridad')
+        for pregunta in PreguntaSeguridad.objects.filter(activa=True):
+            self.assertContains(respuesta, f'name="respuesta_{pregunta.pk}"')
+
+    def test_perfil_actualiza_respuesta_de_seguridad(self):
+        user = self._login()
+        pregunta = PreguntaSeguridad.objects.filter(activa=True).first()
+
+        respuesta = self.client.post(reverse('perfil_usuario'), {
+            'accion': 'seguridad',
+            'password_actual': 'Abc123!@#$%xyz78',
+            f'respuesta_{pregunta.pk}': 'NuevaRespuesta',
+        })
+
+        self.assertRedirects(respuesta, reverse('perfil_usuario'))
+        guardada = RespuestaSeguridad.objects.get(usuario=user, pregunta=pregunta)
+        self.assertTrue(guardada.verificar_respuesta('NuevaRespuesta'))
+
+    def test_perfil_no_cambia_seguridad_sin_clave_actual(self):
+        user = self._login()
+        pregunta = PreguntaSeguridad.objects.filter(activa=True).first()
+
+        respuesta = self.client.post(reverse('perfil_usuario'), {
+            'accion': 'seguridad',
+            'password_actual': 'incorrecta',
+            f'respuesta_{pregunta.pk}': 'NuevaRespuesta',
+        })
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, 'La contraseña actual no es correcta.')
+        self.assertFalse(
+            RespuestaSeguridad.objects.filter(usuario=user, pregunta=pregunta).exists()
+        )
+
 
 class RegistroViewTest(BaseTest):
     def test_registro_page_carga(self):
@@ -1164,23 +1210,24 @@ class CatalogoExamenesTest(BaseTest):
         self.assertTrue(ExamenLaboratorio.objects.filter(nombre='Glicemia').exists())
 
     def test_catalogo_crear_examen_costo_invalido(self):
+        # Un costo no numérico ya no se silencia: se rechaza y no crea el examen.
         self._login(grupo='Laboratorio')
         response = self.client.post(reverse('catalogo_examenes'), {
             'accion': 'crear', 'nombre': 'Perfil 20',
             'costo': 'abc', 'descripcion': ''
         }, follow=True)
-        self.assertContains(response, 'creado')
-        examen = ExamenLaboratorio.objects.get(nombre='Perfil 20')
-        self.assertEqual(examen.costo, Decimal('0.00'))
+        self.assertContains(response, 'costo')
+        self.assertFalse(ExamenLaboratorio.objects.filter(nombre='Perfil 20').exists())
 
     def test_catalogo_crear_examen_costo_negativo(self):
+        # Un costo negativo se rechaza en el servidor.
         self._login(grupo='Laboratorio')
         response = self.client.post(reverse('catalogo_examenes'), {
             'accion': 'crear', 'nombre': 'Perfil 30',
             'costo': '-5', 'descripcion': ''
         }, follow=True)
-        examen = ExamenLaboratorio.objects.get(nombre='Perfil 30')
-        self.assertEqual(examen.costo, Decimal('0.00'))
+        self.assertContains(response, 'costo')
+        self.assertFalse(ExamenLaboratorio.objects.filter(nombre='Perfil 30').exists())
 
     def _archivo_excel(self, filas):
         from openpyxl import Workbook
@@ -2130,3 +2177,520 @@ class FormValidacionesTest(BaseTest):
         })
         self.assertFalse(form.is_valid())
         self.assertIn('costo_mensual', str(form.errors))
+
+
+# ===================== AUDITORÍA DE INPUTS (FASE 2/3/4) =====================
+
+class ValidacionServidorTest(BaseTest):
+    DATOS_REGISTRO = {
+        'name': 'Maria', 'last_name': 'Gomez', 'username': 'maria.gomez',
+        'email': 'maria@example.com', 'password': 'Abc123!@#$%xyz78',
+        'password2': 'Abc123!@#$%xyz78', 'rol': 'Secretaria',
+    }
+
+    def test_registro_form_acepta_datos_validos(self):
+        form = RegistroUsuarioForm(data=self.DATOS_REGISTRO)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_registro_form_rechaza_rol_inventado(self):
+        datos = dict(self.DATOS_REGISTRO, rol='SuperUsuario')
+        form = RegistroUsuarioForm(data=datos)
+        self.assertFalse(form.is_valid())
+        self.assertIn('rol', form.errors)
+
+    def test_registro_form_rechaza_contrasenas_distintas(self):
+        datos = dict(self.DATOS_REGISTRO, password2='OtraClave!@#$%xyz78')
+        form = RegistroUsuarioForm(data=datos)
+        self.assertFalse(form.is_valid())
+        self.assertIn('password2', form.errors)
+
+    def test_registro_form_rechaza_nombre_con_numeros(self):
+        datos = dict(self.DATOS_REGISTRO, name='Maria123')
+        form = RegistroUsuarioForm(data=datos)
+        self.assertFalse(form.is_valid())
+        self.assertIn('name', form.errors)
+
+    def test_pago_rechaza_metodo_fuera_de_choices(self):
+        self.assertFalse(MarcarPagoForm({'metodo_pago': 'Criptomonedas'}).is_valid())
+        self.assertTrue(MarcarPagoForm({'metodo_pago': 'Efectivo'}).is_valid())
+
+    def test_factura_descripcion_con_longitud_limitada(self):
+        form = FacturaGenerarForm({'descripcion': 'x' * 501})
+        self.assertFalse(form.is_valid())
+
+    def test_examen_con_costo_negativo(self):
+        form = ExamenLaboratorioForm({'nombre': 'Hemograma', 'descripcion': '', 'costo': '-5'})
+        self.assertFalse(form.is_valid())
+        self.assertIn('costo', form.errors)
+
+    def test_tasa_negativa_rechazada(self):
+        form = TasaCambioForm({'tasa': '-1'})
+        self.assertFalse(form.is_valid())
+
+    def test_familiar_cedula_demasiado_corta(self):
+        form = FamiliarForm({
+            'nombre': 'Ana', 'apellido': 'Paz', 'cedula': '123',
+            'parentesco': 'Hijo(a)', 'fecha_nacimiento': '2010-01-01',
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('cedula', form.errors)
+
+    def test_paciente_compone_telefono_de_campos_separados(self):
+        form = PacienteForm(data={
+            'nombre': 'Ana', 'apellido': 'Paz', 'telefono': '',
+            'direccion': '', 'fecha_nacimiento': '1990-01-01',
+            'status_afiliado': 'Comunidad', 'categoria_afiliado': 'Docente',
+            'codigo_cedula': 'V', 'numero_cedula': '1234567',
+            'codigo_telefono': '0412', 'numero_telefono': '1234567',
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['telefono'], '04121234567')
+        paciente = form.save()
+        self.assertEqual(paciente.telefono, '04121234567')
+
+    def test_procesar_laboratorio_exige_resultado(self):
+        form = ProcesarLaboratorioForm(data={'resultado': '', 'costo': '10', 'bioanalista': 'Ana'})
+        self.assertFalse(form.is_valid())
+        self.assertIn('resultado', form.errors)
+
+
+class SaneamientoArchivosTest(TestCase):
+    def test_exportacion_neoformula(self):
+        self.assertEqual(sanitizar_valor_exportacion('=SUM(A1:A2)'), "'=SUM(A1:A2)")
+        self.assertEqual(sanitizar_valor_exportacion('+cmd'), "'+cmd")
+        self.assertEqual(sanitizar_valor_exportacion('Juan'), 'Juan')
+        self.assertEqual(sanitizar_valor_exportacion(123), 123)
+
+    def test_extension_y_tamano_excel(self):
+        pequeno = SimpleUploadedFile('datos.xlsx', b'abc')
+        self.assertIsNone(validar_archivo_excel(pequeno))
+        malo = SimpleUploadedFile('datos.exe', b'abc')
+        self.assertIsNotNone(validar_archivo_excel(malo))
+        grande = SimpleUploadedFile('datos.xlsx', b'x' * (5 * 1024 * 1024 + 1))
+        self.assertIsNotNone(validar_archivo_excel(grande))
+
+    def test_monto_no_negativo(self):
+        self.assertEqual(monto_no_negativo('10.50'), Decimal('10.50'))
+        with self.assertRaises(ValueError):
+            monto_no_negativo('-5')
+        with self.assertRaises(ValueError):
+            monto_no_negativo('abc')
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class PasswordResetCorreoTest(BaseTest):
+    """Envío, diseño y registro de errores del restablecimiento de contraseña."""
+
+    def setUp(self):
+        super().setUp()
+        mail.outbox = []
+        self.usuario = User.objects.create_user(
+            username='ana',
+            email='ana@ejemplo.com',
+            password='Abc123!@#$%xyz78',
+        )
+
+    def test_sesion_permite_leer_el_correo_de_reset(self):
+        self.assertGreaterEqual(settings.SESSION_COOKIE_AGE, 900)
+
+    def test_reset_envia_codigo_desbloqueo(self):
+        respuesta = self.client.post(
+            reverse('password_reset'), {'email': 'ana@ejemplo.com'}
+        )
+
+        # Ahora redirige a la verificación de código en lugar de done
+        self.assertRedirects(respuesta, reverse('desbloqueo_verificar'))
+        self.assertEqual(len(mail.outbox), 1)
+
+        mensaje = mail.outbox[0]
+        self.assertIn('Código de desbloqueo', mensaje.subject)
+        self.assertEqual(len(mensaje.alternatives), 1)
+        html = mensaje.alternatives[0][0]
+        self.assertIn('Código de desbloqueo', html)
+        self.assertIn('background-color:#2b7a62', html)
+        # El código debe tener 8 caracteres alfanuméricos
+        import re
+        codigo_en_html = re.search(r'[A-Z0-9]{8}', html)
+        self.assertIsNotNone(codigo_en_html)
+
+    @patch('pacientes.views.logger')
+    def test_email_invalido_no_envia_correo(self, mock_logger):
+        """Con un correo que no existe, muestra error y no envía mail."""
+        respuesta = self.client.post(
+            reverse('password_reset'), {'email': 'inexistente@ejemplo.com'}
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, 'No hay una cuenta con ese correo electrónico')
+        self.assertEqual(len(mail.outbox), 0)
+        mock_logger.exception.assert_not_called()
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class DesbloqueoPorCodigoTest(BaseTest):
+    """Código alfanumérico por correo: desbloquea o bloquea tras 3 fallos."""
+
+    def setUp(self):
+        super().setUp()
+        mail.outbox = []
+        self.usuario = User.objects.create_user(
+            username='ana',
+            email='ana@ejemplo.com',
+            password='Abc123!@#$%xyz78',
+        )
+        AccessAttempt.objects.create(
+            username='ana',
+            ip_address='127.0.0.1',
+            user_agent='test',
+            http_accept='text/html',
+            path_info='/',
+            failures_since_start=3,
+        )
+
+    def _pedir_codigo(self):
+        respuesta = self.client.post(
+            reverse('desbloqueo_solicitar'), {'identifier': 'ana'}
+        )
+        self.assertRedirects(respuesta, reverse('desbloqueo_verificar'))
+        return self.client.session['desbloqueo_codigo']
+
+    def test_solicitud_envia_codigo_alfanumerico_con_diseno(self):
+        codigo = self._pedir_codigo()
+
+        self.assertEqual(len(codigo), 8)
+        self.assertRegex(codigo, r'^[A-Z2-9]{8}$')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Código de desbloqueo', mail.outbox[0].subject)
+        html = mail.outbox[0].alternatives[0][0]
+        self.assertIn(codigo, html)
+        self.assertIn('Código de desbloqueo', html)
+        self.assertIn('background-color:#2b7a62', html)
+
+    def test_pagina_muestra_requisitos_en_vivo(self):
+        self._pedir_codigo()
+
+        respuesta = self.client.get(reverse('desbloqueo_verificar'))
+
+        self.assertContains(respuesta, 'Al menos 16 caracteres')
+        self.assertContains(respuesta, 'actualizarRequisitos()')
+
+    def test_codigo_correcto_desbloquea_la_cuenta(self):
+        codigo = self._pedir_codigo()
+
+        respuesta = self.client.post(
+            reverse('desbloqueo_verificar'), {'codigo': codigo.lower()}
+        )
+
+        self.assertRedirects(respuesta, reverse('login'))
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.is_active)
+        self.assertEqual(
+            AccessAttempt.objects.filter(username='ana').first().failures_since_start,
+            0,
+        )
+        self.assertNotIn('desbloqueo_codigo', self.client.session)
+
+    def test_codigo_correcto_cambia_password_si_se_escribe_una_nueva(self):
+        codigo = self._pedir_codigo()
+
+        respuesta = self.client.post(
+            reverse('desbloqueo_verificar'),
+            {
+                'codigo': codigo.lower(),
+                'nueva_password1': 'NuevaClave!@#$%abcd2026',
+                'nueva_password2': 'NuevaClave!@#$%abcd2026',
+            },
+        )
+
+        self.assertRedirects(respuesta, reverse('login'))
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.is_active)
+        self.assertTrue(self.usuario.check_password('NuevaClave!@#$%abcd2026'))
+
+    def test_tres_codigos_incorrectos_bloquean_y_piden_admin(self):
+        codigo = self._pedir_codigo()
+        incorrecto = 'ZZZZZZZZ' if codigo != 'ZZZZZZZZ' else 'YYYYYYYY'
+
+        for intento in range(2):
+            respuesta = self.client.post(
+                reverse('desbloqueo_verificar'), {'codigo': incorrecto}
+            )
+            self.assertEqual(respuesta.status_code, 200)
+            self.assertContains(respuesta, f'Te quedan {2 - intento} intentos')
+
+        respuesta = self.client.post(
+            reverse('desbloqueo_verificar'),
+            {'codigo': incorrecto},
+            follow=True,
+        )
+
+        self.usuario.refresh_from_db()
+        self.assertFalse(self.usuario.is_active)
+        self.assertGreaterEqual(
+            AccessAttempt.objects.filter(username='ana').first().failures_since_start,
+            settings.AXES_FAILURE_LIMIT,
+        )
+        self.assertContains(respuesta, 'Contacta con un administrador para recuperarla')
+        self.assertNotIn('desbloqueo_codigo', self.client.session)
+
+    def test_admin_puede_recuperar_la_cuenta_bloqueada(self):
+        codigo = self._pedir_codigo()
+        incorrecto = 'ZZZZZZZZ' if codigo != 'ZZZZZZZZ' else 'YYYYYYYY'
+        for _ in range(3):
+            self.client.post(reverse('desbloqueo_verificar'), {'codigo': incorrecto})
+
+        self.usuario.refresh_from_db()
+        self.assertFalse(self.usuario.is_active)
+
+        administrador = self._crear_usuario(username='adminrec', grupo='Administracion')
+        self.client.force_login(administrador)
+        respuesta = self.client.post(
+            reverse('gestion_bloqueos'), {'username': 'ana'}, follow=True
+        )
+
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.is_active)
+        self.assertContains(respuesta, 'desbloqueada y reactivada')
+
+
+class HardeningTest(BaseTest):
+    def test_secretaria_no_puede_gestionar_usuarios(self):
+        self._login(grupo='Secretaria')
+        response = self.client.get(reverse('menu_admin'))
+        self.assertRedirects(response, reverse('home'))
+
+    def test_admin_puede_gestionar_usuarios(self):
+        self._login(grupo='Administracion')
+        self.assertEqual(self.client.get(reverse('menu_admin')).status_code, 200)
+
+    def test_axes_cooloff_es_finito(self):
+        self.assertEqual(settings.AXES_COOLOFF_TIME, timedelta(minutes=15))
+
+    def test_referrer_policy_presente(self):
+        response = self.client.get(reverse('login'))
+        self.assertEqual(
+            response['Referrer-Policy'], 'strict-origin-when-cross-origin'
+        )
+
+    def test_csv_export_sanea_formulas(self):
+        self._login(grupo='Administracion')
+        self._crear_paciente(nombre='=SUM(1+1)')
+        response = self.client.get(reverse('exportar_pacientes_csv'))
+        self.assertIn(b"'=SUM(1+1)", response.content)
+
+class HTTPEmailBackendTest(TestCase):
+    """El envio por HTTPS evita los puertos SMTP bloqueados por la red."""
+
+    @override_settings(
+        EMAIL_API_PROVIDER='brevo',
+        EMAIL_API_KEY='clave-de-prueba',
+        EMAIL_API_TIMEOUT=5,
+        DEFAULT_FROM_EMAIL='IPP - IUTAG <no-reply@ejemplo.com>',
+    )
+    @patch('pacientes.email_backends.urllib.request.urlopen')
+    def test_brevo_envia_por_https(self, mock_urlopen):
+        import json
+        from django.core.mail import EmailMultiAlternatives
+        from pacientes.email_backends import HTTPEmailBackend
+
+        respuesta = mock_urlopen.return_value.__enter__.return_value
+        respuesta.status = 201
+        respuesta.read.return_value = b'{"messageId": "123"}'
+
+        mensaje = EmailMultiAlternatives(
+            'Codigo de desbloqueo',
+            'Tu codigo es IPP-ABCD-EFGH',
+            'IPP - IUTAG <no-reply@ejemplo.com>',
+            ['destino@ejemplo.com'],
+        )
+        mensaje.attach_alternative('<p>Tu codigo es IPP-ABCD-EFGH</p>', 'text/html')
+
+        enviados = HTTPEmailBackend().send_messages([mensaje])
+
+        self.assertEqual(enviados, 1)
+        peticion = mock_urlopen.call_args[0][0]
+        self.assertEqual(peticion.full_url, 'https://api.brevo.com/v3/smtp/email')
+        self.assertEqual(peticion.get_header('Api-key'), 'clave-de-prueba')
+        payload = json.loads(peticion.data.decode('utf-8'))
+        self.assertEqual(payload['subject'], 'Codigo de desbloqueo')
+        self.assertEqual(payload['to'], [{'email': 'destino@ejemplo.com'}])
+        self.assertEqual(payload['sender']['email'], 'no-reply@ejemplo.com')
+        self.assertEqual(payload['htmlContent'], '<p>Tu codigo es IPP-ABCD-EFGH</p>')
+        self.assertIn('IPP-ABCD-EFGH', payload['textContent'])
+
+    @override_settings(EMAIL_API_PROVIDER='brevo', EMAIL_API_KEY='')
+    def test_sin_clave_api_falla_con_mensaje_claro(self):
+        from django.core.mail import EmailMessage
+        from pacientes.email_backends import HTTPEmailBackend
+
+        mensaje = EmailMessage('Asunto', 'Texto', to=['destino@ejemplo.com'])
+        with self.assertRaisesMessage(ValueError, 'EMAIL_API_KEY no está configurada'):
+            HTTPEmailBackend().send_messages([mensaje])
+
+class GmailWebAppBackendTest(TestCase):
+    """Gmail por HTTPS mediante un Web App de Google Apps Script."""
+
+    @override_settings(
+        GMAIL_WEBAPP_URL='https://script.google.com/macros/s/abc/exec',
+        GMAIL_WEBAPP_TOKEN='token-de-prueba',
+        GMAIL_WEBAPP_TIMEOUT=5,
+        DEFAULT_FROM_EMAIL='IPP - IUTAG <coello@ejemplo.com>',
+    )
+    @patch('pacientes.email_backends.urllib.request.urlopen')
+    def test_envia_por_webapp_de_gmail(self, mock_urlopen):
+        import json
+        from django.core.mail import EmailMultiAlternatives
+        from pacientes.email_backends import GmailWebAppBackend
+
+        respuesta = mock_urlopen.return_value.__enter__.return_value
+        respuesta.read.return_value = b'{"ok": true}'
+
+        mensaje = EmailMultiAlternatives(
+            'Codigo de desbloqueo',
+            'Tu codigo es IPP-ABCD-EFGH',
+            'IPP - IUTAG <coello@ejemplo.com>',
+            ['destino@ejemplo.com'],
+        )
+        mensaje.attach_alternative('<p>Tu codigo es IPP-ABCD-EFGH</p>', 'text/html')
+
+        enviados = GmailWebAppBackend().send_messages([mensaje])
+
+        self.assertEqual(enviados, 1)
+        peticion = mock_urlopen.call_args[0][0]
+        self.assertEqual(
+            peticion.full_url, 'https://script.google.com/macros/s/abc/exec'
+        )
+        payload = json.loads(peticion.data.decode('utf-8'))
+        self.assertEqual(payload['token'], 'token-de-prueba')
+        self.assertEqual(payload['to'], ['destino@ejemplo.com'])
+        self.assertEqual(payload['subject'], 'Codigo de desbloqueo')
+        self.assertEqual(payload['html'], '<p>Tu codigo es IPP-ABCD-EFGH</p>')
+        self.assertEqual(payload['fromName'], 'IPP - IUTAG')
+
+    @override_settings(GMAIL_WEBAPP_URL='', GMAIL_WEBAPP_TOKEN='')
+    def test_sin_configuracion_falla_con_mensaje_claro(self):
+        from django.core.mail import EmailMessage
+        from pacientes.email_backends import GmailWebAppBackend
+
+        mensaje = EmailMessage('Asunto', 'Texto', to=['destino@ejemplo.com'])
+        with self.assertRaisesMessage(ValueError, 'GMAIL_WEBAPP_URL'):
+            GmailWebAppBackend().send_messages([mensaje])
+
+    @override_settings(
+        GMAIL_WEBAPP_URL='https://script.google.com/macros/s/abc/exec',
+        GMAIL_WEBAPP_TOKEN='token-de-prueba',
+    )
+    @patch('pacientes.email_backends.urllib.request.urlopen')
+    def test_respuesta_no_ok_lanza_error(self, mock_urlopen):
+        from django.core.mail import EmailMessage
+        from pacientes.email_backends import GmailWebAppBackend
+
+        respuesta = mock_urlopen.return_value.__enter__.return_value
+        respuesta.read.return_value = b'{"ok": false, "error": "No autorizado"}'
+        mensaje = EmailMessage('Asunto', 'Texto', to=['destino@ejemplo.com'])
+
+        with self.assertRaisesMessage(RuntimeError, 'No autorizado'):
+            GmailWebAppBackend().send_messages([mensaje])
+
+
+class DesbloqueoPorPreguntasTest(BaseTest):
+    """El desbloqueo usa los ids de RespuestaSeguridad guardados en sesión."""
+
+    def setUp(self):
+        super().setUp()
+        self.usuario = User.objects.create_user(
+            username='ana',
+            email='ana@ejemplo.com',
+            password='Abc123!@#$%xyz78',
+        )
+        self.usuario.is_active = False
+        self.usuario.save(update_fields=['is_active'])
+        for pregunta in PreguntaSeguridad.objects.filter(activa=True)[:2]:
+            RespuestaSeguridad.crear_o_actualizar(
+                self.usuario, pregunta, 'mi respuesta'
+            )
+
+    def _pedir_preguntas(self):
+        respuesta = self.client.post(
+            reverse('desbloqueo_preguntas_solicitar'), {'identifier': 'ana'}
+        )
+        self.assertRedirects(respuesta, reverse('desbloqueo_preguntas_verificar'))
+        return self.client.session['desbloqueo_preguntas_ids']
+
+    def test_pagina_muestra_requisitos_en_vivo(self):
+        self._pedir_preguntas()
+
+        respuesta = self.client.get(reverse('desbloqueo_preguntas_verificar'))
+
+        self.assertContains(respuesta, 'Al menos 16 caracteres')
+        self.assertContains(respuesta, 'actualizarRequisitos()')
+
+    def test_respuestas_correctas_desbloquean_la_cuenta(self):
+        ids = self._pedir_preguntas()
+        datos = {f'respuesta[{pid}]': 'mi respuesta' for pid in ids}
+
+        respuesta = self.client.post(
+            reverse('desbloqueo_preguntas_verificar'), datos
+        )
+
+        self.assertRedirects(respuesta, reverse('login'))
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.is_active)
+        self.assertTrue(self.usuario.check_password('Abc123!@#$%xyz78'))
+
+    def test_desbloqueo_cambia_password_si_se_escribe_una_nueva(self):
+        ids = self._pedir_preguntas()
+        datos = {f'respuesta[{pid}]': 'mi respuesta' for pid in ids}
+        datos.update({
+            'nueva_password1': 'NuevaClave!@#$%abcd2026',
+            'nueva_password2': 'NuevaClave!@#$%abcd2026',
+        })
+
+        respuesta = self.client.post(
+            reverse('desbloqueo_preguntas_verificar'), datos
+        )
+
+        self.assertRedirects(respuesta, reverse('login'))
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.is_active)
+        self.assertTrue(self.usuario.check_password('NuevaClave!@#$%abcd2026'))
+
+    def test_desbloqueo_no_cambia_password_si_se_deja_vacia(self):
+        ids = self._pedir_preguntas()
+        datos = {f'respuesta[{pid}]': 'mi respuesta' for pid in ids}
+        datos.update({'nueva_password1': '', 'nueva_password2': ''})
+
+        respuesta = self.client.post(
+            reverse('desbloqueo_preguntas_verificar'), datos
+        )
+
+        self.assertRedirects(respuesta, reverse('login'))
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.check_password('Abc123!@#$%xyz78'))
+
+    def test_password_debil_no_desbloquea_la_cuenta(self):
+        ids = self._pedir_preguntas()
+        datos = {f'respuesta[{pid}]': 'mi respuesta' for pid in ids}
+        datos.update({'nueva_password1': 'corta', 'nueva_password2': 'corta'})
+
+        respuesta = self.client.post(
+            reverse('desbloqueo_preguntas_verificar'), datos
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, 'al menos 16 caracteres')
+        self.usuario.refresh_from_db()
+        self.assertFalse(self.usuario.is_active)
+        self.assertTrue(self.usuario.check_password('Abc123!@#$%xyz78'))
+
+    def test_respuesta_incorrecta_muestra_intentos_restantes(self):
+        ids = self._pedir_preguntas()
+        datos = {f'respuesta[{pid}]': 'incorrecta' for pid in ids}
+
+        respuesta = self.client.post(
+            reverse('desbloqueo_preguntas_verificar'), datos
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, 'Respuestas incorrectas. Te quedan 2 intentos.')
+        self.usuario.refresh_from_db()
+        self.assertFalse(self.usuario.is_active)

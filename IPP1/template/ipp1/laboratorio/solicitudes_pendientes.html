@@ -90,16 +90,16 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Resultado del Examen</label>
-                        <textarea name="resultado" class="uiverse-input form-control" rows="4" placeholder="Describa los resultados obtenidos..."></textarea>
+                        <textarea name="resultado" class="uiverse-input form-control" rows="4" maxlength="2000" required placeholder="Describa los resultados obtenidos..."></textarea>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Costo</label>
-                            <input type="number" name="costo" class="uiverse-input form-control" step="0.01" min="0" placeholder="0.00">
+                            <input type="number" name="costo" class="uiverse-input form-control" step="0.01" min="0" placeholder="0.00" autocomplete="off">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Bioanalista</label>
-                            <input type="text" name="bioanalista" class="uiverse-input form-control" placeholder="Nombre del bioanalista">
+                            <input type="text" name="bioanalista" class="uiverse-input form-control" maxlength="100" placeholder="Nombre del bioanalista">
                         </div>
                     </div>
                 </div>

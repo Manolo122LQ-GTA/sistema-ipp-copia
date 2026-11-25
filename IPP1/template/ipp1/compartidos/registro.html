@@ -51,7 +51,7 @@
                         </div>
                         <!-- NOMBRE DE USUARIO -->
                         <div style="flex:1;">
-                            <input type="text" name="username" class="input" placeholder="Nombre de usuario" required value="{{ request.POST.username }}" autocomplete="off">
+                            <input type="text" name="username" class="input" placeholder="Nombre de usuario" required maxlength="150" value="{{ request.POST.username }}" autocomplete="off">
                         </div>
                     </div>
 
@@ -59,12 +59,12 @@
                     <div style="display:flex; gap:12px; margin-bottom:16px;">
                         <!-- CONTRASEÑA CON MINIMO 16 CARACTERES -->
                         <div style="flex:1; position:relative;">
-                            <input type="password" name="password" maxlength="16" minlenght="16" id="id_password" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;" autocomplete="new-password">
+                            <input type="password" name="password" maxlength="128" minlength="16" id="id_password" class="input" placeholder="Contraseña" required oninput="validarPassword()" style="padding-right: 40px;" autocomplete="new-password">
                             <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
                         </div>
                         <!-- CONFIRMAR LA CONTRASEÑA ESCRITA -->
                         <div style="flex:1; position:relative;">
-                            <input type="password" name="password2" maxlength="16" minlenght="16" id="id_password2" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;" autocomplete="new-password">
+                            <input type="password" name="password2" maxlength="128" minlength="16" id="id_password2" class="input" placeholder="Confirmar Contraseña" required style="padding-right: 40px;" autocomplete="new-password">
                             <i class="bi bi-eye-slash toggle-password" onclick="togglePassword(this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;"></i>
                         </div>
                     </div>
@@ -82,7 +82,7 @@
                     <!-- CORREO ELECTRONICO Y SELECCION DE ROL LADO A LADO -->
                     <div style="display:flex; gap:12px; margin-bottom:24px;">
                         <div style="flex:1;">
-                            <input type="email" name="email" class="input" placeholder="Correo Electrónico" required value="{{ request.POST.email }}">
+                            <input type="email" name="email" class="input" placeholder="Correo Electrónico" required value="{{ request.POST.email }}" autocomplete="off">
                         </div>
                         <div style="flex:1;">
                             <select name="rol" class="input" required>
@@ -116,8 +116,9 @@ function validarPassword() {
     var pwd = document.getElementById('id_password').value;
     var req = function(id, cond) {
         var el = document.getElementById(id);
+        if (!el.dataset.texto) { el.dataset.texto = el.textContent.substring(2); }
         el.className = cond ? 'text-success' : 'text-danger';
-        el.innerHTML = (cond ? '✓' : '✗') + ' ' + el.innerHTML.substring(2);
+        el.textContent = (cond ? '✓' : '✗') + ' ' + el.dataset.texto;
     };
     req('req-long', pwd.length >= 16);
     req('req-mayus', /[A-Z]/.test(pwd));

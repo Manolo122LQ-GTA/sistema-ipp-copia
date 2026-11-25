@@ -21,7 +21,7 @@
             {% csrf_token %}
             <div class="mb-3">
                 <label class="form-label fw-semibold">Archivo Excel</label>
-                <input type="file" name="archivo" class="form-control uiverse-input" accept=".xlsx,.xls" required>
+                <input type="file" name="archivo" class="form-control uiverse-input" accept=".xlsx" required autocomplete="off">
                 {% if modo == 'Gastos' %}
                 <div class="form-text">Formato: columnas <strong>Cédula, Concepto, Monto, Fecha (dd/mm/aaaa), Factura</strong>. El gasto se asocia a la póliza activa del paciente. La primera fila debe contener los encabezados.</div>
                 {% else %}

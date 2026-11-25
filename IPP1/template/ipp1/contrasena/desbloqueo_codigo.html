@@ -1,0 +1,88 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="x-apple-disable-message-reformatting">
+    <title>Código de desbloqueo — IPP IUTAG</title>
+</head>
+<body style="margin:0; padding:0; width:100%; background-color:#eef3f7; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
+        Tu código de desbloqueo del Sistema IPP-IUTAG es {{ codigo }}.
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:#eef3f7; border-collapse:collapse;">
+        <tr>
+            <td align="center" style="padding:28px 12px;">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px; background-color:#ffffff; border-collapse:collapse; border-radius:14px; overflow:hidden; box-shadow:0 4px 16px rgba(20,50,80,0.08);">
+
+                    <tr>
+                        <td align="center" bgcolor="#ffffff" style="padding:24px 24px 16px; background-color:#ffffff;">
+                            <img src="{{ protocol }}://{{ domain }}{% static 'img/ipp_logo.png' %}"
+                                 width="180" alt="IPP — Instituto de Perfeccionamiento Profesional"
+                                 style="display:block; width:180px; max-width:60%; height:auto; border:0; outline:none; text-decoration:none;">
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td bgcolor="#2b7a62" style="background-color:#2b7a62; background:linear-gradient(135deg,#2c6e9c 0%,#2b7a62 100%); padding:26px 32px; text-align:center;">
+                            <p style="margin:0 0 8px; font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:700; letter-spacing:1.6px; text-transform:uppercase; color:#d9ecf8;">
+                                Sistema IPP · IUTAG
+                            </p>
+                            <h1 style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:25px; line-height:1.25; font-weight:700; color:#ffffff;">
+                                Código de desbloqueo
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding:32px 32px 8px; font-family:Arial,Helvetica,sans-serif; font-size:15px; line-height:1.6; color:#33475b;">
+                            <p style="margin:0 0 16px;">
+                                Hola <strong style="color:#1b2f42;">{{ usuario }}</strong>,
+                            </p>
+                            <p style="margin:0 0 24px;">
+                                Recibimos una solicitud para desbloquear tu cuenta en el
+                                <strong style="color:#1b2f42;">Sistema IPP-IUTAG</strong>. Introduce este código en la pantalla de desbloqueo:
+                            </p>
+
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                                <tr>
+                                    <td align="center" bgcolor="#f4f7fa" style="background-color:#f4f7fa; border:2px solid #2c6e9c; border-radius:10px; padding:22px 12px;">
+                                        <span style="font-family:Courier New,monospace; font-size:30px; font-weight:700; letter-spacing:8px; color:#1b2f42;">{{ formato_codigo }}</span>
+                                        <span style="display:none; font-family:Courier New,monospace; font-size:12px; color:#555;">{{ codigo }}</span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin:22px 0 10px; font-size:12px; color:#6b7c8d;">
+                                También puedes copiarlo desde aquí:
+                            </p>
+                            <div style="margin:0 0 24px; padding:12px 14px; background-color:#f4f7fa; border:1px solid #dde6ee; border-radius:8px; font-family:Courier New,monospace; font-size:13px; color:#2c6e9c;">
+                                {{ codigo }}
+                            </div>
+
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                                <tr>
+                                    <td style="background-color:#fff8e6; border-left:3px solid #f0a928; border-radius:6px; padding:14px 16px; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:1.6; color:#7a5a12;">
+                                        <strong>Vence en {{ vigencia_minutos }} minutos.</strong> Solo sirve para desbloquear la cuenta;
+                                        no cambia tu contraseña. Si no solicitaste este código, ignora este correo.
+                                        Después de 3 intentos fallidos la cuenta se bloquea y solo un administrador puede recuperarla.
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td align="center" bgcolor="#f4f7fa" style="background-color:#f4f7fa; padding:20px 24px; border-top:1px solid #e2e9f0; font-family:Arial,Helvetica,sans-serif; font-size:11px; line-height:1.6; color:#7d8b99;">
+                            Sistema IPP-IUTAG · Instituto de Perfeccionamiento Profesional<br>
+                            Correo automático de seguridad · © {% now "Y" %}
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

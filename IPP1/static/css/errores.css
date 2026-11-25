@@ -1,0 +1,127 @@
+/* ===== PAGINAS DE ERROR 400 / 403 / 404 / 500 ===== */
+html.error-page, body.error-page { height: 100%; margin: 0; }
+
+body.error-page {
+    background: #2c6e9c;
+    background: linear-gradient(135deg, #1b4965 0%, #2c6e9c 45%, #2b7a62 100%);
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    color: #212529;
+}
+
+.error-shell {
+    width: 100%;
+    max-width: 560px;
+    padding: 2.5rem 2.25rem;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 22px;
+    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
+    text-align: center;
+    animation: error-in 0.35s ease-out;
+}
+
+@keyframes error-in {
+    from { opacity: 0; transform: translateY(14px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+}
+
+.error-logo {
+    width: 140px;
+    height: auto;
+    margin-bottom: 1rem;
+    opacity: 0.95;
+}
+
+.error-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #2c6e9c, #2b7a62);
+    color: #fff;
+    font-size: 1.8rem;
+    box-shadow: 0 8px 20px rgba(44, 110, 156, 0.28);
+}
+
+.error-code {
+    font-size: clamp(3.5rem, 12vw, 5.5rem);
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: -3px;
+    margin: 0 0 0.5rem;
+    background: linear-gradient(90deg, #2c6e9c, #2b7a62);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.error-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.error-message {
+    color: #5c6773;
+    font-size: 0.98rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.error-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    justify-content: center;
+}
+
+.error-actions .btn {
+    border-radius: 999px;
+    padding: 0.65rem 1.4rem;
+    font-weight: 600;
+}
+
+.error-actions .btn-primary {
+    background: #2c6e9c;
+    border-color: #2c6e9c;
+}
+
+.error-actions .btn-primary:hover,
+.error-actions .btn-primary:focus {
+    background: #245b80;
+    border-color: #245b80;
+}
+
+.error-actions .btn-outline-primary {
+    color: #2c6e9c;
+    border-color: #2c6e9c;
+}
+
+.error-actions .btn-outline-primary:hover,
+.error-actions .btn-outline-primary:focus {
+    background: #2c6e9c;
+    color: #fff;
+}
+
+.error-hint {
+    font-size: 0.85rem;
+    color: #7a8590;
+    margin: 1.25rem 0 0;
+}
+
+@media (max-width: 420px) {
+    .error-shell { padding: 2rem 1.25rem; }
+    .error-actions { flex-direction: column; }
+    .error-actions .btn { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .error-shell { animation: none; }
+}
