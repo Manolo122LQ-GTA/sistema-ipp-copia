@@ -1,4 +1,4 @@
-﻿{% load static %}
+{% load static %}
 <!doctype html>
 <html lang="es">
 <head>
@@ -15,7 +15,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'home' %}">{% block navbar_brand %}Sistema IPP{% endblock %}</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Alternar navegación">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -72,7 +72,7 @@
                 <ul class="navbar-nav align-items-center">
                     {% if user.is_authenticated %}
                         <li class="nav-item dropdown">
-                            <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown">
+                            <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-label="Notificaciones">
                                 <i class="bi bi-bell fs-5"></i>
                                 {% if notificaciones_count > 0 %}
                                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: .6rem;">
@@ -108,7 +108,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <form method="post" action="{% url 'logout' %}" class="d-inline" class="m-0" onsubmit="return confirm('¿Estás seguro de que deseas cerrar sesión en el Sistema IPP?');">
+                            <form method="post" action="{% url 'logout' %}" class="d-inline m-0" onsubmit="return confirm('¿Estás seguro de que deseas cerrar sesión en el Sistema IPP?');">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-link nav-link" style="display: inline; cursor: pointer;">Cerrar Sesión</button>
                             </form>

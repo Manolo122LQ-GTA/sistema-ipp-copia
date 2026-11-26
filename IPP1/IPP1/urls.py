@@ -28,6 +28,7 @@ urlpatterns = [
 
     # El login (Usamos tu vista personalizada de views.py)
     path('', views.login_view, name='login'),
+    path('verificar-2fa/', views.verificar_2fa_login, name='verificar_2fa_login'),
     path('logout/', views.logout_view, name='logout'),
 
     # El registro :v
@@ -86,6 +87,9 @@ urlpatterns = [
     path('administracion/usuarios-pendientes/', views.usuarios_pendientes, name='usuarios_pendientes'),
     path('administracion/aprobar-usuario/<int:user_id>/', views.aprobar_usuario, name='aprobar_usuario'),
     path('administracion/bloqueos/', views.gestion_bloqueos, name='gestion_bloqueos'),
+    path('administracion/usuario/<int:user_id>/preguntas/', views.admin_preguntas_usuario, name='admin_preguntas_usuario'),
+    path('administracion/usuario/<int:user_id>/eliminar/', views.admin_eliminar_usuario, name='admin_eliminar_usuario'),
+    path('administracion/respaldo/', views.respaldo_bd, name='respaldo_bd'),
 
     # Póliza
     path('poliza/', views.poliza_inicio, name='poliza_inicio'),

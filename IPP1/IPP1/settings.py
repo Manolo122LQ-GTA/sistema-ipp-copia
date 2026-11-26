@@ -230,6 +230,17 @@ STORAGES = {
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
+FORCE_LOGIN_2FA = os.getenv('FORCE_LOGIN_2FA', '0') == '1'
+# Ítem 18: El desbloqueo de cuentas está restringido únicamente al administrador.
+ALLOW_SELF_UNLOCK = os.getenv('ALLOW_SELF_UNLOCK', '0') == '1'
+
+# CACHÉ EN MEMORIA (optimiza consultas repetidas y rate-limiting/sesiones)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'ipp-locmem-cache',
+    }
+}
 
 # Configuración de django-axes (bloqueo por intentos de login)
 AUTHENTICATION_BACKENDS = [

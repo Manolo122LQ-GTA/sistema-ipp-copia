@@ -35,4 +35,5 @@ Thumbs.db
 # RESPLADO BASE DE DATOS (TEMPORTAL)
 # Respaldos de base de datos (contienen datos de pacientes)
 IPP1/respaldos/
+respaldos/
 *.sqlite3

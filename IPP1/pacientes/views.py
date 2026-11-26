@@ -1,4 +1,5 @@
 # MODELOS IMPORTADOS EN VISTAS
+import hashlib
 from django.contrib.auth import get_user_model
 from decimal import Decimal
 from django.http import HttpResponse, Http404
@@ -15,7 +16,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 from django.conf import settings
 from django.core.cache import cache
 from .models import Paciente, SolicitudSecretaria, SolicitudLaboratorio, ExamenLaboratorio, PlanSalud, Poliza, GastoPaciente, Familiar, TarifaEspecialidad, Medicamento, Receta, Notificacion, LogActividad, Factura, PerfilUsuario, TasaCambio, PreguntaSeguridad, RespuestaSeguridad
-from .forms import PacienteForm, LoginForm, PerfilForm, SolicitudSecretariaForm, SolicitudSecretariaRefinarForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm, TasaCambioForm, RegistroUsuarioForm, GestionBloqueosForm, ExamenLaboratorioForm, FacturaGenerarForm, MarcarPagoForm, PasswordResetFormConError, RespuestasSeguridadForm
+from .forms import PacienteForm, LoginForm, PerfilForm, SolicitudSecretariaForm, SolicitudSecretariaRefinarForm, SolicitudLaboratorioForm, ProcesarLaboratorioForm, TarifaEspecialidadForm, MedicamentoForm, RecetaForm, PlanSaludForm, PolizaForm, GastoPacienteForm, FamiliarForm, TasaCambioForm, RegistroUsuarioForm, GestionBloqueosForm, ExamenLaboratorioForm, FacturaGenerarForm, MarcarPagoForm, PasswordResetFormConError, RespuestasSeguridadForm, AdminPreguntasSeguridadForm, ConfirmarPasswordAdminForm, Verificar2FAForm
 from .seguridad import (
     fila_csv_segura, proteger_exportacion_excel, validar_archivo_excel,
     iterar_filas_excel, monto_no_negativo, MAX_EXCEL_ROWS,
@@ -243,6 +244,18 @@ class PasswordResetViewConLog(PasswordResetView):
                 'No hay una cuenta con ese correo electrónico.')
             return self.form_invalid(form)
 
+        limite_axes = getattr(settings, 'AXES_FAILURE_LIMIT', 3)
+        bloqueado_axes = AccessAttempt.objects.filter(
+            username=usuario.username,
+            failures_since_start__gte=limite_axes,
+        ).exists()
+        if not getattr(settings, 'ALLOW_SELF_UNLOCK', False) and (not usuario.is_active or bloqueado_axes):
+            messages.error(
+                self.request,
+                'Tu cuenta está bloqueada o inactiva. Contacta al administrador para desbloquearla.'
+            )
+            return self.form_invalid(form)
+
         # Código y sesión
         codigo = _generar_codigo_desbloqueo()
         ahora = timezone.now()
@@ -254,6 +267,7 @@ class PasswordResetViewConLog(PasswordResetView):
         ).isoformat(timespec='seconds')
         self.request.session['desbloqueo_ultimo_envio'] = ahora.isoformat(timespec='seconds')
         self.request.session['desbloqueo_intentos'] = 0
+        self.request.session['desbloqueo_origen'] = 'password_reset'
 
         # Enviar correo
         try:
@@ -290,6 +304,7 @@ CLAVES_SESION_DESBLOQUEO = (
     'desbloqueo_expira',
     'desbloqueo_ultimo_envio',
     'desbloqueo_intentos',
+    'desbloqueo_origen',
 )
 
 
@@ -336,6 +351,8 @@ def _enviar_codigo_desbloqueo(correo, username, codigo):
 
 def desbloqueo_solicitar(request):
     """Paso 1: identificar la cuenta y enviar el código por correo."""
+    if not getattr(settings, 'ALLOW_SELF_UNLOCK', False):
+        return render(request, 'ipp1/errores/403.html', status=403)
     contexto = {'identifier': ''}
 
     if request.method == 'POST':
@@ -393,15 +410,18 @@ def desbloqueo_solicitar(request):
     return render(request, 'ipp1/contrasena/desbloqueo_solicitar.html', contexto)
 
 
-def _cambiar_password_opcional_al_desbloquear(request, username):
-    """Cambia la clave solo si el usuario escribió una nueva.
+def _cambiar_password_opcional_al_desbloquear(request, username, obligatoria=False):
+    """Cambia la clave al verificar el código.
 
-    Devuelve (sufijo_mensaje, error). Con los campos vacíos conserva la clave
-    anterior, tal como pide el flujo de desbloqueo.
+    Si ``obligatoria`` es False (desbloqueo), dejar los campos vacíos conserva
+    la clave anterior. Si ``obligatoria`` es True (recuperación de clave),
+    exige ingresar y confirmar una nueva contraseña.
     """
     nueva = request.POST.get('nueva_password1', '')
     confirmar = request.POST.get('nueva_password2', '')
     if not nueva.strip() and not confirmar.strip():
+        if obligatoria:
+            return None, 'Debes ingresar y confirmar una nueva contraseña.'
         return '', None
 
     if nueva != confirmar:
@@ -423,9 +443,16 @@ def _cambiar_password_opcional_al_desbloquear(request, username):
 
 def desbloqueo_verificar(request):
     """Paso 2: validar el código; correcto desbloquea, 3 fallos bloquean."""
+    permitido = (
+        getattr(settings, 'ALLOW_SELF_UNLOCK', False)
+        or request.session.get('desbloqueo_origen') == 'password_reset'
+    )
+    if not permitido:
+        return render(request, 'ipp1/errores/403.html', status=403)
+    es_recuperacion = request.session.get('desbloqueo_origen') == 'password_reset'
     if not request.session.get('desbloqueo_codigo'):
-        messages.error(request, 'Solicita un código de desbloqueo primero.')
-        return redirect('desbloqueo_solicitar')
+        messages.error(request, 'Solicita un código primero.')
+        return redirect('password_reset' if es_recuperacion else 'desbloqueo_solicitar')
 
     username = request.session.get('desbloqueo_usuario', '')
     correo = request.session.get('desbloqueo_correo', '')
@@ -433,6 +460,7 @@ def desbloqueo_verificar(request):
     contexto = {
         'usuario': username,
         'correo': correo,
+        'es_recuperacion': es_recuperacion,
         'intentos_restantes': DESBLOQUEO_MAX_INTENTOS
         - request.session.get('desbloqueo_intentos', 0),
     }
@@ -440,7 +468,7 @@ def desbloqueo_verificar(request):
     if not expira or timezone.now() >= expira:
         _limpiar_sesion_desbloqueo(request)
         messages.error(request, 'El código venció. Solicita uno nuevo.')
-        return redirect('desbloqueo_solicitar')
+        return redirect('password_reset' if es_recuperacion else 'desbloqueo_solicitar')
 
     if request.method == 'POST':
         codigo = re.sub(r'[^A-Za-z0-9]', '', request.POST.get('codigo', '')).upper()
@@ -452,16 +480,24 @@ def desbloqueo_verificar(request):
         codigo = codigo[:8]
 
         if codigo == request.session.get('desbloqueo_codigo', ''):
-            sufijo, error = _cambiar_password_opcional_al_desbloquear(request, username)
+            sufijo, error = _cambiar_password_opcional_al_desbloquear(
+                request, username, obligatoria=es_recuperacion
+            )
             if error:
                 messages.error(request, error)
                 return render(request, 'ipp1/contrasena/desbloqueo_verificar.html', contexto)
             AccessAttempt.objects.filter(username=username).update(failures_since_start=0)
             _limpiar_sesion_desbloqueo(request)
-            messages.success(
-                request,
-                'Cuenta desbloqueada. Ya puedes iniciar sesión.' + sufijo,
-            )
+            if es_recuperacion:
+                messages.success(
+                    request,
+                    'Contraseña actualizada. Ya puedes iniciar sesión.',
+                )
+            else:
+                messages.success(
+                    request,
+                    'Cuenta desbloqueada. Ya puedes iniciar sesión.' + sufijo,
+                )
             return redirect('login')
 
         intentos = request.session.get('desbloqueo_intentos', 0) + 1
@@ -536,6 +572,8 @@ def _buscar_usuario_desbloqueo(identifier):
 @never_cache
 def desbloqueo_preguntas_solicitar(request):
     """Paso 1: identificar la cuenta y cargar 2 preguntas de seguridad."""
+    if not getattr(settings, 'ALLOW_SELF_UNLOCK', False):
+        return render(request, 'ipp1/errores/403.html', status=403)
     contexto = {'identifier': ''}
 
     if request.method == 'POST':
@@ -577,6 +615,8 @@ def desbloqueo_preguntas_solicitar(request):
 @never_cache
 def desbloqueo_preguntas_verificar(request):
     """Paso 2: validar las 2 respuestas a las preguntas de seguridad."""
+    if not getattr(settings, 'ALLOW_SELF_UNLOCK', False):
+        return render(request, 'ipp1/errores/403.html', status=403)
     username = request.session.get('desbloqueo_usuario', '')
     ids_preguntas = request.session.get('desbloqueo_preguntas_ids', [])
     respuestas_guardadas = request.session.get('desbloqueo_preguntas_respuestas', [])
@@ -672,6 +712,158 @@ def desbloqueo_preguntas_verificar(request):
     return render(request, 'ipp1/contrasena/desbloqueo_preguntas_verificar.html', contexto)
 
 
+def _limpiar_sesion_2fa(request):
+    for clave in ('2fa_user_id', '2fa_codigo', '2fa_expira', '2fa_intentos', '2fa_next'):
+        request.session.pop(clave, None)
+
+
+def _enviar_codigo_2fa(correo, username, codigo):
+    """Envía el código OTP de 6 dígitos para el segundo factor de inicio de sesión."""
+    asunto = 'Código de verificación (2FA) - Sistema IPP-IUTAG'
+    cuerpo_texto = (
+        f'Hola {username},\n\n'
+        f'Tu código de verificación en dos pasos para iniciar sesión es: {codigo}\n'
+        f'Vence en 5 minutos.\n\n'
+        f'Si no intentaste iniciar sesión, cambia tu contraseña de inmediato.'
+    )
+    cuerpo_html = (
+        f'<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:20px;'
+        f'border:1px solid #e0e0e0;border-radius:10px;">'
+        f'<h3 style="color:#0d6efd;margin-top:0;">Verificación en dos pasos (2FA)</h3>'
+        f'<p>Hola <strong>{username}</strong>,</p>'
+        f'<p>Ingresa este código de un solo uso para completar tu inicio de sesión:</p>'
+        f'<div style="font-size:28px;font-weight:bold;letter-spacing:6px;text-align:center;'
+        f'background:#f1f5f9;padding:14px;border-radius:8px;color:#0f172a;margin:16px 0;">{codigo}</div>'
+        f'<p style="color:#64748b;font-size:13px;">Este código vence en 5 minutos. '
+        f'Si no solicitaste acceso, cambia tu contraseña.</p></div>'
+    )
+    mensaje = EmailMultiAlternatives(asunto, cuerpo_texto, settings.DEFAULT_FROM_EMAIL, [correo])
+    mensaje.attach_alternative(cuerpo_html, 'text/html')
+    mensaje.send()
+
+
+TRUSTED_2FA_COOKIE = 'ipp_2fa_device'
+TRUSTED_2FA_MAX_AGE = 30 * 24 * 60 * 60  # 30 días
+
+
+def _valor_dispositivo_2fa(usuario):
+    """Huella estable por usuario y contraseña actual para cookies de confianza."""
+    resumen_pw = hashlib.sha256((usuario.password or '').encode('utf-8')).hexdigest()[:12]
+    return f'{usuario.id}:{resumen_pw}'
+
+
+def _dispositivo_2fa_confiable(request, usuario):
+    """Devuelve True si el navegador posee una cookie firmada válida para este usuario."""
+    try:
+        valor = request.get_signed_cookie(
+            TRUSTED_2FA_COOKIE,
+            salt=f'2fa-device-{usuario.id}',
+            max_age=TRUSTED_2FA_MAX_AGE,
+        )
+    except Exception:
+        return False
+    return secrets.compare_digest(valor, _valor_dispositivo_2fa(usuario))
+
+
+def verificar_2fa_login(request):
+    """Segunda capa de autenticación: valida el código OTP enviado al correo."""
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    user_id = request.session.get('2fa_user_id')
+    codigo_guardado = request.session.get('2fa_codigo')
+    expira_raw = request.session.get('2fa_expira')
+
+    if not (user_id and codigo_guardado and expira_raw):
+        messages.warning(request, 'No hay una verificación 2FA pendiente. Inicia sesión nuevamente.')
+        return redirect('login')
+
+    usuario = User.objects.filter(pk=user_id, is_active=True).first()
+    if not usuario:
+        _limpiar_sesion_2fa(request)
+        messages.error(request, 'Usuario no válido o inactivo.')
+        return redirect('login')
+
+    expira = parse_datetime(expira_raw)
+    if not expira or timezone.now() > expira:
+        _limpiar_sesion_2fa(request)
+        messages.error(request, 'El código de verificación expiró. Inicia sesión nuevamente.')
+        return redirect('login')
+
+    if request.method == 'POST' and request.POST.get('accion') == 'reenviar':
+        nuevo_codigo = f'{secrets.randbelow(1000000):06d}'
+        try:
+            _enviar_codigo_2fa(usuario.email, usuario.username, nuevo_codigo)
+            request.session['2fa_codigo'] = nuevo_codigo
+            request.session['2fa_expira'] = (timezone.now() + timedelta(minutes=5)).isoformat()
+            request.session['2fa_intentos'] = 0
+            messages.success(request, f'Se reenvió un nuevo código a {usuario.email}.')
+        except Exception:
+            logger.exception('Error reenviando código 2FA para %s', usuario.username)
+            messages.error(request, 'No se pudo reenviar el código.')
+        return redirect('verificar_2fa_login')
+
+    form = Verificar2FAForm(request.POST or None)
+    intentos = int(request.session.get('2fa_intentos', 0))
+    intentos_restantes = max(0, 3 - intentos)
+
+    if request.method == 'POST' and form.is_valid():
+        codigo_ingresado = form.cleaned_data['codigo']
+        if secrets.compare_digest(codigo_ingresado, codigo_guardado):
+            next_url = request.session.get('2fa_next') or 'home'
+            recordar_presente = request.POST.get('recordar_dispositivo_present') == '1'
+            recordar = (not recordar_presente) or (request.POST.get('recordar_dispositivo') == '1')
+            _limpiar_sesion_2fa(request)
+            login(request, usuario, backend='django.contrib.auth.backends.ModelBackend')
+            perfil, _ = PerfilUsuario.objects.get_or_create(usuario=usuario, defaults={'aprobado': True})
+            perfil.session_key = request.session.session_key
+            perfil.save(update_fields=['session_key'])
+            LogActividad.objects.create(
+                usuario=usuario,
+                accion='Inicio de sesión exitoso (2FA verificado)',
+                modelo='User',
+                objeto_id=usuario.id,
+                ip_address=_obtener_ip_cliente(request),
+                detalle='Dispositivo recordado por 30 días' if recordar else 'Sin recordar dispositivo',
+            )
+            messages.success(request, f'Bienvenido, {usuario.username}.')
+            respuesta = redirect(next_url)
+            if recordar:
+                respuesta.set_signed_cookie(
+                    TRUSTED_2FA_COOKIE,
+                    _valor_dispositivo_2fa(usuario),
+                    salt=f'2fa-device-{usuario.id}',
+                    max_age=TRUSTED_2FA_MAX_AGE,
+                    httponly=True,
+                    samesite='Lax',
+                    secure=request.is_secure(),
+                )
+            return respuesta
+
+        intentos += 1
+        request.session['2fa_intentos'] = intentos
+        if intentos >= 3:
+            LogActividad.objects.create(
+                usuario=usuario,
+                accion='Verificación 2FA fallida (3 intentos)',
+                modelo='User',
+                objeto_id=usuario.id,
+            )
+            _limpiar_sesion_2fa(request)
+            messages.error(request, 'Excediste los 3 intentos de verificación 2FA. Inicia sesión nuevamente.')
+            return redirect('login')
+
+        intentos_restantes = 3 - intentos
+        messages.error(request, f'Código incorrecto. Te quedan {intentos_restantes} intento(s).')
+
+    return render(request, 'ipp1/compartidos/verificar_2fa.html', {
+        'form': form,
+        'correo_destino': usuario.email,
+        'username': usuario.username,
+        'intentos_restantes': intentos_restantes,
+    })
+
+
 # LOGIN
 # INICIO DE CODIGO DE LOGIN
 def login_view(request):
@@ -722,15 +914,60 @@ def login_view(request):
                     perfil.session_key = None
                     perfil.save(update_fields=['session_key'])
 
+                next_url = request.POST.get('next') or request.GET.get('next') or ''
+                if not _is_safe_redirect_url(next_url, allowed_hosts={request.get_host()}):
+                    next_url = 'home'
+
+                # SEGUNDO FACTOR DE AUTENTICACIÓN (2FA POR CORREO) SI ESTÁ HABILITADO
+                # El superusuario (admin) queda exento para evitar bloqueos con correos locales.
+                dispositivo_confiable = _dispositivo_2fa_confiable(request, usuario_autenticado)
+                requiere_2fa = (
+                    not usuario_autenticado.is_superuser
+                    and (perfil.autenticacion_2fa or getattr(settings, 'FORCE_LOGIN_2FA', False))
+                    and bool(usuario_autenticado.email)
+                    and not dispositivo_confiable
+                )
+                if requiere_2fa:
+                    codigo_2fa = f'{secrets.randbelow(1000000):06d}'
+                    try:
+                        _enviar_codigo_2fa(usuario_autenticado.email, usuario_autenticado.username, codigo_2fa)
+                    except Exception:
+                        logger.exception('Error enviando código 2FA para %s', usuario_autenticado.username)
+                        messages.error(
+                            request,
+                            'No se pudo enviar el código de verificación 2FA a tu correo. Intenta más tarde.'
+                        )
+                        return render(request, 'ipp1/compartidos/login.html', {'form': form})
+
+                    request.session['2fa_user_id'] = usuario_autenticado.id
+                    request.session['2fa_codigo'] = codigo_2fa
+                    request.session['2fa_expira'] = (timezone.now() + timedelta(minutes=5)).isoformat()
+                    request.session['2fa_intentos'] = 0
+                    request.session['2fa_next'] = next_url
+                    messages.info(request, f'Enviamos un código de verificación 2FA a {usuario_autenticado.email}.')
+                    return redirect('verificar_2fa_login')
+
                 login(request, usuario_autenticado)
 
                 # GUARDAR LA NUEVA SESIÓN ACTIVA EN EL PERFIL
                 perfil.session_key = request.session.session_key
                 perfil.save(update_fields=['session_key'])
-                
-                next_url = request.POST.get('next') or request.GET.get('next') or ''
-                if not _is_safe_redirect_url(next_url, allowed_hosts={request.get_host()}):
-                    next_url = 'home'
+
+                if usuario_autenticado.is_superuser:
+                    detalle_login = 'Superusuario (exento de 2FA)'
+                elif dispositivo_confiable:
+                    detalle_login = 'Dispositivo de confianza (2FA omitido)'
+                else:
+                    detalle_login = 'Autenticación estándar'
+
+                LogActividad.objects.create(
+                    usuario=usuario_autenticado,
+                    accion='Inicio de sesión exitoso',
+                    modelo='User',
+                    objeto_id=usuario_autenticado.id,
+                    ip_address=_obtener_ip_cliente(request),
+                    detalle=detalle_login,
+                )
                 return redirect(next_url)
 
             # CONTADOR DE INTENTOS FALLIDOS (AXES)
@@ -738,6 +975,18 @@ def login_view(request):
             fallos = intento.failures_since_start if intento else 0
             limite = getattr(settings, 'AXES_FAILURE_LIMIT', 3)
             restantes = max(0, limite - fallos)
+            LogActividad.objects.create(
+                usuario=usuario_obj,
+                accion='Intento de inicio de sesión fallido',
+                modelo='User',
+                objeto_id=usuario_obj.id,
+                ip_address=_obtener_ip_cliente(request),
+                detalle=(
+                    'Cuenta bloqueada por exceder intentos fallidos'
+                    if restantes <= 0
+                    else f'Contraseña incorrecta (intentos restantes: {restantes})'
+                ),
+            )
             if restantes <= 0:
                 messages.error(request, 'Cuenta bloqueada por exceder intentos fallidos. Contacte al administrador.')
             else:
@@ -762,6 +1011,13 @@ def logout_view(request):
     if hasattr(request.user, 'perfil'):
         request.user.perfil.session_key = None
         request.user.perfil.save()
+    _registrar_log(
+        request,
+        'Cierre de sesión',
+        'User',
+        request.user.id,
+        'Sesión cerrada por el usuario',
+    )
     logout(request)
     messages.success(request, "Has cerrado sesión exitosamente. ¡Vuelve pronto!")
     response = redirect('login')
@@ -897,11 +1153,16 @@ def perfil_usuario(request):
     preguntas_seguridad = list(
         PreguntaSeguridad.objects.filter(activa=True).order_by('orden')
     )
+    perfil, _ = PerfilUsuario.objects.get_or_create(
+        usuario=request.user,
+        defaults={'aprobado': True},
+    )
     password_form = PasswordChangeForm(request.user)
     form = PerfilForm(instance=request.user)
     seguridad_form = RespuestasSeguridadForm(
         usuario=request.user, preguntas=preguntas_seguridad
     )
+    form_2fa = ConfirmarPasswordAdminForm(operador=request.user)
 
     def contexto():
         return {
@@ -909,11 +1170,30 @@ def perfil_usuario(request):
             'password_form': password_form,
             'seguridad_form': seguridad_form,
             'preguntas_seguridad': preguntas_seguridad,
+            'perfil': perfil,
+            'form_2fa': form_2fa,
         }
 
     if request.method == 'POST':
+        accion_post = request.POST.get('accion')
+
+        if accion_post == 'toggle_2fa':
+            form_2fa = ConfirmarPasswordAdminForm(request.POST, operador=request.user)
+            if not request.user.email:
+                messages.error(request, 'Debes guardar un correo electrónico antes de activar la verificación en dos pasos (2FA).')
+                return render(request, 'ipp1/compartidos/perfil.html', contexto())
+            if form_2fa.is_valid():
+                perfil.autenticacion_2fa = not perfil.autenticacion_2fa
+                perfil.save(update_fields=['autenticacion_2fa'])
+                estado = 'activó' if perfil.autenticacion_2fa else 'desactivó'
+                _registrar_log(request, f'Usuario {estado} verificación en dos pasos (2FA)', 'PerfilUsuario', perfil.id)
+                messages.success(request, f'Verificación en dos pasos (2FA) {"activada" if perfil.autenticacion_2fa else "desactivada"} correctamente.')
+                return redirect('perfil_usuario')
+            messages.error(request, 'Contraseña incorrecta. No se modificó el estado de 2FA.')
+            return render(request, 'ipp1/compartidos/perfil.html', contexto())
+
         # El perfil tiene dos formularios: datos/contraseña y respuestas de seguridad.
-        if request.POST.get('accion') == 'seguridad':
+        if accion_post == 'seguridad':
             seguridad_form = RespuestasSeguridadForm(
                 request.POST,
                 usuario=request.user,
@@ -921,6 +1201,7 @@ def perfil_usuario(request):
             )
             if seguridad_form.is_valid():
                 cantidad = seguridad_form.save()
+                _registrar_log(request, f'Actualizó respuestas de seguridad ({cantidad})', 'User', request.user.id)
                 messages.success(
                     request,
                     f'Respuestas de seguridad actualizadas ({cantidad}).',
@@ -932,13 +1213,21 @@ def perfil_usuario(request):
         user = request.user
         form = PerfilForm(request.POST, instance=user)
 
-        # SI SE ESCRIBIO CUALQUIERA DE LOS TRES CAMPOS, SE INTENTA CAMBIAR LA CONTRASENA
+        # SE INTENTA CAMBIAR LA CLAVE SOLO SI SE LLENARON LOS CAMPOS DE NUEVA CONTRASEÑA
         intenta_cambiar_clave = any(
             request.POST.get(campo)
-            for campo in ('old_password', 'new_password1', 'new_password2')
+            for campo in ('new_password1', 'new_password2')
         )
         if intenta_cambiar_clave:
             password_form = PasswordChangeForm(user, request.POST)
+
+        # SI NO CAMBIA CLAVE PERO INGRESO CLAVE ACTUAL, VERIFICARLA INDEPENDIENTEMENTE
+        clave_actual_ingresada = request.POST.get('old_password', '').strip()
+        if not intenta_cambiar_clave and clave_actual_ingresada:
+            if not user.check_password(clave_actual_ingresada):
+                messages.error(request, 'La contraseña actual no es correcta.')
+                form = PerfilForm(request.POST, instance=user)
+                return render(request, 'ipp1/compartidos/perfil.html', contexto())
 
         # NO SE GUARDA NADA HASTA QUE LOS DOS FORMULARIOS SEAN VALIDOS
         perfil_valido = form.is_valid()
@@ -950,8 +1239,10 @@ def perfil_usuario(request):
                 password_form.save()
                 # MANTENER LA SESION ABIERTA DESPUES DE CAMBIAR LA CONTRASENA
                 update_session_auth_hash(request, user)
+                _registrar_log(request, 'Actualizó perfil y contraseña', 'User', user.id)
                 messages.success(request, 'Perfil y contraseña actualizados correctamente.')
             else:
+                _registrar_log(request, 'Actualizó datos del perfil', 'User', user.id)
                 messages.success(request, 'Perfil actualizado correctamente.')
             return redirect('perfil_usuario')
 
@@ -1616,8 +1907,16 @@ def menu_admin(request):
                 return True
         return False
 
-    usuarios = User.objects.all().exclude(is_superuser=True).prefetch_related('groups').order_by('id')
-    grupos = Group.objects.all()
+    usuarios = (
+        User.objects.all()
+        .exclude(is_superuser=True)
+        .prefetch_related('groups')
+        .annotate(total_respuestas=Count('respuestas_seguridad', distinct=True))
+        .order_by('id')
+    )
+    for nombre_rol in ROLES_PERMITIDOS_REGISTRO:
+        Group.objects.get_or_create(name=nombre_rol)
+    grupos = Group.objects.all().order_by('name')
 
     query = request.GET.get('q', '').strip()
     if query:
@@ -1700,6 +1999,126 @@ def menu_admin(request):
     })
 
 @login_required
+def admin_preguntas_usuario(request, user_id):
+    """Vista de Administración para configurar las 2 preguntas de seguridad de un usuario."""
+    if not _es_admin(request.user):
+        return render(request, 'ipp1/errores/403.html', status=403)
+
+    usuario_objetivo = get_object_or_404(User, pk=user_id)
+    if usuario_objetivo.is_superuser:
+        messages.error(request, 'No se pueden modificar las preguntas de un superusuario.')
+        return redirect('menu_admin')
+
+    respuestas_actuales = list(
+        RespuestaSeguridad.objects.filter(usuario=usuario_objetivo)
+        .select_related('pregunta')
+        .order_by('pregunta__orden')
+    )
+
+    form = AdminPreguntasSeguridadForm(request.POST or None)
+
+    if request.method == 'POST' and form.is_valid():
+        form.save(usuario_objetivo)
+        _registrar_log(
+            request,
+            f'Configuró preguntas de seguridad para {usuario_objetivo.username}',
+            'User',
+            usuario_objetivo.id,
+        )
+        messages.success(
+            request,
+            f'Preguntas de seguridad configuradas para {usuario_objetivo.username}.',
+        )
+        return redirect('menu_admin')
+
+    return render(request, 'ipp1/administracion/preguntas_usuario.html', {
+        'form': form,
+        'usuario_objetivo': usuario_objetivo,
+        'respuestas_actuales': respuestas_actuales,
+    })
+
+
+@login_required
+def admin_eliminar_usuario(request, user_id):
+    """Elimina un usuario solo tras verificar la contraseña actual del administrador."""
+    if not _es_admin(request.user):
+        return render(request, 'ipp1/errores/403.html', status=403)
+
+    usuario_objetivo = get_object_or_404(User, pk=user_id)
+    if usuario_objetivo.is_superuser or usuario_objetivo == request.user:
+        messages.error(request, 'No puedes eliminar la cuenta de un superusuario ni tu propia cuenta.')
+        return redirect('menu_admin')
+
+    form = ConfirmarPasswordAdminForm(request.POST or None, operador=request.user)
+    if request.method == 'POST' and form.is_valid():
+        username_eliminado = usuario_objetivo.username
+        id_eliminado = usuario_objetivo.id
+        email_eliminado = usuario_objetivo.email or '-'
+        _registrar_log(
+            request,
+            f'Eliminó al usuario {username_eliminado}',
+            'User',
+            id_eliminado,
+            f'Correo: {email_eliminado}. Confirmado con contraseña de administrador.',
+        )
+        usuario_objetivo.delete()
+        messages.success(request, f'Usuario "{username_eliminado}" eliminado correctamente.')
+        return redirect('menu_admin')
+
+    return render(request, 'ipp1/administracion/eliminar_usuario.html', {
+        'form': form,
+        'usuario_objetivo': usuario_objetivo,
+    })
+
+
+@login_required
+def respaldo_bd(request):
+    """Genera y descarga copias de seguridad JSON de la base de datos (solo Administración)."""
+    if not _es_admin(request.user):
+        return render(request, 'ipp1/errores/403.html', status=403)
+
+    import os
+    from .management.commands.respaldar_bd import generar_respaldo_json
+
+    respaldo_dir = settings.BASE_DIR / 'respaldos'
+    os.makedirs(respaldo_dir, exist_ok=True)
+    form = ConfirmarPasswordAdminForm(request.POST or None, operador=request.user)
+
+    if request.method == 'POST' and form.is_valid():
+        accion = request.POST.get('accion', 'generar')
+        ruta, contenido = generar_respaldo_json()
+        _registrar_log(
+            request,
+            f'Generó respaldo de base de datos: {ruta.name}',
+            'Database',
+            None,
+            f'Tamaño: {len(contenido)} bytes',
+        )
+        if accion == 'descargar':
+            respuesta = HttpResponse(contenido, content_type='application/json; charset=utf-8')
+            respuesta['Content-Disposition'] = f'attachment; filename="{ruta.name}"'
+            return respuesta
+        messages.success(request, f'Respaldo "{ruta.name}" guardado correctamente en el servidor.')
+        return redirect('respaldo_bd')
+
+    archivos = []
+    for nombre in sorted(os.listdir(respaldo_dir), reverse=True):
+        if nombre.endswith('.json'):
+            ruta_completa = respaldo_dir / nombre
+            stat = ruta_completa.stat()
+            archivos.append({
+                'nombre': nombre,
+                'tamano_kb': round(stat.st_size / 1024, 1),
+                'fecha': datetime.fromtimestamp(stat.st_mtime),
+            })
+
+    return render(request, 'ipp1/administracion/respaldo_bd.html', {
+        'form': form,
+        'archivos': archivos[:20],
+    })
+
+
+@login_required
 def saldos_admin(request):
     """Estatus y Saldos de Salud - lista de pacientes con saldo y afiliación."""
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
@@ -1758,10 +2177,129 @@ def reporte_admin(request):
 @login_required
 def ver_logs(request):
     if not (request.user.is_superuser or request.user.groups.filter(name='Administracion').exists()):
-        messages.error(request, 'No tienes permisos para acceder a esta seccion.')
-        return redirect('home')
-    logs = LogActividad.objects.select_related('usuario').order_by('-fecha')[:500]
-    return render(request, 'ipp1/administracion/logs.html', {'logs': logs})
+        return render(request, 'ipp1/errores/403.html', status=403)
+
+    logs_qs = LogActividad.objects.select_related('usuario').order_by('-fecha')
+
+    q = (request.GET.get('q') or '').strip()
+    usuario_id = (request.GET.get('usuario') or '').strip()
+    modelo_filtro = (request.GET.get('modelo') or '').strip()
+    fecha_desde = (request.GET.get('fecha_desde') or '').strip()
+    fecha_hasta = (request.GET.get('fecha_hasta') or '').strip()
+
+    if q:
+        logs_qs = logs_qs.filter(
+            Q(accion__icontains=q)
+            | Q(detalle__icontains=q)
+            | Q(usuario__username__icontains=q)
+            | Q(modelo__icontains=q)
+            | Q(ip_address__icontains=q)
+        )
+    if usuario_id.isdigit():
+        logs_qs = logs_qs.filter(usuario_id=int(usuario_id))
+    if modelo_filtro:
+        logs_qs = logs_qs.filter(modelo=modelo_filtro)
+    tz_actual = timezone.get_current_timezone()
+    if fecha_desde:
+        try:
+            d_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+            dt_desde = timezone.make_aware(datetime.combine(d_desde, datetime.min.time()), tz_actual)
+            logs_qs = logs_qs.filter(fecha__gte=dt_desde)
+        except ValueError:
+            pass
+    if fecha_hasta:
+        try:
+            d_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            dt_hasta = timezone.make_aware(
+                datetime.combine(d_hasta + timedelta(days=1), datetime.min.time()),
+                tz_actual,
+            )
+            logs_qs = logs_qs.filter(fecha__lt=dt_hasta)
+        except ValueError:
+            pass
+
+    if request.GET.get('exportar') == 'csv':
+        import csv
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="bitacora_actividades.csv"'
+        response.write('\ufeff')
+        writer = csv.writer(response)
+        writer.writerow(['Fecha / Hora', 'Usuario', 'Acción', 'Módulo', 'ID Objeto', 'IP', 'Detalle'])
+        for item in logs_qs[:5000]:
+            writer.writerow(fila_csv_segura([
+                timezone.localtime(item.fecha).strftime('%d/%m/%Y %H:%M:%S'),
+                item.usuario.username if item.usuario else 'Sistema',
+                item.accion,
+                item.modelo or '',
+                item.objeto_id if item.objeto_id is not None else '',
+                item.ip_address or '',
+                item.detalle or '',
+            ]))
+        return response
+
+    hoy = localdate()
+    inicio_hoy = timezone.make_aware(datetime.combine(hoy, datetime.min.time()), tz_actual)
+    fin_hoy = inicio_hoy + timedelta(days=1)
+
+    total_registros = LogActividad.objects.count()
+    registros_hoy = LogActividad.objects.filter(fecha__gte=inicio_hoy, fecha__lt=fin_hoy).count()
+    eventos_seguridad_hoy = LogActividad.objects.filter(
+        fecha__gte=inicio_hoy,
+        fecha__lt=fin_hoy,
+    ).filter(
+        Q(accion__icontains='sesión')
+        | Q(accion__icontains='2FA')
+        | Q(accion__icontains='fallid')
+        | Q(accion__icontains='bloque')
+        | Q(accion__icontains='contraseña')
+        | Q(accion__icontains='respaldo')
+    ).count()
+    usuarios_activos_hoy = (
+        LogActividad.objects.filter(
+            fecha__gte=inicio_hoy,
+            fecha__lt=fin_hoy,
+            usuario__isnull=False,
+        )
+        .values('usuario_id')
+        .distinct()
+        .count()
+    )
+
+    paginator = Paginator(logs_qs, 30)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    usuarios_filtro = (
+        User.objects.filter(id__in=LogActividad.objects.values_list('usuario_id', flat=True))
+        .order_by('username')
+    )
+    modelos_filtro = (
+        LogActividad.objects.exclude(modelo__isnull=True)
+        .exclude(modelo='')
+        .values_list('modelo', flat=True)
+        .distinct()
+        .order_by('modelo')
+    )
+
+    params_sin_pagina = request.GET.copy()
+    params_sin_pagina.pop('page', None)
+
+    return render(request, 'ipp1/administracion/logs.html', {
+        'logs': page_obj,
+        'page_obj': page_obj,
+        'total_registros': total_registros,
+        'total_filtrados': paginator.count,
+        'registros_hoy': registros_hoy,
+        'eventos_seguridad_hoy': eventos_seguridad_hoy,
+        'usuarios_activos_hoy': usuarios_activos_hoy,
+        'usuarios_filtro': usuarios_filtro,
+        'modelos_filtro': modelos_filtro,
+        'q': q,
+        'usuario_id': usuario_id,
+        'modelo_filtro': modelo_filtro,
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
+        'query_params': params_sin_pagina.urlencode(),
+    })
 
 @login_required
 def ingresos_especialistas(request):
@@ -2207,12 +2745,24 @@ def _crear_notificacion(usuario, mensaje, url=None):
     Notificacion.objects.create(usuario=usuario, mensaje=mensaje, url=url)
 
 
+def _obtener_ip_cliente(request):
+    if not request:
+        return None
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = (request.META.get('REMOTE_ADDR') or '').strip()
+    return ip or None
+
+
 def _registrar_log(request, accion, modelo=None, objeto_id=None, detalle=None):
     LogActividad.objects.create(
-        usuario=request.user if request.user.is_authenticated else None,
+        usuario=request.user if (request and request.user.is_authenticated) else None,
         accion=accion,
         modelo=modelo,
         objeto_id=objeto_id,
+        ip_address=_obtener_ip_cliente(request),
         detalle=detalle,
     )
 
@@ -3317,6 +3867,7 @@ def gestion_bloqueos(request):
         # Si el bloqueo vino de 3 códigos fallidos, la cuenta queda inactiva;
         # el desbloqueo del administrador también la reactiva.
         User.objects.filter(username=username).update(is_active=True)
+        _registrar_log(request, f'Desbloqueó y reactivó cuenta {username}', 'User')
         messages.success(
             request,
             f'Cuenta de "{username}" desbloqueada y reactivada exitosamente.',

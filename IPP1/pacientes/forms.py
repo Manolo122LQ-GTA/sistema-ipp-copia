@@ -89,11 +89,11 @@ class RegistroUsuarioForm(forms.Form):
     email = forms.EmailField(label='Correo', max_length=254, required=False)
     password = forms.CharField(
         label='Contraseña', widget=forms.PasswordInput,
-        min_length=16, max_length=MAX_LONGITUD_CONTRASENA,
+        min_length=16,
     )
     password2 = forms.CharField(
         label='Confirmar contraseña', widget=forms.PasswordInput,
-        min_length=16, max_length=MAX_LONGITUD_CONTRASENA,
+        min_length=16,
     )
     rol = forms.ChoiceField(
         label='Rol solicitado',
@@ -179,8 +179,8 @@ class MarcarPagoForm(forms.Form):
 
 # LOGIN
 class LoginForm(forms.Form):
-    username = forms.CharField(label='Usuario', max_length=100, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su usuario'}))
-    password = forms.CharField(label='Contraseña', max_length=100, widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su contraseña'}))
+    username = forms.CharField(label='Usuario', max_length=150, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su usuario'}))
+    password = forms.CharField(label='Contraseña', strip=False, widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su contraseña'}))
 
 
 # PERFIL DE USUARIO
@@ -276,6 +276,83 @@ class RespuestasSeguridadForm(forms.Form):
                 RespuestaSeguridad.crear_o_actualizar(self.usuario, pregunta, respuesta)
                 actualizadas += 1
         return actualizadas
+
+
+class AdminPreguntasSeguridadForm(forms.Form):
+    """Permite a Administración asignar 2 preguntas de seguridad y sus respuestas a un usuario."""
+
+    pregunta_1 = forms.ModelChoiceField(
+        label='Pregunta de seguridad 1',
+        queryset=PreguntaSeguridad.objects.none(),
+        empty_label='-- Seleccione la pregunta 1 --',
+        widget=forms.Select(attrs={'class': 'form-select uiverse-input'}),
+    )
+    respuesta_1 = forms.CharField(
+        label='Respuesta 1',
+        max_length=128,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control uiverse-input',
+            'autocomplete': 'off',
+            'placeholder': 'Respuesta para la pregunta 1',
+        }),
+    )
+    pregunta_2 = forms.ModelChoiceField(
+        label='Pregunta de seguridad 2',
+        queryset=PreguntaSeguridad.objects.none(),
+        empty_label='-- Seleccione la pregunta 2 --',
+        widget=forms.Select(attrs={'class': 'form-select uiverse-input'}),
+    )
+    respuesta_2 = forms.CharField(
+        label='Respuesta 2',
+        max_length=128,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control uiverse-input',
+            'autocomplete': 'off',
+            'placeholder': 'Respuesta para la pregunta 2',
+        }),
+    )
+    reemplazar = forms.BooleanField(
+        label='Reemplazar preguntas anteriores del usuario',
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        qs = PreguntaSeguridad.objects.filter(activa=True).order_by('orden', 'texto')
+        self.fields['pregunta_1'].queryset = qs
+        self.fields['pregunta_2'].queryset = qs
+
+    def _limpiar_respuesta(self, campo):
+        valor = (self.cleaned_data.get(campo) or '').strip()
+        if not valor:
+            raise ValidationError('La respuesta no puede estar vacía.')
+        return valor
+
+    def clean_respuesta_1(self):
+        return self._limpiar_respuesta('respuesta_1')
+
+    def clean_respuesta_2(self):
+        return self._limpiar_respuesta('respuesta_2')
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get('pregunta_1')
+        p2 = cleaned.get('pregunta_2')
+        if p1 and p2 and p1.pk == p2.pk:
+            raise ValidationError('Debes seleccionar dos preguntas de seguridad diferentes.')
+        return cleaned
+
+    def save(self, usuario):
+        """Guarda las 2 preguntas y respuestas hasheadas para el usuario indicado."""
+        p1 = self.cleaned_data['pregunta_1']
+        r1 = self.cleaned_data['respuesta_1']
+        p2 = self.cleaned_data['pregunta_2']
+        r2 = self.cleaned_data['respuesta_2']
+        if self.cleaned_data.get('reemplazar'):
+            RespuestaSeguridad.objects.filter(usuario=usuario).delete()
+        RespuestaSeguridad.crear_o_actualizar(usuario, p1, r1)
+        RespuestaSeguridad.crear_o_actualizar(usuario, p2, r2)
 
 # CODIGOS DE TELEFONO VENEZOLANOS
 CODIGOS_TELEFONO_VE = [
@@ -805,4 +882,50 @@ class SolicitudSecretariaRefinarForm(forms.ModelForm):
             ).exclude(pk=self.instance.pk).exists():
                 raise forms.ValidationError('El especialista ya tiene una cita programada para esa fecha y hora.')
         return cleaned_data
+
+
+class ConfirmarPasswordAdminForm(forms.Form):
+    """Solicita la contraseña actual del operador para confirmar acciones críticas."""
+
+    password_admin = forms.CharField(
+        label='Contraseña actual del administrador',
+        strip=False,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control uiverse-input',
+            'autocomplete': 'current-password',
+            'placeholder': 'Ingresa tu contraseña para confirmar',
+        }),
+    )
+
+    def __init__(self, *args, operador=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.operador = operador
+
+    def clean_password_admin(self):
+        password = self.cleaned_data.get('password_admin', '')
+        if self.operador is None or not self.operador.check_password(password):
+            raise ValidationError('La contraseña ingresada es incorrecta.')
+        return password
+
+
+class Verificar2FAForm(forms.Form):
+    """Código OTP de 6 dígitos enviado al correo para segundo factor de autenticación."""
+
+    codigo = forms.CharField(
+        label='Código de verificación',
+        max_length=12,
+        strip=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control uiverse-input text-center fw-bold',
+            'placeholder': 'Ej: 123456',
+            'autocomplete': 'one-time-code',
+            'inputmode': 'numeric',
+        }),
+    )
+
+    def clean_codigo(self):
+        codigo = re.sub(r'[^0-9]', '', self.cleaned_data.get('codigo', ''))
+        if len(codigo) != 6:
+            raise ValidationError('Ingresa el código numérico de 6 dígitos.')
+        return codigo
 

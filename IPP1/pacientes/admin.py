@@ -78,6 +78,16 @@ class LogActividadAdmin(admin.ModelAdmin):
     list_filter = ('fecha', 'modelo')
     search_fields = ('usuario__username', 'accion', 'detalle')
     date_hierarchy = 'fecha'
+    readonly_fields = ('usuario', 'accion', 'modelo', 'objeto_id', 'detalle', 'fecha')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 @admin.register(Factura)
 class FacturaAdmin(admin.ModelAdmin):

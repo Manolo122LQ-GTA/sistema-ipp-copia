@@ -1,20 +1,103 @@
 {% extends 'ipp1/compartidos/base.html' %}
-{% block title %}Registro de Actividades - IPP{% endblock %}
+{% block title %}Bitácora de Actividades - IPP{% endblock %}
 
 {% block content %}
 <div class="row mb-4 align-items-center">
-    <div class="col-md-8">
-        <h2 class="fw-bold text-dark"><i class="bi bi-activity me-2"></i>Registro de Actividades</h2>
-        <p class="text-muted">Últimas 500 acciones realizadas en el sistema.</p>
+    <div class="col-md-7">
+        <h2 class="fw-bold text-dark mb-1"><i class="bi bi-journal-check me-2 text-primary"></i>Bitácora de Actividades</h2>
+        <p class="text-muted mb-0">Auditoría inmutable de acciones, sesiones y eventos de seguridad del sistema.</p>
     </div>
-    <div class="col-md-4 text-md-end">
+    <div class="col-md-5 text-md-end mt-3 mt-md-0 d-flex gap-2 justify-content-md-end">
+        <a href="?{% if query_params %}{{ query_params }}&{% endif %}exportar=csv" class="btn btn-outline-success uiverse-btn">
+            <i class="bi bi-filetype-csv me-1"></i>Exportar CSV
+        </a>
         <a href="{% url 'inicio_admin' %}" class="btn btn-outline-secondary uiverse-btn">
             <i class="bi bi-arrow-left me-1"></i>Volver Atrás
         </a>
     </div>
 </div>
 
+<!-- Tarjetas resumen -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="uiverse-card p-3 h-100">
+            <div class="text-muted small">Total en Bitácora</div>
+            <div class="fs-4 fw-bold text-dark">{{ total_registros }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="uiverse-card p-3 h-100">
+            <div class="text-muted small">Eventos Hoy</div>
+            <div class="fs-4 fw-bold text-primary">{{ registros_hoy }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="uiverse-card p-3 h-100">
+            <div class="text-muted small">Seguridad / Auth Hoy</div>
+            <div class="fs-4 fw-bold text-warning">{{ eventos_seguridad_hoy }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="uiverse-card p-3 h-100">
+            <div class="text-muted small">Usuarios Activos Hoy</div>
+            <div class="fs-4 fw-bold text-success">{{ usuarios_activos_hoy }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="uiverse-card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label for="id_q" class="form-label small text-muted mb-1">Buscar</label>
+                <input type="text" id="id_q" name="q" value="{{ q }}" class="form-control form-control-sm"
+                       placeholder="Acción, detalle, usuario o IP...">
+            </div>
+            <div class="col-md-2">
+                <label for="id_usuario" class="form-label small text-muted mb-1">Usuario</label>
+                <select id="id_usuario" name="usuario" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for u in usuarios_filtro %}
+                        <option value="{{ u.id }}" {% if usuario_id == u.id|stringformat:"s" %}selected{% endif %}>{{ u.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="id_modelo" class="form-label small text-muted mb-1">Módulo</label>
+                <select id="id_modelo" name="modelo" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for m in modelos_filtro %}
+                        <option value="{{ m }}" {% if modelo_filtro == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="id_desde" class="form-label small text-muted mb-1">Desde</label>
+                <input type="date" id="id_desde" name="fecha_desde" value="{{ fecha_desde }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <label for="id_hasta" class="form-label small text-muted mb-1">Hasta</label>
+                <input type="date" id="id_hasta" name="fecha_hasta" value="{{ fecha_hasta }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-1 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100" title="Filtrar">
+                    <i class="bi bi-funnel"></i>
+                </button>
+                <a href="{% url 'ver_logs' %}" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla -->
 <div class="uiverse-card shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2 px-3">
+        <span class="small text-muted">Mostrando {{ page_obj|length }} de {{ total_filtrados }} registro(s)</span>
+        <span class="badge bg-light text-dark border"><i class="bi bi-lock-fill me-1 text-secondary"></i>Bitácora inmutable</span>
+    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-sm table-hover align-middle mb-0">
@@ -23,7 +106,8 @@
                         <th>Fecha / Hora</th>
                         <th>Usuario</th>
                         <th>Acción</th>
-                        <th>Modelo</th>
+                        <th>Módulo / ID</th>
+                        <th>IP</th>
                         <th>Detalle</th>
                     </tr>
                 </thead>
@@ -31,22 +115,43 @@
                     {% for log in logs %}
                     <tr>
                         <td class="text-nowrap small">{{ log.fecha|date:"d/m/Y H:i:s" }}</td>
-                        <td>{{ log.usuario.username|default:"—" }}</td>
-                        <td>{{ log.accion }}</td>
+                        <td class="fw-medium">
+                            {% if log.usuario %}
+                                {{ log.usuario.username }}
+                                {% if log.usuario.is_superuser %}
+                                    <span class="badge bg-dark ms-1" style="font-size: 0.65rem;">SuperAdmin</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Sistema</span>
+                            {% endif %}
+                        </td>
                         <td>
+                            {% if 'fallid' in log.accion|lower or 'bloque' in log.accion|lower or 'elimin' in log.accion|lower or 'rechaz' in log.accion|lower %}
+                                <span class="badge fw-semibold" style="background-color: #fde8e8; color: #b91c1c; border: 1px solid #f8b4b4;">{{ log.accion }}</span>
+                            {% elif 'exitoso' in log.accion|lower or 'aprob' in log.accion|lower or 'cre' in log.accion|lower or 'respaldo' in log.accion|lower %}
+                                <span class="badge fw-semibold" style="background-color: #def7ec; color: #03543f; border: 1px solid #84e1bc;">{{ log.accion }}</span>
+                            {% elif 'cierre' in log.accion|lower %}
+                                <span class="badge fw-semibold" style="background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db;">{{ log.accion }}</span>
+                            {% else %}
+                                <span class="fw-medium text-dark">{{ log.accion }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-nowrap">
                             {% if log.modelo %}
-                                <span class="badge bg-info">{{ log.modelo }}</span>
+                                <span class="badge bg-info text-dark">{{ log.modelo }}</span>
+                                {% if log.objeto_id %}<small class="text-muted ms-1">#{{ log.objeto_id }}</small>{% endif %}
                             {% else %}
                                 <span class="text-muted">—</span>
                             {% endif %}
                         </td>
+                        <td class="small text-nowrap font-monospace text-muted">{{ log.ip_address|default:"—" }}</td>
                         <td class="small text-muted">{{ log.detalle|default:"—" }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-4 text-muted">
+                        <td colspan="6" class="text-center py-4 text-muted">
                             <i class="bi bi-journal-text fs-2 d-block mb-2"></i>
-                            No hay actividades registradas.
+                            No hay actividades que coincidan con los filtros seleccionados.
                         </td>
                     </tr>
                     {% endfor %}
@@ -54,5 +159,25 @@
             </table>
         </div>
     </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2 px-3">
+        <span class="small text-muted">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        <nav aria-label="Paginación de bitácora">
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if query_params %}{{ query_params }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
+                    </li>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if query_params %}{{ query_params }}&{% endif %}page={{ page_obj.next_page_number }}">Siguiente</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

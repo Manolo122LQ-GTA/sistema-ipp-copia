@@ -1,0 +1,134 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Preguntas de Seguridad{% endblock %}
+{% block title %}Preguntas de Seguridad - IPP{% endblock %}
+{% block content %}
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark"><i class="bi bi-shield-lock me-2"></i>Preguntas de Seguridad</h2>
+        <p class="text-muted mb-0">Configura las 2 preguntas de seguridad para el usuario <strong>{{ usuario_objetivo.username }}</strong>{% if usuario_objetivo.email %} ({{ usuario_objetivo.email }}){% endif %}.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-2 mt-md-0">
+        <a href="{% url 'menu_admin' %}" class="btn btn-outline-secondary uiverse-btn">
+            <i class="bi bi-arrow-left me-1"></i>Volver al Menú
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="uiverse-card shadow-sm">
+            <div class="card-header bg-primary text-white py-3" style="border-radius: 15px 15px 0 0;">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-key me-2"></i>Asignar 2 preguntas de seguridad</h5>
+            </div>
+            <div class="card-body p-4">
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 small">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <form method="POST" autocomplete="off">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.pregunta_1.id_for_label }}" class="form-label fw-semibold">{{ form.pregunta_1.label }}</label>
+                        {{ form.pregunta_1 }}
+                        {% if form.pregunta_1.errors %}<div class="text-danger small mt-1">{{ form.pregunta_1.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.respuesta_1.id_for_label }}" class="form-label fw-semibold">{{ form.respuesta_1.label }}</label>
+                        <div class="input-group">
+                            {{ form.respuesta_1 }}
+                            <button type="button" class="btn btn-outline-secondary" onclick="toggleVisibilidad('{{ form.respuesta_1.id_for_label }}', this)" title="Mostrar u ocultar respuesta">
+                                <i class="bi bi-eye-slash"></i>
+                            </button>
+                        </div>
+                        {% if form.respuesta_1.errors %}<div class="text-danger small mt-1">{{ form.respuesta_1.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.pregunta_2.id_for_label }}" class="form-label fw-semibold">{{ form.pregunta_2.label }}</label>
+                        {{ form.pregunta_2 }}
+                        {% if form.pregunta_2.errors %}<div class="text-danger small mt-1">{{ form.pregunta_2.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.respuesta_2.id_for_label }}" class="form-label fw-semibold">{{ form.respuesta_2.label }}</label>
+                        <div class="input-group">
+                            {{ form.respuesta_2 }}
+                            <button type="button" class="btn btn-outline-secondary" onclick="toggleVisibilidad('{{ form.respuesta_2.id_for_label }}', this)" title="Mostrar u ocultar respuesta">
+                                <i class="bi bi-eye-slash"></i>
+                            </button>
+                        </div>
+                        {% if form.respuesta_2.errors %}<div class="text-danger small mt-1">{{ form.respuesta_2.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="form-check mb-4">
+                        {{ form.reemplazar }}
+                        <label class="form-check-label text-muted small" for="{{ form.reemplazar.id_for_label }}">
+                            {{ form.reemplazar.label }}
+                        </label>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{% url 'menu_admin' %}" class="btn btn-outline-secondary uiverse-btn">Cancelar</a>
+                        <button type="submit" class="btn btn-primary uiverse-btn px-4">
+                            <i class="bi bi-floppy me-1"></i>Guardar Preguntas
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="uiverse-card shadow-sm">
+            <div class="card-header bg-white fw-bold py-3 d-flex justify-content-between align-items-center">
+                <span>Estado actual de {{ usuario_objetivo.username }}</span>
+                {% if respuestas_actuales|length >= 2 %}
+                    <span class="badge bg-success">{{ respuestas_actuales|length }} configuradas</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark">{{ respuestas_actuales|length }}/2 configuradas</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if respuestas_actuales %}
+                    <p class="text-muted small mb-2">Preguntas activas registradas para esta cuenta (las respuestas están cifradas):</p>
+                    <ul class="list-group list-group-flush">
+                        {% for resp in respuestas_actuales %}
+                            <li class="list-group-item px-0">
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>{{ resp.pregunta.texto }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-center py-3 text-muted">
+                        <i class="bi bi-exclamation-circle text-warning fs-2 d-block mb-2"></i>
+                        Esta cuenta aún no tiene preguntas de seguridad configuradas.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleVisibilidad(inputId, btn) {
+    var input = document.getElementById(inputId);
+    var icon = btn.querySelector('i');
+    if (!input || !icon) { return; }
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    }
+}
+</script>
+
+{% endblock %}

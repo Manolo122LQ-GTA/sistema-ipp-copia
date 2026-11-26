@@ -1,0 +1,47 @@
+{% extends 'ipp1/compartidos/base.html' %}
+{% block navbar_brand %}Sistema IPP - Administración{% endblock %}
+{% block title %}Eliminar Usuario - IPP{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-7 col-lg-5">
+        <div class="uiverse-card shadow border border-danger">
+            <div class="card-header bg-danger text-white py-3 text-center">
+                <i class="bi bi-exclamation-triangle-fill fs-2"></i>
+                <h4 class="mb-0 mt-1">Confirmar Eliminación de Usuario</h4>
+            </div>
+            <div class="card-body p-4">
+                <div class="alert alert-warning small">
+                    <strong>Atención:</strong> Estás a punto de eliminar permanentemente la cuenta de
+                    <strong>{{ usuario_objetivo.username }}</strong>
+                    ({{ usuario_objetivo.get_full_name|default:"Sin nombre" }} — {{ usuario_objetivo.email|default:"Sin correo" }}).
+                    Esta acción no se puede deshacer y quedará registrada en la bitácora.
+                </div>
+
+                <form method="post" autocomplete="off">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.password_admin.id_for_label }}" class="form-label fw-semibold">
+                            {{ form.password_admin.label }}
+                        </label>
+                        {{ form.password_admin }}
+                        {% if form.password_admin.errors %}
+                            <div class="text-danger small mt-1">{{ form.password_admin.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">Por seguridad, ingresa tu contraseña actual de administrador para confirmar.</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'menu_admin' %}" class="btn btn-outline-secondary uiverse-btn">
+                            <i class="bi bi-arrow-left me-1"></i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-danger uiverse-btn">
+                            <i class="bi bi-trash me-1"></i>Eliminar Definitivamente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

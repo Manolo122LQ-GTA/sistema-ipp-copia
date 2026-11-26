@@ -47,6 +47,7 @@
                         <th scope="col">Rol Actual</th>
                         <th scope="col">Estado de Actividad</th>
                         <th scope="col">Asignar Nuevo Rol</th>
+                        <th scope="col">Preguntas de Seguridad</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -74,8 +75,8 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="usuario_id" value="{{ usuario.id }}" autocomplete="off">
                                 <input type="hidden" name="toggle_status" value="1">
-                                <button type="submit" class="btn btn-sm btn-link p-0 ms-1 text-decoration-none" title="Alternar Estado de Acceso">
-                                    <i class="bi bi-power text-secondary"></i>
+                                <button type="submit" class="btn btn-sm btn-link p-0 ms-1 text-decoration-none" title="Alternar Estado de Acceso" aria-label="Alternar estado de acceso de {{ usuario.username }}">
+                                    <i class="bi bi-power text-secondary" aria-hidden="true"></i>
                                 </button>
                             </form>
                         </td>
@@ -94,10 +95,26 @@
                                 <button type="submit" class="btn btn-primary btn-sm uiverse-btn">Guardar</button>
                             </form>
                         </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                {% if usuario.total_respuestas >= 2 %}
+                                    <span class="badge bg-success">Configuradas ({{ usuario.total_respuestas }})</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Pendientes ({{ usuario.total_respuestas }}/2)</span>
+                                {% endif %}
+                                <a href="{% url 'admin_preguntas_usuario' usuario.id %}" class="btn btn-outline-primary btn-sm uiverse-btn">
+                                    <i class="bi bi-shield-lock me-1"></i>Configurar
+                                </a>
+                                <a href="{% url 'admin_eliminar_usuario' usuario.id %}" class="btn btn-outline-danger btn-sm uiverse-btn" title="Eliminar usuario">
+                                    <i class="bi bi-trash me-1"></i>Eliminar
+                                </a>
+                            </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-4 text-muted">No hay otros usuarios registrados en el sistema.</td>
+                        <td colspan="6" class="text-center py-4 text-muted">No hay otros usuarios registrados en el sistema.</td>
+
                     </tr>
                     {% endfor %}
                 </tbody>

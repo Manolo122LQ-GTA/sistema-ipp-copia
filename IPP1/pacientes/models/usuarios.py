@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models
 
 
@@ -10,6 +11,8 @@ class PerfilUsuario(models.Model):
     aprobado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='aprobaciones')
     # GUARDAR SESION ACTIVA
     session_key = models.CharField(max_length=40, null=True, blank=True)
+    # SEGUNDO FACTOR DE AUTENTICACION (OTP POR CORREO)
+    autenticacion_2fa = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "Perfil de Usuario"
@@ -40,6 +43,7 @@ class LogActividad(models.Model):
     accion = models.CharField(max_length=255)
     modelo = models.CharField(max_length=100, blank=True, null=True)
     objeto_id = models.IntegerField(blank=True, null=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
     detalle = models.TextField(blank=True, null=True)
     fecha = models.DateTimeField(auto_now_add=True)
 
@@ -47,6 +51,15 @@ class LogActividad(models.Model):
         verbose_name = "Log de Actividad"
         verbose_name_plural = "Logs de Actividad"
         ordering = ['-fecha']
+
+    def save(self, *args, **kwargs):
+        # Bitácora inmutable: solo permite inserción inicial, nunca modificación.
+        if self.pk is not None and LogActividad.objects.filter(pk=self.pk).exists():
+            raise ValidationError("Los registros de la bitácora son inmutables y no pueden modificarse.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise PermissionDenied("Los registros de la bitácora son inmutables y no pueden eliminarse.")
 
     def __str__(self):
         return f"{self.fecha.strftime('%d/%m/%Y %H:%M')} - {self.usuario} - {self.accion[:60]}"

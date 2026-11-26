@@ -2326,6 +2326,7 @@ class PasswordResetCorreoTest(BaseTest):
 
 
 @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+@override_settings(ALLOW_SELF_UNLOCK=True)
 class DesbloqueoPorCodigoTest(BaseTest):
     """Código alfanumérico por correo: desbloquea o bloquea tras 3 fallos."""
 
@@ -2592,6 +2593,7 @@ class GmailWebAppBackendTest(TestCase):
             GmailWebAppBackend().send_messages([mensaje])
 
 
+@override_settings(ALLOW_SELF_UNLOCK=True)
 class DesbloqueoPorPreguntasTest(BaseTest):
     """El desbloqueo usa los ids de RespuestaSeguridad guardados en sesión."""
 
